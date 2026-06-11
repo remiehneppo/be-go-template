@@ -1,0 +1,9 @@
+.git
+.codegraph
+.scratch
+logs
+tmp
+coverage.out
+*.test
+Dockerfile
+docker-compose.yml

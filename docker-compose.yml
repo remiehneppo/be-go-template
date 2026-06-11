@@ -1,0 +1,90 @@
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: local
+      HTTP_ADDR: :8080
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DATABASE: be_go_template
+      REDIS_ADDR: redis:6379
+      LOG_TO_TERMINAL: "true"
+      LOG_TO_FILE: "true"
+      LOG_FILE_PATH: /var/log/be-go-template/app.log
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+    volumes:
+      - api-logs:/var/log/be-go-template
+
+  migrate:
+    profiles: ["tools"]
+    build:
+      context: .
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint: ["/app/bin/migrate"]
+    environment:
+      APP_ENV: local
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DATABASE: be_go_template
+      REDIS_ADDR: redis:6379
+      LOG_TO_TERMINAL: "true"
+      LOG_TO_FILE: "false"
+
+  seed:
+    profiles: ["tools"]
+    build:
+      context: .
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint: ["/app/bin/seed"]
+    environment:
+      APP_ENV: local
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DATABASE: be_go_template
+      REDIS_ADDR: redis:6379
+      LOG_TO_TERMINAL: "true"
+      LOG_TO_FILE: "false"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrator}
+
+volumes:
+  mongo-data:
+  redis-data:
+  api-logs:

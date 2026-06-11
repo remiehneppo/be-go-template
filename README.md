@@ -111,6 +111,27 @@ Start the API:
 go run ./cmd/api
 ```
 
+Run the local stack with Docker Compose:
+
+```sh
+docker compose up --build api
+```
+
+Run migrations against the Compose MongoDB service:
+
+```sh
+docker compose --profile tools run --rm migrate
+```
+
+Seed an admin user through Compose:
+
+```sh
+ADMIN_EMAIL=admin@example.com \
+ADMIN_PASSWORD='change-me' \
+ADMIN_NAME='Administrator' \
+docker compose --profile tools run --rm seed
+```
+
 ## HTTP endpoints
 
 Public:
