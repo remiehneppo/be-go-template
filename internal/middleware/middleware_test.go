@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/remihneppo/be-go-template/internal/domain/auth"
+	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
 )
 
@@ -50,4 +53,40 @@ func TestBodyLimitRejectsLargeBody(t *testing.T) {
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status = %d", rec.Code)
 	}
+}
+
+func TestErrorHandlerAppendsErrorEvent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	reporter := &fakeErrorReporter{}
+	router := gin.New()
+	router.Use(RequestID(logger.NewNoop()))
+	router.Use(ErrorHandler(logger.NewNoop(), reporter))
+	router.GET("/boom", func(c *gin.Context) {
+		_ = c.Error(apperrors.New(apperrors.CodeConflict, "Conflict", http.StatusConflict))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/boom", nil)
+	req.Header.Set("X-Request-ID", "req-1")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if len(reporter.events) != 1 {
+		t.Fatalf("events = %+v", reporter.events)
+	}
+	event := reporter.events[0]
+	if event.RequestID != "req-1" || event.ErrorCode != string(apperrors.CodeConflict) || event.Path != "/boom" || event.Method != http.MethodGet {
+		t.Fatalf("event = %+v", event)
+	}
+}
+
+type fakeErrorReporter struct {
+	events []auth.ErrorEvent
+}
+
+func (r *fakeErrorReporter) Append(ctx context.Context, event auth.ErrorEvent) error {
+	r.events = append(r.events, event)
+	return nil
 }

@@ -28,6 +28,7 @@ type RouterDependencies struct {
 	AuthService    domainauth.Service
 	TokenService   domainauth.TokenService
 	Monitoring     monitoring.Service
+	ErrorEvents    middleware.ErrorEventReporter
 	HTTPMetrics    *metrics.HTTPMetrics
 	RateLimiter    ratelimit.Limiter
 	MetricsHandler gin.HandlerFunc
@@ -59,7 +60,7 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 		router.Use(middleware.Metrics(httpMetrics, cfg.Metrics.Path))
 	}
 	router.Use(middleware.Logging(log))
-	router.Use(middleware.ErrorHandler(log))
+	router.Use(middleware.ErrorHandler(log, deps.ErrorEvents))
 
 	router.GET("/healthz", func(c *gin.Context) {
 		OK(c, gin.H{"status": "ok", "time": time.Now().UTC()})

@@ -32,6 +32,12 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 			{Keys: bson.D{{Key: "actor_user_id", Value: 1}, {Key: "created_at", Value: -1}}},
 			{Keys: bson.D{{Key: "created_at", Value: -1}}},
 		},
+		"error_events": {
+			{Keys: bson.D{{Key: "created_at", Value: -1}}},
+			{Keys: bson.D{{Key: "error_code", Value: 1}, {Key: "created_at", Value: -1}}},
+			{Keys: bson.D{{Key: "request_id", Value: 1}}},
+			{Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "created_at", Value: -1}}},
+		},
 		"revoked_tokens": {
 			{Keys: bson.D{{Key: "expires_at", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(int32(time.Second / time.Second))},
 		},

@@ -3,12 +3,14 @@ package mongo
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/common"
+	"github.com/remihneppo/be-go-template/internal/domain/monitoring"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -183,6 +185,29 @@ func TestMonitoringStatsRepositoryCountsAuthStats(t *testing.T) {
 	}
 }
 
+func TestErrorEventRepositoryAppendAndList(t *testing.T) {
+	db := &fakeDB{findManyValue: []errorEventDocument{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", CreatedAt: time.Unix(1, 0)}}}
+	repo := NewErrorEventRepository(db)
+
+	if err := repo.Append(context.Background(), auth.ErrorEvent{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", Path: "/x", Method: http.MethodGet, Status: 500, CreatedAt: time.Unix(1, 0)}); err != nil {
+		t.Fatalf("Append() error = %v", err)
+	}
+	if db.insertCalls != 1 || db.lastCollection != errorEventsCollection {
+		t.Fatalf("insertCalls = %d collection = %q", db.insertCalls, db.lastCollection)
+	}
+
+	got, err := repo.List(context.Background(), common.Pagination{Limit: 200, Offset: 2})
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if len(got) != 1 || got[0].RequestID != "req-1" {
+		t.Fatalf("events = %+v", got)
+	}
+	if db.lastReadOptions.Limit != 100 || db.lastReadOptions.Offset != 2 {
+		t.Fatalf("read options = %+v", db.lastReadOptions)
+	}
+}
+
 type fakeDB struct {
 	findOneValue  any
 	findManyValue any
@@ -290,3 +315,4 @@ var _ auth.SessionRepository = (*SessionRepository)(nil)
 var _ auth.LoginHistoryRepository = (*LoginHistoryRepository)(nil)
 var _ auth.AuditLogRepository = (*AuditLogRepository)(nil)
 var _ auth.RevokedTokenRepository = (*RevokedTokenRepository)(nil)
+var _ monitoring.ErrorEventRepository = (*ErrorEventRepository)(nil)
