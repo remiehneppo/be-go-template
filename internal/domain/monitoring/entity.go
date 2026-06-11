@@ -21,6 +21,7 @@ type RuntimeMetrics struct {
 	Goroutines    int       `json:"goroutines"`
 	AllocBytes    uint64    `json:"alloc_bytes"`
 	HeapBytes     uint64    `json:"heap_bytes"`
+	NumGC         uint32    `json:"num_gc"`
 	UptimeSeconds int64     `json:"uptime_seconds"`
 	CollectedAt   time.Time `json:"collected_at"`
 }
@@ -38,10 +39,12 @@ type DependencyCheck struct {
 }
 
 type AuthStats struct {
-	LoginSuccessCount int64     `json:"login_success_count"`
-	LoginFailureCount int64     `json:"login_failure_count"`
-	RefreshCount      int64     `json:"refresh_count"`
-	LogoutCount       int64     `json:"logout_count"`
-	From              time.Time `json:"from"`
-	To                time.Time `json:"to"`
+	LoginSuccessCount   int64     `json:"login_success_count"`
+	LoginFailureCount   int64     `json:"login_failure_count"`
+	ActiveSessionCount  int64     `json:"active_session_count"`
+	RevokedSessionCount int64     `json:"revoked_session_count"`
+	RefreshCount        int64     `json:"refresh_count"`
+	LogoutCount         int64     `json:"logout_count"`
+	From                time.Time `json:"from"`
+	To                  time.Time `json:"to"`
 }

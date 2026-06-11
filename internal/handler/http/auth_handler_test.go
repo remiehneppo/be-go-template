@@ -250,6 +250,59 @@ func TestRouterReadyzReturns503WhenNotReady(t *testing.T) {
 	}
 }
 
+func TestAdminMonitoringRequiresAdminRole(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		Monitoring: &fakeMonitoringService{status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test"}},
+		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
+			UserID:    "u1",
+			SessionID: "s1",
+			TokenID:   "jti1",
+			Roles:     []string{"user"},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/status", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("missing token status = %d body = %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/status", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("user role status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminMonitoringStatusAllowsAdminRole(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		Monitoring: &fakeMonitoringService{status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test"}},
+		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
+			UserID:    "admin1",
+			SessionID: "s1",
+			TokenID:   "jti1",
+			Roles:     []string{"admin"},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/status", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"service_name":"api"`) {
+		t.Fatalf("body = %s", rec.Body.String())
+	}
+}
+
 func testConfig() config.Config {
 	cfg, err := config.Load()
 	if err != nil {
@@ -307,6 +360,34 @@ type fakeReadiness struct {
 
 func (r *fakeReadiness) Check(ctx context.Context) (monitoring.DependencyStatus, bool) {
 	return r.status, r.ready
+}
+
+type fakeMonitoringService struct {
+	status *monitoring.SystemStatus
+}
+
+func (s *fakeMonitoringService) GetSystemStatus(ctx context.Context) (*monitoring.SystemStatus, error) {
+	return s.status, nil
+}
+
+func (s *fakeMonitoringService) GetRuntimeMetrics(ctx context.Context) (*monitoring.RuntimeMetrics, error) {
+	return &monitoring.RuntimeMetrics{}, nil
+}
+
+func (s *fakeMonitoringService) GetDependencyStatus(ctx context.Context) (*monitoring.DependencyStatus, error) {
+	return &monitoring.DependencyStatus{}, nil
+}
+
+func (s *fakeMonitoringService) GetAuthStats(ctx context.Context, from time.Time, to time.Time) (*monitoring.AuthStats, error) {
+	return &monitoring.AuthStats{From: from, To: to}, nil
+}
+
+func (s *fakeMonitoringService) GetRecentErrors(ctx context.Context, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
+	return nil, nil
+}
+
+func (s *fakeMonitoringService) GetRecentAuditLogs(ctx context.Context, pagination common.Pagination) ([]domainauth.AuditLog, error) {
+	return nil, nil
 }
 
 type fakeHTTPTokenService struct {

@@ -27,6 +27,7 @@ type ReadinessChecker interface {
 type RouterDependencies struct {
 	AuthService    domainauth.Service
 	TokenService   domainauth.TokenService
+	Monitoring     monitoring.Service
 	HTTPMetrics    *metrics.HTTPMetrics
 	RateLimiter    ratelimit.Limiter
 	MetricsHandler gin.HandlerFunc
@@ -71,6 +72,10 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 	v1 := router.Group("/v1")
 	if deps.AuthService != nil {
 		NewAuthHandler(deps.AuthService, WithAuthRouteMiddleware(authRouteMiddleware(cfg, deps.RateLimiter, deps.TokenService))).RegisterRoutes(v1)
+	}
+	if deps.Monitoring != nil {
+		admin := v1.Group("/admin", middleware.Authenticate(deps.TokenService), middleware.AdminGuard())
+		NewMonitoringHandler(deps.Monitoring).RegisterRoutes(admin)
 	}
 
 	return router
