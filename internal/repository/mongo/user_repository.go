@@ -53,6 +53,16 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.U
 	return &usr, nil
 }
 
+func (r *UserRepository) EnsureRole(ctx context.Context, userID string, role user.Role, updatedAt time.Time) error {
+	return r.db.UpdateOne(ctx, usersCollection, bson.M{"_id": userID}, bson.M{
+		"$addToSet": bson.M{"roles": role},
+		"$set":      bson.M{"updated_at": updatedAt},
+	}, database.WriteOptions{
+		LockKey:        userIDKey(userID),
+		InvalidateKeys: []string{userIDKey(userID)},
+	})
+}
+
 func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID string, at time.Time) error {
 	return r.db.UpdateOne(ctx, usersCollection, bson.M{"_id": userID}, bson.M{
 		"$set": bson.M{

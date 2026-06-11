@@ -51,6 +51,30 @@ func TestUserRepositoryUpdateLastLoginInvalidatesID(t *testing.T) {
 	}
 }
 
+func TestUserRepositoryEnsureRoleUsesAddToSet(t *testing.T) {
+	db := &fakeDB{}
+	repo := NewUserRepository(db)
+	at := time.Unix(20, 0)
+
+	if err := repo.EnsureRole(context.Background(), "u1", user.RoleAdmin, at); err != nil {
+		t.Fatalf("EnsureRole() error = %v", err)
+	}
+	if db.updateOneCalls != 1 {
+		t.Fatalf("updateOneCalls = %d", db.updateOneCalls)
+	}
+	update, ok := db.lastUpdate.(bson.M)
+	if !ok {
+		t.Fatalf("update type = %T", db.lastUpdate)
+	}
+	addToSet, ok := update["$addToSet"].(bson.M)
+	if !ok || addToSet["roles"] != user.RoleAdmin {
+		t.Fatalf("update = %#v", update)
+	}
+	if db.lastWriteOptions.LockKey != "user:id:u1" {
+		t.Fatalf("LockKey = %q", db.lastWriteOptions.LockKey)
+	}
+}
+
 func TestSessionRepositoryRotateRefreshTokenUsesStrictLockAndInvalidatesOldHash(t *testing.T) {
 	db := &fakeDB{}
 	repo := NewSessionRepository(db)

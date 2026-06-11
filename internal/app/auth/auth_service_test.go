@@ -365,6 +365,10 @@ func (r *fakeUserRepository) FindByEmail(ctx context.Context, email string) (*us
 	return r.found, nil
 }
 
+func (r *fakeUserRepository) EnsureRole(ctx context.Context, userID string, role user.Role, updatedAt time.Time) error {
+	return nil
+}
+
 func (r *fakeUserRepository) UpdateLastLogin(ctx context.Context, userID string, at time.Time) error {
 	r.lastLoginUserID = userID
 	return nil
