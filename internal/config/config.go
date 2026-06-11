@@ -12,6 +12,7 @@ type Config struct {
 	App   AppConfig
 	HTTP  HTTPConfig
 	Log   LogConfig
+	Mongo MongoConfig
 	Redis RedisConfig
 }
 
@@ -36,6 +37,15 @@ type LogConfig struct {
 	FilePath   string
 	ToTerminal bool
 	ToFile     bool
+}
+
+type MongoConfig struct {
+	URI            string
+	Database       string
+	MaxPoolSize    uint64
+	MinPoolSize    uint64
+	ConnectTimeout time.Duration
+	ReadPreference string
 }
 
 type RedisConfig struct {
@@ -68,6 +78,14 @@ func Load() (Config, error) {
 			FilePath:   getString("LOG_FILE_PATH", "logs/app.log"),
 			ToTerminal: getBool("LOG_TO_TERMINAL", true),
 			ToFile:     getBool("LOG_TO_FILE", false),
+		},
+		Mongo: MongoConfig{
+			URI:            getString("MONGO_URI", "mongodb://localhost:27017"),
+			Database:       getString("MONGO_DATABASE", "be_go_template"),
+			MaxPoolSize:    uint64(getInt64("MONGO_MAX_POOL_SIZE", 100)),
+			MinPoolSize:    uint64(getInt64("MONGO_MIN_POOL_SIZE", 0)),
+			ConnectTimeout: getDuration("MONGO_CONNECT_TIMEOUT", 10*time.Second),
+			ReadPreference: getString("MONGO_READ_PREFERENCE", "primary"),
 		},
 		Redis: RedisConfig{
 			Addr:          getString("REDIS_ADDR", "localhost:6379"),
@@ -111,6 +129,15 @@ func (cfg Config) Validate() error {
 	}
 	if !cfg.Log.ToTerminal && !cfg.Log.ToFile {
 		return fmt.Errorf("at least one log output must be enabled")
+	}
+	if cfg.Mongo.URI == "" {
+		return fmt.Errorf("MONGO_URI must not be empty")
+	}
+	if cfg.Mongo.Database == "" {
+		return fmt.Errorf("MONGO_DATABASE must not be empty")
+	}
+	if cfg.Mongo.ConnectTimeout <= 0 {
+		return fmt.Errorf("MONGO_CONNECT_TIMEOUT must be positive")
 	}
 	if cfg.Redis.Addr == "" {
 		return fmt.Errorf("REDIS_ADDR must not be empty")
