@@ -250,6 +250,10 @@ func (c *fakeCache) Exists(ctx context.Context, key string) (bool, error) {
 	return ok, nil
 }
 
+func (c *fakeCache) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	return 1, nil
+}
+
 func (c *fakeCache) WithLock(ctx context.Context, key string, ttl time.Duration, fn func(ctx context.Context) error) error {
 	c.lockCalls++
 	if c.lockErr != nil {

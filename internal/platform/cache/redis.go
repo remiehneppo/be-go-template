@@ -86,6 +86,20 @@ func (c *RedisCache) Exists(ctx context.Context, key string) (bool, error) {
 	return count > 0, nil
 }
 
+func (c *RedisCache) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	if ttl <= 0 {
+		return 0, fmt.Errorf("increment ttl must be positive")
+	}
+	const script = `
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+	redis.call("PEXPIRE", KEYS[1], ARGV[1])
+end
+return count
+`
+	return c.client.Eval(ctx, script, []string{key}, ttl.Milliseconds()).Int64()
+}
+
 func (c *RedisCache) WithLock(ctx context.Context, key string, ttl time.Duration, fn func(ctx context.Context) error) error {
 	if ttl <= 0 {
 		return fmt.Errorf("lock ttl must be positive")

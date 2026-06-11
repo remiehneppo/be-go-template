@@ -13,22 +13,48 @@ import (
 )
 
 type AuthHandler struct {
-	service domainauth.Service
+	service    domainauth.Service
+	middleware AuthRouteMiddleware
 }
 
-func NewAuthHandler(service domainauth.Service) *AuthHandler {
-	return &AuthHandler{service: service}
+type AuthRouteMiddleware struct {
+	Register []gin.HandlerFunc
+	Login    []gin.HandlerFunc
+	Refresh  []gin.HandlerFunc
+}
+
+type AuthHandlerOption func(*AuthHandler)
+
+func NewAuthHandler(service domainauth.Service, opts ...AuthHandlerOption) *AuthHandler {
+	handler := &AuthHandler{service: service}
+	for _, opt := range opts {
+		opt(handler)
+	}
+	return handler
+}
+
+func WithAuthRouteMiddleware(routeMiddleware AuthRouteMiddleware) AuthHandlerOption {
+	return func(h *AuthHandler) {
+		h.middleware = routeMiddleware
+	}
 }
 
 func (h *AuthHandler) RegisterRoutes(group *gin.RouterGroup) {
 	auth := group.Group("/auth")
-	auth.POST("/register", h.Register)
-	auth.POST("/login", h.Login)
-	auth.POST("/refresh", h.Refresh)
+	auth.POST("/register", appendHandlers(h.middleware.Register, h.Register)...)
+	auth.POST("/login", appendHandlers(h.middleware.Login, h.Login)...)
+	auth.POST("/refresh", appendHandlers(h.middleware.Refresh, h.Refresh)...)
 	auth.POST("/logout", h.Logout)
 	auth.POST("/logout-all", h.LogoutAll)
 	auth.GET("/devices", h.ListDevices)
 	auth.GET("/login-history", h.ListLoginHistory)
+}
+
+func appendHandlers(middleware []gin.HandlerFunc, final gin.HandlerFunc) []gin.HandlerFunc {
+	handlers := make([]gin.HandlerFunc, 0, len(middleware)+1)
+	handlers = append(handlers, middleware...)
+	handlers = append(handlers, final)
+	return handlers
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {

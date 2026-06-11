@@ -22,6 +22,9 @@ func TestLoadDefaults(t *testing.T) {
 	if len(cfg.HTTP.CORSAllowOrigins) != 2 {
 		t.Fatalf("CORSAllowOrigins len = %d", len(cfg.HTTP.CORSAllowOrigins))
 	}
+	if !cfg.RateLimit.AuthEnabled || cfg.RateLimit.Fallback != "allow" {
+		t.Fatalf("RateLimit = %+v", cfg.RateLimit)
+	}
 }
 
 func TestValidateRequiresLogOutput(t *testing.T) {
@@ -34,5 +37,19 @@ func TestValidateRequiresLogOutput(t *testing.T) {
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("Validate() error = nil")
+	}
+}
+
+func TestRateLimitFallbackDefaultsToBlockInProduction(t *testing.T) {
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("RATE_LIMIT_FALLBACK", "")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://example.com")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.RateLimit.Fallback != "block" {
+		t.Fatalf("Fallback = %q", cfg.RateLimit.Fallback)
 	}
 }

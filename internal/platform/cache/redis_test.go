@@ -73,6 +73,31 @@ func TestRedisCacheDeleteAndExists(t *testing.T) {
 	}
 }
 
+func TestRedisCacheIncrement(t *testing.T) {
+	cache, cleanup := newTestCache(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	first, err := cache.Increment(ctx, "rate:k", time.Minute)
+	if err != nil {
+		t.Fatalf("Increment() first error = %v", err)
+	}
+	second, err := cache.Increment(ctx, "rate:k", time.Minute)
+	if err != nil {
+		t.Fatalf("Increment() second error = %v", err)
+	}
+	if first != 1 || second != 2 {
+		t.Fatalf("increments = %d, %d", first, second)
+	}
+	ttl, err := cache.client.TTL(ctx, "rate:k").Result()
+	if err != nil {
+		t.Fatalf("TTL() error = %v", err)
+	}
+	if ttl <= 0 {
+		t.Fatalf("TTL() = %s", ttl)
+	}
+}
+
 func TestRedisCacheWithLockExcludesConcurrentOwner(t *testing.T) {
 	cache, cleanup := newTestCache(t)
 	defer cleanup()

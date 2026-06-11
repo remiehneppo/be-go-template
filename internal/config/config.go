@@ -10,12 +10,13 @@ import (
 )
 
 type Config struct {
-	App   AppConfig
-	HTTP  HTTPConfig
-	Log   LogConfig
-	JWT   JWTConfig
-	Mongo MongoConfig
-	Redis RedisConfig
+	App       AppConfig
+	HTTP      HTTPConfig
+	Log       LogConfig
+	JWT       JWTConfig
+	Mongo     MongoConfig
+	Redis     RedisConfig
+	RateLimit RateLimitConfig
 }
 
 type AppConfig struct {
@@ -67,6 +68,14 @@ type RedisConfig struct {
 	TLSServerName string
 }
 
+type RateLimitConfig struct {
+	AuthEnabled       bool
+	LoginPerMinute    int64
+	RefreshPerMinute  int64
+	RegisterPerMinute int64
+	Fallback          string
+}
+
 func Load() (Config, error) {
 	cfg := Config{
 		App: AppConfig{
@@ -111,6 +120,13 @@ func Load() (Config, error) {
 			LockPrefix:    getString("REDIS_LOCK_PREFIX", "lock:"),
 			TLSEnabled:    getBool("REDIS_TLS_ENABLED", false),
 			TLSServerName: getString("REDIS_TLS_SERVER_NAME", ""),
+		},
+		RateLimit: RateLimitConfig{
+			AuthEnabled:       getBool("AUTH_RATE_LIMIT_ENABLED", true),
+			LoginPerMinute:    getInt64("AUTH_RATE_LIMIT_LOGIN_PER_MINUTE", 10),
+			RefreshPerMinute:  getInt64("AUTH_RATE_LIMIT_REFRESH_PER_MINUTE", 30),
+			RegisterPerMinute: getInt64("AUTH_RATE_LIMIT_REGISTER_PER_MINUTE", 5),
+			Fallback:          strings.ToLower(getString("RATE_LIMIT_FALLBACK", rateLimitFallbackDefault(getString("APP_ENV", "local")))),
 		},
 	}
 
@@ -171,7 +187,22 @@ func (cfg Config) Validate() error {
 	if cfg.Redis.DB < 0 {
 		return fmt.Errorf("REDIS_DB must not be negative")
 	}
+	if cfg.RateLimit.LoginPerMinute < 0 || cfg.RateLimit.RefreshPerMinute < 0 || cfg.RateLimit.RegisterPerMinute < 0 {
+		return fmt.Errorf("auth rate limit values must not be negative")
+	}
+	switch cfg.RateLimit.Fallback {
+	case "allow", "block":
+	default:
+		return fmt.Errorf("RATE_LIMIT_FALLBACK must be allow or block")
+	}
 	return nil
+}
+
+func rateLimitFallbackDefault(env string) string {
+	if env == "production" {
+		return "block"
+	}
+	return "allow"
 }
 
 func getString(key, fallback string) string {

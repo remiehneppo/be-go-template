@@ -14,6 +14,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/domain/common"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
+	"github.com/remihneppo/be-go-template/internal/platform/ratelimit"
 )
 
 func TestAuthHandlerLoginDoesNotExposePasswordHash(t *testing.T) {
@@ -73,6 +74,32 @@ func TestAuthHandlerInvalidJSONReturnsValidationError(t *testing.T) {
 	}
 }
 
+func TestAuthHandlerLoginRateLimitReturns429(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	cfg := testConfig()
+	cfg.RateLimit.AuthEnabled = true
+	cfg.RateLimit.LoginPerMinute = 1
+	router := NewRouterWithDependencies(cfg, logger.NewNoop(), RouterDependencies{
+		AuthService: &fakeAuthService{},
+		RateLimiter: &fakeRouteLimiter{
+			decision: ratelimit.Decision{Allowed: false, Limit: 1},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"USER@example.com","password":"secret"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "RATE_LIMITED") {
+		t.Fatalf("body = %s", rec.Body.String())
+	}
+}
+
 func testConfig() config.Config {
 	cfg, err := config.Load()
 	if err != nil {
@@ -111,4 +138,12 @@ func (s *fakeAuthService) ListDevices(ctx context.Context, userID string) ([]dom
 
 func (s *fakeAuthService) ListLoginHistory(ctx context.Context, userID string, pagination common.Pagination) ([]domainauth.LoginHistory, error) {
 	return nil, nil
+}
+
+type fakeRouteLimiter struct {
+	decision ratelimit.Decision
+}
+
+func (l *fakeRouteLimiter) Allow(ctx context.Context, key string, limit int64, window time.Duration) (ratelimit.Decision, error) {
+	return l.decision, nil
 }
