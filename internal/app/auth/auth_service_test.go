@@ -124,6 +124,7 @@ func TestServiceRefreshRotatesTokenAndIssuesAccessToken(t *testing.T) {
 			UserID:                "u1",
 			RefreshTokenHash:      "old-hash",
 			RefreshTokenExpiresAt: expiresAt,
+			TokenFamilyID:         "family1",
 		},
 	}
 	tokens := &fakeTokenService{refreshPlain: "new-refresh", refreshHash: "new-hash", accessToken: "new-access", accessExpiresAt: time.Unix(200, 0)}
@@ -148,6 +149,41 @@ func TestServiceRefreshRotatesTokenAndIssuesAccessToken(t *testing.T) {
 	}
 	if tokens.lastAccessClaims.SessionID != "s1" || tokens.lastAccessClaims.UserID != "u1" {
 		t.Fatalf("access claims = %+v", tokens.lastAccessClaims)
+	}
+}
+
+func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
+	expiresAt := time.Unix(1000, 0).UTC()
+	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", Roles: []user.Role{user.RoleUser}, Status: user.StatusActive}}
+	sessions := &fakeSessionRepository{
+		byRefreshHash: &domainauth.Session{
+			ID:                    "s1",
+			UserID:                "u1",
+			RefreshTokenHash:      "old-hash",
+			RefreshTokenExpiresAt: expiresAt,
+			TokenFamilyID:         "family1",
+		},
+		rotateErr: database.ErrNotFound,
+	}
+	audit := &fakeAuditLogRepository{}
+	service := NewService(ServiceDependencies{
+		Users:      users,
+		Sessions:   sessions,
+		AuditLogs:  audit,
+		Tokens:     &fakeTokenService{refreshPlain: "new-refresh", refreshHash: "new-hash"},
+		Passwords:  fakePasswordHasher{},
+		RefreshTTL: time.Hour,
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	if _, err := service.Refresh(context.Background(), "old-refresh", domainauth.RequestMeta{}); err == nil {
+		t.Fatal("Refresh() error = nil")
+	}
+	if sessions.revokedFamilyID != "family1" || sessions.revokedReason != "refresh_reuse_suspected" {
+		t.Fatalf("family revocation = %q %q", sessions.revokedFamilyID, sessions.revokedReason)
+	}
+	if len(audit.events) != 1 || audit.events[0].Action != "auth.refresh_reuse_suspected" {
+		t.Fatalf("audit = %+v", audit.events)
 	}
 }
 
@@ -238,6 +274,8 @@ type fakeSessionRepository struct {
 	rotatedSessionID string
 	rotatedOldHash   string
 	rotatedNewHash   string
+	rotateErr        error
+	revokedFamilyID  string
 	revokedSessionID string
 	revokedUserID    string
 	revokedReason    string
@@ -263,6 +301,12 @@ func (r *fakeSessionRepository) RotateRefreshToken(ctx context.Context, sessionI
 	r.rotatedSessionID = sessionID
 	r.rotatedOldHash = oldHash
 	r.rotatedNewHash = newHash
+	return r.rotateErr
+}
+
+func (r *fakeSessionRepository) RevokeByTokenFamilyID(ctx context.Context, tokenFamilyID string, reason string, revokedAt time.Time) error {
+	r.revokedFamilyID = tokenFamilyID
+	r.revokedReason = reason
 	return nil
 }
 

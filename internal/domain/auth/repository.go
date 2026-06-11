@@ -14,6 +14,7 @@ type SessionRepository interface {
 	RotateRefreshToken(ctx context.Context, sessionID string, oldHash string, newHash string, expiresAt time.Time) error
 	Revoke(ctx context.Context, sessionID string, reason string, revokedAt time.Time) error
 	RevokeAllByUserID(ctx context.Context, userID string, reason string, revokedAt time.Time) error
+	RevokeByTokenFamilyID(ctx context.Context, tokenFamilyID string, reason string, revokedAt time.Time) error
 	ListActiveByUserID(ctx context.Context, userID string) ([]Session, error)
 }
 

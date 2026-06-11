@@ -149,6 +149,11 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 	}
 	newRefreshExpiresAt := s.now().Add(s.refreshTTL)
 	if err := s.sessions.RotateRefreshToken(ctx, session.ID, oldHash, newRefreshHash, newRefreshExpiresAt); err != nil {
+		if errors.Is(err, database.ErrNotFound) && session.TokenFamilyID != "" {
+			_ = s.sessions.RevokeByTokenFamilyID(ctx, session.TokenFamilyID, "refresh_reuse_suspected", s.now())
+			s.appendAuditLog(ctx, auditEvent("auth.refresh_reuse_suspected", usr.ID, "session", session.ID, meta, map[string]string{"token_family_id": session.TokenFamilyID}))
+			return nil, invalidRefreshToken()
+		}
 		return nil, err
 	}
 	s.appendAuditLog(ctx, auditEvent("auth.refresh", usr.ID, "session", session.ID, meta, nil))

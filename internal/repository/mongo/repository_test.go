@@ -87,6 +87,21 @@ func TestSessionRepositoryRevokeAllUsesUpdateMany(t *testing.T) {
 	}
 }
 
+func TestSessionRepositoryRevokeByTokenFamilyIDUsesUpdateMany(t *testing.T) {
+	db := &fakeDB{}
+	repo := NewSessionRepository(db)
+
+	if err := repo.RevokeByTokenFamilyID(context.Background(), "family1", "reuse", time.Unix(10, 0)); err != nil {
+		t.Fatalf("RevokeByTokenFamilyID() error = %v", err)
+	}
+	if db.updateManyCalls != 1 {
+		t.Fatalf("updateManyCalls = %d", db.updateManyCalls)
+	}
+	if db.lastWriteOptions.LockKey != "session:family:family1" || !db.lastWriteOptions.StrictLock {
+		t.Fatalf("write options = %+v", db.lastWriteOptions)
+	}
+}
+
 func TestSessionRepositoryListActiveUsesCacheableFilter(t *testing.T) {
 	db := &fakeDB{findManyValue: []sessionDocument{{ID: "s1", UserID: "u1"}}}
 	repo := NewSessionRepository(db)

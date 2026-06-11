@@ -102,6 +102,21 @@ func (r *SessionRepository) RevokeAllByUserID(ctx context.Context, userID string
 	})
 }
 
+func (r *SessionRepository) RevokeByTokenFamilyID(ctx context.Context, tokenFamilyID string, reason string, revokedAt time.Time) error {
+	return r.db.UpdateMany(ctx, sessionsCollection, bson.M{
+		"token_family_id": tokenFamilyID,
+		"revoked_at":      bson.M{"$exists": false},
+	}, bson.M{"$set": bson.M{
+		"revoked_at":     revokedAt,
+		"revoked_reason": reason,
+		"updated_at":     revokedAt,
+	}}, database.WriteOptions{
+		LockKey:        "session:family:" + tokenFamilyID,
+		InvalidateKeys: []string{},
+		StrictLock:     true,
+	})
+}
+
 func (r *SessionRepository) ListActiveByUserID(ctx context.Context, userID string) ([]auth.Session, error) {
 	var docs []sessionDocument
 	if err := r.db.FindMany(ctx, sessionsCollection, activeSessionsFilter{UserID: userID}, &docs, database.ReadOptions{
