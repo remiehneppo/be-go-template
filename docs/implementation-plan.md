@@ -389,8 +389,8 @@ Checklist:
 - [ ] `GET /v1/auth/devices`.
 - [ ] Trả danh sách session active của user.
 - [ ] Hỗ trợ `ETag`/`If-None-Match`; trả `304 Not Modified` nếu device list không đổi.
-- [ ] `GET /v1/auth/login-history`.
-- [ ] Trả lịch sử login có pagination.
+- [x] `GET /v1/auth/login-history`.
+- [x] Trả lịch sử login có pagination.
 - [ ] `GET /v1/users/me`.
 - [ ] Trả user hiện tại.
 - [ ] Hỗ trợ `ETag`/`If-None-Match`; trả `304 Not Modified` nếu profile không đổi.
@@ -728,7 +728,7 @@ Checklist:
 - [ ] Protected endpoint without token returns 401.
 - [ ] Protected endpoint with blacklisted token returns 401.
 - [ ] Devices endpoint returns active devices.
-- [ ] Login history endpoint paginates.
+- [x] Login history endpoint paginates.
 - [ ] Error response always includes `request_id`.
 - [ ] Response header always includes `X-Request-ID`.
 - [ ] Monitoring endpoints require auth/admin guard.

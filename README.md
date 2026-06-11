@@ -153,7 +153,7 @@ Authenticated:
 - `POST /v1/auth/logout`
 - `POST /v1/auth/logout-all`
 - `GET /v1/auth/devices`
-- `GET /v1/auth/login-history`
+- `GET /v1/auth/login-history` with `limit`, `offset`, `cursor`
 
 Admin:
 

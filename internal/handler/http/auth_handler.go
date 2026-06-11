@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
-	"github.com/remihneppo/be-go-template/internal/domain/common"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/ctxkeys"
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
@@ -157,7 +156,7 @@ func (h *AuthHandler) ListLoginHistory(c *gin.Context) {
 		Error(c, apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized))
 		return
 	}
-	history, err := h.service.ListLoginHistory(c.Request.Context(), userID, common.Pagination{Limit: 20})
+	history, err := h.service.ListLoginHistory(c.Request.Context(), userID, queryPagination(c).Normalized(20, 100))
 	if err != nil {
 		reportContextError(c, err)
 		return

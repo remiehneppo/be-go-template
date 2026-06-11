@@ -172,6 +172,35 @@ func TestAuthHandlerDevicesReturnsNotModifiedForMatchingETag(t *testing.T) {
 	}
 }
 
+func TestAuthHandlerLoginHistoryUsesPaginationQuery(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	authService := &fakeAuthService{}
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		AuthService: authService,
+		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
+			UserID:    "u1",
+			SessionID: "s1",
+			TokenID:   "jti1",
+			Roles:     []string{"user"},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/login-history?limit=7&offset=3&cursor=abc", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if authService.listLoginHistoryUserID != "u1" {
+		t.Fatalf("ListLoginHistory user id = %q", authService.listLoginHistoryUserID)
+	}
+	if authService.listLoginHistoryPagination.Limit != 7 || authService.listLoginHistoryPagination.Offset != 3 || authService.listLoginHistoryPagination.Cursor != "abc" {
+		t.Fatalf("pagination = %+v", authService.listLoginHistoryPagination)
+	}
+}
+
 func TestUserMeReturnsProfileWithETag(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	userService := &fakeUserService{user: &user.User{ID: "u1", Email: "user@example.com", Name: "User", Roles: []user.Role{user.RoleUser}}}
@@ -351,8 +380,10 @@ func testConfig() config.Config {
 }
 
 type fakeAuthService struct {
-	result            *domainauth.AuthResult
-	listDevicesUserID string
+	result                     *domainauth.AuthResult
+	listDevicesUserID          string
+	listLoginHistoryUserID     string
+	listLoginHistoryPagination common.Pagination
 }
 
 func (s *fakeAuthService) Register(ctx context.Context, input domainauth.RegisterInput) (*domainauth.AuthResult, error) {
@@ -381,6 +412,8 @@ func (s *fakeAuthService) ListDevices(ctx context.Context, userID string) ([]dom
 }
 
 func (s *fakeAuthService) ListLoginHistory(ctx context.Context, userID string, pagination common.Pagination) ([]domainauth.LoginHistory, error) {
+	s.listLoginHistoryUserID = userID
+	s.listLoginHistoryPagination = pagination
 	return nil, nil
 }
 
