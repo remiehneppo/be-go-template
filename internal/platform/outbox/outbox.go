@@ -22,6 +22,7 @@ type Event struct {
 	MaxRetries     int
 	RetryCount     int
 	Status         Status
+	LastError      string
 	ProcessAfter   time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
