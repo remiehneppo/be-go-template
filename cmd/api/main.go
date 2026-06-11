@@ -11,6 +11,7 @@ import (
 
 	appauth "github.com/remihneppo/be-go-template/internal/app/auth"
 	appmonitoring "github.com/remihneppo/be-go-template/internal/app/monitoring"
+	appoutbox "github.com/remihneppo/be-go-template/internal/app/outbox"
 	"github.com/remihneppo/be-go-template/internal/bootstrap"
 	"github.com/remihneppo/be-go-template/internal/config"
 	httpserver "github.com/remihneppo/be-go-template/internal/handler/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 	"github.com/remihneppo/be-go-template/internal/platform/health"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
+	platformoutbox "github.com/remihneppo/be-go-template/internal/platform/outbox"
 	"github.com/remihneppo/be-go-template/internal/platform/ratelimit"
 	mongorepo "github.com/remihneppo/be-go-template/internal/repository/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -93,10 +95,20 @@ func run() error {
 	userRepo := mongorepo.NewUserRepository(db)
 	sessionRepo := mongorepo.NewSessionRepository(db)
 	loginHistoryRepo := mongorepo.NewLoginHistoryRepository(db)
-	auditLogRepo := mongorepo.NewAuditLogRepository(db)
+	directAuditLogRepo := mongorepo.NewAuditLogRepository(db)
 	revokedTokenRepo := mongorepo.NewRevokedTokenRepository(db)
-	errorEventRepo := mongorepo.NewErrorEventRepository(db)
+	directErrorEventRepo := mongorepo.NewErrorEventRepository(db)
 	monitoringStatsRepo := mongorepo.NewMonitoringStatsRepository(db)
+	mongoOutbox := platformoutbox.NewMongoOutbox(db)
+	outboxHandler := appoutbox.NewHandler(directAuditLogRepo, directErrorEventRepo)
+	outboxWorker := platformoutbox.NewWorker(mongoOutbox, outboxHandler.Handle, 5*time.Second, 10)
+	go func() {
+		if err := outboxWorker.Run(ctx); err != nil && ctx.Err() == nil {
+			log.Error("outbox worker stopped", logger.Any("error", err))
+		}
+	}()
+	auditLogRepo := appoutbox.NewAuditLogRepository(directAuditLogRepo, mongoOutbox)
+	errorEventRepo := appoutbox.NewErrorEventRepository(directErrorEventRepo, mongoOutbox)
 
 	tokenService, err := appauth.NewTokenService(appauth.TokenConfig{
 		CurrentKey:       cfg.JWT.AccessCurrentKey,

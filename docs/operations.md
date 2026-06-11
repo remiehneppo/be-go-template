@@ -25,7 +25,8 @@ Redis readiness is required when `READY_REQUIRES_REDIS=true`. Local defaults kee
 | Redis write lock down, `StrictLock=true` | Write fails with a dependency error. |
 | Redis token blacklist down | Token validation falls back to MongoDB `revoked_tokens`. |
 | Redis rate limiter down | Behavior follows `RATE_LIMIT_FALLBACK`: `allow` for local development, `block` by production default. |
-| Outbox/audit write fails | The auth flow should not fail only because audit/history persistence failed; the failure is logged. |
+| Outbox enqueue fails | The caller receives the append error; auth audit calls are best-effort and ignore it. |
+| Outbox worker write fails | The event is marked failed and retried after `process_after`. |
 
 ## Cache policy
 
@@ -77,6 +78,19 @@ Each migration has:
 - an `Apply(ctx)` function
 
 Applied versions are recorded in `schema_migrations` with a unique `version` index. A migration is recorded only after `Apply` succeeds.
+
+## Outbox contract
+
+Audit logs and HTTP error events are enqueued into `outbox_events` first. The API process starts a background worker that drains pending events and writes them into `audit_logs` or `error_events`.
+
+Outbox events use:
+
+- `idempotency_key` unique index to prevent duplicate business events
+- `status` values: `pending`, `processing`, `done`, `failed`
+- `process_after` for retry scheduling
+- `retry_count` and `max_retries` for bounded retry
+
+Admin monitoring reads from the final `audit_logs` and `error_events` collections, not from the queue.
 
 ## Admin seed contract
 

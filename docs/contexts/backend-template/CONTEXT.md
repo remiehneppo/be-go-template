@@ -24,7 +24,7 @@ The template now has the main runtime skeleton wired end-to-end:
 - Structured logging to terminal/file.
 - Context key contract for request, trace, auth, and logger fields.
 - Standard application errors and HTTP response envelope.
-- MongoDB adapter, Redis cache adapter, and cached database coordination.
+- MongoDB adapter, Redis cache adapter, cached database coordination, and Mongo-backed outbox worker.
 - Domain interfaces for auth, user, monitoring, and shared pagination/validation.
 - Mongo repositories for users, sessions, login history, audit logs, revoked tokens, error events, and monitoring stats.
 - JWT access token service with key id rotation and refresh-token support.
@@ -33,7 +33,7 @@ The template now has the main runtime skeleton wired end-to-end:
 - Auth rate limiting with explicit fallback behavior.
 - Prometheus HTTP metrics.
 - Readiness dependency checks with healthy/degraded/unhealthy levels.
-- Admin monitoring endpoints.
+- Admin monitoring endpoints backed by final audit/error collections.
 - Idempotent admin seed command.
 - Versioned Mongo migration runner.
 - Operations documentation for degradation behavior, logging, errors, migrations, and seed.
