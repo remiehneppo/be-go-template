@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	App  AppConfig
-	HTTP HTTPConfig
-	Log  LogConfig
+	App   AppConfig
+	HTTP  HTTPConfig
+	Log   LogConfig
+	Redis RedisConfig
 }
 
 type AppConfig struct {
@@ -37,6 +38,15 @@ type LogConfig struct {
 	ToFile     bool
 }
 
+type RedisConfig struct {
+	Addr          string
+	Password      string
+	DB            int
+	LockPrefix    string
+	TLSEnabled    bool
+	TLSServerName string
+}
+
 func Load() (Config, error) {
 	cfg := Config{
 		App: AppConfig{
@@ -58,6 +68,14 @@ func Load() (Config, error) {
 			FilePath:   getString("LOG_FILE_PATH", "logs/app.log"),
 			ToTerminal: getBool("LOG_TO_TERMINAL", true),
 			ToFile:     getBool("LOG_TO_FILE", false),
+		},
+		Redis: RedisConfig{
+			Addr:          getString("REDIS_ADDR", "localhost:6379"),
+			Password:      getString("REDIS_PASSWORD", ""),
+			DB:            int(getInt64("REDIS_DB", 0)),
+			LockPrefix:    getString("REDIS_LOCK_PREFIX", "lock:"),
+			TLSEnabled:    getBool("REDIS_TLS_ENABLED", false),
+			TLSServerName: getString("REDIS_TLS_SERVER_NAME", ""),
 		},
 	}
 
@@ -93,6 +111,12 @@ func (cfg Config) Validate() error {
 	}
 	if !cfg.Log.ToTerminal && !cfg.Log.ToFile {
 		return fmt.Errorf("at least one log output must be enabled")
+	}
+	if cfg.Redis.Addr == "" {
+		return fmt.Errorf("REDIS_ADDR must not be empty")
+	}
+	if cfg.Redis.DB < 0 {
+		return fmt.Errorf("REDIS_DB must not be negative")
 	}
 	return nil
 }
