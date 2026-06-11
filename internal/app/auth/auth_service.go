@@ -20,6 +20,7 @@ type ServiceDependencies struct {
 	Users         user.Repository
 	Sessions      domainauth.SessionRepository
 	LoginHistory  domainauth.LoginHistoryRepository
+	AuditLogs     domainauth.AuditLogRepository
 	RevokedTokens domainauth.RevokedTokenRepository
 	Tokens        domainauth.TokenService
 	Passwords     PasswordHasher
@@ -30,6 +31,7 @@ type Service struct {
 	users         user.Repository
 	sessions      domainauth.SessionRepository
 	loginHistory  domainauth.LoginHistoryRepository
+	auditLogs     domainauth.AuditLogRepository
 	revokedTokens domainauth.RevokedTokenRepository
 	tokens        domainauth.TokenService
 	passwords     PasswordHasher
@@ -50,6 +52,7 @@ func NewService(deps ServiceDependencies) *Service {
 		users:         deps.Users,
 		sessions:      deps.Sessions,
 		loginHistory:  deps.LoginHistory,
+		auditLogs:     deps.AuditLogs,
 		revokedTokens: deps.RevokedTokens,
 		tokens:        deps.Tokens,
 		passwords:     passwords,
@@ -82,7 +85,12 @@ func (s *Service) Register(ctx context.Context, input domainauth.RegisterInput) 
 	if err := s.users.Create(ctx, usr); err != nil {
 		return nil, err
 	}
-	return s.issueAuthResult(ctx, usr, domainauth.RequestMeta{})
+	result, err := s.issueAuthResult(ctx, usr, domainauth.RequestMeta{})
+	if err != nil {
+		return nil, err
+	}
+	s.appendAuditLog(ctx, auditEvent("auth.register", usr.ID, "user", usr.ID, domainauth.RequestMeta{}, map[string]string{"email": usr.Email}))
+	return result, nil
 }
 
 func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta domainauth.RequestMeta) (*domainauth.AuthResult, error) {
@@ -93,14 +101,17 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 	usr, err := s.users.FindByEmail(ctx, email)
 	if err != nil {
 		s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), Email: email, Success: false, FailureReason: "invalid_credentials", IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: domainauth.NormalizeDeviceID(meta.DeviceID), CreatedAt: s.now()})
+		s.appendAuditLog(ctx, auditEvent("auth.login_failed", "", "user", "", meta, map[string]string{"email": email, "reason": "invalid_credentials"}))
 		return nil, invalidCredentials()
 	}
 	if usr.Status != user.StatusActive || usr.IsLocked(s.now()) {
 		s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: false, FailureReason: "account_unavailable", IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: domainauth.NormalizeDeviceID(meta.DeviceID), CreatedAt: s.now()})
+		s.appendAuditLog(ctx, auditEvent("auth.login_failed", usr.ID, "user", usr.ID, meta, map[string]string{"email": email, "reason": "account_unavailable"}))
 		return nil, apperrors.New(apperrors.CodeForbidden, "Account is not available", http.StatusForbidden)
 	}
 	if err := s.passwords.Compare(usr.PasswordHash, input.Password); err != nil {
 		s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: false, FailureReason: "invalid_credentials", IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: domainauth.NormalizeDeviceID(meta.DeviceID), CreatedAt: s.now()})
+		s.appendAuditLog(ctx, auditEvent("auth.login_failed", usr.ID, "user", usr.ID, meta, map[string]string{"email": email, "reason": "invalid_credentials"}))
 		return nil, invalidCredentials()
 	}
 	result, err := s.issueAuthResult(ctx, *usr, meta)
@@ -109,6 +120,7 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 	}
 	_ = s.users.UpdateLastLogin(ctx, usr.ID, s.now())
 	s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: true, IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: resultDeviceID(meta.DeviceID), CreatedAt: s.now()})
+	s.appendAuditLog(ctx, auditEvent("auth.login", usr.ID, "session", result.SessionID, meta, map[string]string{"email": email}))
 	return result, nil
 }
 
@@ -139,6 +151,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 	if err := s.sessions.RotateRefreshToken(ctx, session.ID, oldHash, newRefreshHash, newRefreshExpiresAt); err != nil {
 		return nil, err
 	}
+	s.appendAuditLog(ctx, auditEvent("auth.refresh", usr.ID, "session", session.ID, meta, nil))
 	accessToken, accessExpiresAt, err := s.tokens.GenerateAccessToken(ctx, domainauth.AccessClaims{
 		UserID:    usr.ID,
 		SessionID: session.ID,
@@ -188,7 +201,10 @@ func (s *Service) Logout(ctx context.Context, accessToken string, sessionID stri
 		targetSessionID = claims.SessionID
 	}
 	if targetSessionID != "" {
-		return s.sessions.Revoke(ctx, targetSessionID, "logout", s.now())
+		if err := s.sessions.Revoke(ctx, targetSessionID, "logout", s.now()); err != nil {
+			return err
+		}
+		s.appendAuditLog(ctx, auditEvent("auth.logout", claims.UserID, "session", targetSessionID, domainauth.RequestMeta{}, nil))
 	}
 	return nil
 }
@@ -197,7 +213,11 @@ func (s *Service) LogoutAll(ctx context.Context, userID string) error {
 	if s.sessions == nil {
 		return notImplemented("AuthService.LogoutAll")
 	}
-	return s.sessions.RevokeAllByUserID(ctx, userID, "logout_all", s.now())
+	if err := s.sessions.RevokeAllByUserID(ctx, userID, "logout_all", s.now()); err != nil {
+		return err
+	}
+	s.appendAuditLog(ctx, auditEvent("auth.logout_all", userID, "user", userID, domainauth.RequestMeta{}, nil))
+	return nil
 }
 
 func (s *Service) ListDevices(ctx context.Context, userID string) ([]domainauth.DeviceSession, error) {
@@ -286,6 +306,32 @@ func (s *Service) appendLoginHistory(ctx context.Context, event domainauth.Login
 		return
 	}
 	_ = s.loginHistory.Append(ctx, event)
+}
+
+func (s *Service) appendAuditLog(ctx context.Context, event domainauth.AuditLog) {
+	if s.auditLogs == nil {
+		return
+	}
+	if event.ID == "" {
+		event.ID = newID()
+	}
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = s.now()
+	}
+	_ = s.auditLogs.Append(ctx, event)
+}
+
+func auditEvent(action string, actorUserID string, resourceType string, resourceID string, meta domainauth.RequestMeta, metadata map[string]string) domainauth.AuditLog {
+	return domainauth.AuditLog{
+		ActorUserID:  actorUserID,
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		IP:           meta.IP,
+		UserAgent:    meta.UserAgent,
+		RequestID:    meta.RequestID,
+		Metadata:     metadata,
+	}
 }
 
 func validateCredentials(email string, password string) error {

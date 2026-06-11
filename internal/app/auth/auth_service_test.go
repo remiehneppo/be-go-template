@@ -17,9 +17,11 @@ func TestServiceRegisterCreatesUserSessionAndTokens(t *testing.T) {
 	sessions := &fakeSessionRepository{}
 	tokens := &fakeTokenService{refreshPlain: "refresh", refreshHash: "refresh-hash", accessToken: "access", accessExpiresAt: time.Unix(100, 0)}
 	passwords := fakePasswordHasher{hash: "hashed-password"}
+	audit := &fakeAuditLogRepository{}
 	service := NewService(ServiceDependencies{
 		Users:      users,
 		Sessions:   sessions,
+		AuditLogs:  audit,
 		Tokens:     tokens,
 		Passwords:  passwords,
 		RefreshTTL: time.Hour,
@@ -46,17 +48,22 @@ func TestServiceRegisterCreatesUserSessionAndTokens(t *testing.T) {
 	if result.AccessToken != "access" || result.RefreshToken != "refresh" {
 		t.Fatalf("result = %+v", result)
 	}
+	if len(audit.events) != 1 || audit.events[0].Action != "auth.register" {
+		t.Fatalf("audit = %+v", audit.events)
+	}
 }
 
 func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", PasswordHash: "hash", Roles: []user.Role{user.RoleUser}, Status: user.StatusActive}}
 	sessions := &fakeSessionRepository{}
 	history := &fakeLoginHistoryRepository{}
+	audit := &fakeAuditLogRepository{}
 	tokens := &fakeTokenService{refreshPlain: "refresh", refreshHash: "refresh-hash", accessToken: "access", accessExpiresAt: time.Unix(100, 0)}
 	service := NewService(ServiceDependencies{
 		Users:        users,
 		Sessions:     sessions,
 		LoginHistory: history,
+		AuditLogs:    audit,
 		Tokens:       tokens,
 		Passwords:    fakePasswordHasher{},
 		RefreshTTL:   time.Hour,
@@ -83,6 +90,9 @@ func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	}
 	if sessions.created.DeviceID != "550e8400-e29b-41d4-a716-446655440000" || sessions.created.DeviceName != "phone" {
 		t.Fatalf("session device = %+v", sessions.created)
+	}
+	if len(audit.events) != 1 || audit.events[0].Action != "auth.login" || audit.events[0].ResourceID != result.SessionID {
+		t.Fatalf("audit = %+v", audit.events)
 	}
 }
 
@@ -158,10 +168,12 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	tokens := &fakeTokenService{validatedClaims: &domainauth.AccessClaims{UserID: "u1", SessionID: "s1", TokenID: "jti1", ExpiresAt: expiresAt}}
 	sessions := &fakeSessionRepository{}
 	revoked := &fakeRevokedTokenRepository{}
+	audit := &fakeAuditLogRepository{}
 	service := NewService(ServiceDependencies{
 		Users:         &fakeUserRepository{},
 		Sessions:      sessions,
 		RevokedTokens: revoked,
+		AuditLogs:     audit,
 		Tokens:        tokens,
 		Passwords:     fakePasswordHasher{},
 	})
@@ -178,6 +190,9 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	}
 	if sessions.revokedSessionID != "s1" || sessions.revokedReason != "logout" {
 		t.Fatalf("revoked = %q %q", sessions.revokedSessionID, sessions.revokedReason)
+	}
+	if len(audit.events) != 1 || audit.events[0].Action != "auth.logout" || audit.events[0].ResourceID != "s1" {
+		t.Fatalf("audit = %+v", audit.events)
 	}
 }
 
@@ -351,6 +366,19 @@ func (s *fakeTokenService) BlacklistAccessToken(ctx context.Context, tokenID str
 
 func (s *fakeTokenService) IsAccessTokenBlacklisted(ctx context.Context, tokenID string) (bool, error) {
 	return false, nil
+}
+
+type fakeAuditLogRepository struct {
+	events []domainauth.AuditLog
+}
+
+func (r *fakeAuditLogRepository) Append(ctx context.Context, event domainauth.AuditLog) error {
+	r.events = append(r.events, event)
+	return nil
+}
+
+func (r *fakeAuditLogRepository) List(ctx context.Context, filter domainauth.AuditLogFilter, pagination common.Pagination) ([]domainauth.AuditLog, error) {
+	return r.events, nil
 }
 
 type fakeRevokedTokenRepository struct {
