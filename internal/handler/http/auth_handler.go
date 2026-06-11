@@ -142,6 +142,9 @@ func (h *AuthHandler) ListDevices(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
+	if WriteETagOrNotModified(c, devices) {
+		return
+	}
 	OK(c, devices)
 }
 

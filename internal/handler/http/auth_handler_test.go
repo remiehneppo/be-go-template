@@ -137,6 +137,41 @@ func TestAuthHandlerDevicesRequiresAccessToken(t *testing.T) {
 	}
 }
 
+func TestAuthHandlerDevicesReturnsNotModifiedForMatchingETag(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		AuthService: &fakeAuthService{},
+		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
+			UserID:    "u1",
+			SessionID: "s1",
+			TokenID:   "jti1",
+			Roles:     []string{"user"},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/devices", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	etag := rec.Header().Get("ETag")
+	if rec.Code != http.StatusOK || etag == "" {
+		t.Fatalf("first status = %d etag = %q body = %s", rec.Code, etag, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/auth/devices", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	req.Header.Set("If-None-Match", etag)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotModified {
+		t.Fatalf("second status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if rec.Body.Len() != 0 {
+		t.Fatalf("304 body = %s", rec.Body.String())
+	}
+}
+
 func TestRouterMetricsEndpointUsesPrometheusFormat(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := testConfig()
