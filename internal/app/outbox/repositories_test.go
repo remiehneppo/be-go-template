@@ -55,8 +55,8 @@ func TestHandlerRoutesEvents(t *testing.T) {
 	auditRepo := &fakeAuditLogRepository{}
 	errorRepo := &fakeErrorEventRepository{}
 	handler := NewHandler(auditRepo, errorRepo)
-	auditPayload, _ := json.Marshal(domainauth.AuditLog{ID: "a1", Action: "auth.login"})
-	errorPayload, _ := json.Marshal(domainauth.ErrorEvent{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR"})
+	auditPayload := mustMarshal(t, domainauth.AuditLog{ID: "a1", Action: "auth.login"})
+	errorPayload := mustMarshal(t, domainauth.ErrorEvent{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR"})
 
 	if err := handler.Handle(context.Background(), platformoutbox.Event{Type: TypeAuditLog, Payload: auditPayload}); err != nil {
 		t.Fatalf("Handle(audit) error = %v", err)
@@ -117,4 +117,12 @@ func (r *fakeErrorEventRepository) Append(ctx context.Context, event domainauth.
 
 func (r *fakeErrorEventRepository) List(ctx context.Context, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
 	return r.events, nil
+}
+func mustMarshal(t *testing.T, value any) []byte {
+	t.Helper()
+	payload, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	return payload
 }

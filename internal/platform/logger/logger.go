@@ -164,7 +164,8 @@ func (l *structuredLogger) write(level slog.Level, msg string, fields ...Field) 
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	_, _ = l.writer.Write(append(line, '\n'))
+	_, err = l.writer.Write(append(line, '\n'))
+	ignoreError(err)
 }
 
 func parseLevel(level string) slog.Level {

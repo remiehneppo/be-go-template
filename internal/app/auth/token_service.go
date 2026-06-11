@@ -196,7 +196,7 @@ func (s *TokenService) IsAccessTokenBlacklisted(ctx context.Context, tokenID str
 		return false, nil
 	}
 	if s.cache != nil {
-		_ = s.cache.Set(ctx, accessBlacklistPrefix+tokenID, true, time.Until(revokedToken.ExpiresAt))
+		ignoreError(s.cache.Set(ctx, accessBlacklistPrefix+tokenID, true, time.Until(revokedToken.ExpiresAt)))
 	}
 	return true, nil
 }

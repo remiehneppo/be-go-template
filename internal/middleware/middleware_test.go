@@ -62,7 +62,7 @@ func TestErrorHandlerAppendsErrorEvent(t *testing.T) {
 	router.Use(RequestID(logger.NewNoop()))
 	router.Use(ErrorHandler(logger.NewNoop(), reporter))
 	router.GET("/boom", func(c *gin.Context) {
-		_ = c.Error(apperrors.New(apperrors.CodeConflict, "Conflict", http.StatusConflict))
+		ignoreError(c.Error(apperrors.New(apperrors.CodeConflict, "Conflict", http.StatusConflict)))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/boom", nil)
@@ -89,4 +89,8 @@ type fakeErrorReporter struct {
 func (r *fakeErrorReporter) Append(ctx context.Context, event auth.ErrorEvent) error {
 	r.events = append(r.events, event)
 	return nil
+}
+
+func ignoreError(err error) {
+	_ = err
 }

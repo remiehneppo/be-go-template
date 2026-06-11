@@ -209,7 +209,9 @@ func connectMongo(ctx context.Context, cfg config.Config) (*mongo.Client, error)
 	pingCtx, cancel := context.WithTimeout(ctx, cfg.Mongo.ConnectTimeout)
 	defer cancel()
 	if err := client.Ping(pingCtx, nil); err != nil {
-		_ = client.Disconnect(context.Background())
+		if disconnectErr := client.Disconnect(context.Background()); disconnectErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: disconnect mongo: %v\n", disconnectErr)
+		}
 		return nil, fmt.Errorf("ping mongo: %w", err)
 	}
 	return client, nil

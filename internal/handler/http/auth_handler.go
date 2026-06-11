@@ -66,7 +66,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 	result, err := h.service.Register(c.Request.Context(), input)
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	Created(c, authResultResponseFromDomain(result))
@@ -80,7 +80,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	result, err := h.service.Login(c.Request.Context(), input, requestMeta(c))
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, authResultResponseFromDomain(result))
@@ -96,7 +96,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 	result, err := h.service.Refresh(c.Request.Context(), body.RefreshToken, requestMeta(c))
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, authResultResponseFromDomain(result))
@@ -106,13 +106,16 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	var body struct {
 		SessionID string `json:"session_id"`
 	}
-	_ = c.ShouldBindJSON(&body)
+	if err := c.ShouldBindJSON(&body); err != nil {
+		Error(c, validationError(err))
+		return
+	}
 	sessionID := body.SessionID
 	if sessionID == "" {
 		sessionID = contextString(c, ctxkeys.SessionID)
 	}
 	if err := h.service.Logout(c.Request.Context(), bearerToken(c), sessionID); err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, gin.H{"logged_out": true})
@@ -125,7 +128,7 @@ func (h *AuthHandler) LogoutAll(c *gin.Context) {
 		return
 	}
 	if err := h.service.LogoutAll(c.Request.Context(), userID); err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, gin.H{"logged_out": true})
@@ -139,7 +142,7 @@ func (h *AuthHandler) ListDevices(c *gin.Context) {
 	}
 	devices, err := h.service.ListDevices(c.Request.Context(), userID)
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	if WriteETagOrNotModified(c, devices) {
@@ -156,7 +159,7 @@ func (h *AuthHandler) ListLoginHistory(c *gin.Context) {
 	}
 	history, err := h.service.ListLoginHistory(c.Request.Context(), userID, common.Pagination{Limit: 20})
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, history)

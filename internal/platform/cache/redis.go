@@ -135,7 +135,7 @@ func (c *RedisCache) WithLock(ctx context.Context, key string, ttl time.Duration
 		return ErrLockNotAcquired
 	}
 	defer func() {
-		_ = c.releaseLock(context.Background(), lockKey, owner)
+		ignoreError(c.releaseLock(context.Background(), lockKey, owner))
 	}()
 
 	return fn(ctx)

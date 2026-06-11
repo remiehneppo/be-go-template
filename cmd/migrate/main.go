@@ -32,7 +32,9 @@ func run() error {
 		return err
 	}
 	defer func() {
-		_ = client.Disconnect(context.Background())
+		if err := client.Disconnect(context.Background()); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: disconnect mongo: %v\n", err)
+		}
 	}()
 	db := client.Database(cfg.Mongo.Database)
 	runner := migration.NewRunner(migration.NewMongoStore(db))
@@ -71,10 +73,18 @@ func connectMongo(ctx context.Context, cfg config.Config) (*mongo.Client, error)
 		return nil, fmt.Errorf("connect mongo: %w", err)
 	}
 	if err := client.Ping(ctx, nil); err != nil {
-		_ = client.Disconnect(context.Background())
+		if err := client.Disconnect(context.Background()); err != nil {
+			logDisconnectFailure(err)
+		}
 		return nil, fmt.Errorf("ping mongo: %w", err)
 	}
 	return client, nil
+}
+
+func logDisconnectFailure(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: disconnect mongo: %v\n", err)
+	}
 }
 
 func readPreference(value string) *readpref.ReadPref {

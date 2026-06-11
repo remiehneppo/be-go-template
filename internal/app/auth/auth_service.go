@@ -135,8 +135,8 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 		return nil, err
 	}
 	now := s.now()
-	_ = s.users.ResetLoginFailures(ctx, usr.ID, email, now)
-	_ = s.users.UpdateLastLogin(ctx, usr.ID, now)
+	ignoreError(s.users.ResetLoginFailures(ctx, usr.ID, email, now))
+	ignoreError(s.users.UpdateLastLogin(ctx, usr.ID, now))
 	s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: true, IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: resultDeviceID(meta.DeviceID), CreatedAt: now})
 	s.appendAuditLog(ctx, auditEvent("auth.login", usr.ID, "session", result.SessionID, meta, map[string]string{"email": email}))
 	return result, nil
@@ -168,7 +168,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 	newRefreshExpiresAt := s.now().Add(s.refreshTTL)
 	if err := s.sessions.RotateRefreshToken(ctx, session.ID, oldHash, newRefreshHash, newRefreshExpiresAt); err != nil {
 		if errors.Is(err, database.ErrNotFound) && session.TokenFamilyID != "" {
-			_ = s.sessions.RevokeByTokenFamilyID(ctx, session.TokenFamilyID, "refresh_reuse_suspected", s.now())
+			ignoreError(s.sessions.RevokeByTokenFamilyID(ctx, session.TokenFamilyID, "refresh_reuse_suspected", s.now()))
 			s.appendAuditLog(ctx, auditEvent("auth.refresh_reuse_suspected", usr.ID, "session", session.ID, meta, map[string]string{"token_family_id": session.TokenFamilyID}))
 			return nil, invalidRefreshToken()
 		}
@@ -328,7 +328,7 @@ func (s *Service) appendLoginHistory(ctx context.Context, event domainauth.Login
 	if s.loginHistory == nil {
 		return
 	}
-	_ = s.loginHistory.Append(ctx, event)
+	ignoreError(s.loginHistory.Append(ctx, event))
 }
 
 func (s *Service) appendAuditLog(ctx context.Context, event domainauth.AuditLog) {
@@ -341,7 +341,7 @@ func (s *Service) appendAuditLog(ctx context.Context, event domainauth.AuditLog)
 	if event.CreatedAt.IsZero() {
 		event.CreatedAt = s.now()
 	}
-	_ = s.auditLogs.Append(ctx, event)
+	ignoreError(s.auditLogs.Append(ctx, event))
 }
 
 func (s *Service) recordLoginFailure(ctx context.Context, usr user.User, now time.Time) *time.Time {
@@ -354,7 +354,7 @@ func (s *Service) recordLoginFailure(ctx context.Context, usr user.User, now tim
 		until := now.Add(s.lockoutDuration)
 		lockedUntil = &until
 	}
-	_ = s.users.RecordLoginFailure(ctx, usr.ID, usr.Email, attempts, lockedUntil, now)
+	ignoreError(s.users.RecordLoginFailure(ctx, usr.ID, usr.Email, attempts, lockedUntil, now))
 	return lockedUntil
 }
 

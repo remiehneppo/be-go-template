@@ -30,7 +30,7 @@ func (h *MonitoringHandler) RegisterRoutes(group *gin.RouterGroup) {
 func (h *MonitoringHandler) SystemStatus(c *gin.Context) {
 	status, err := h.service.GetSystemStatus(c.Request.Context())
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, status)
@@ -39,7 +39,7 @@ func (h *MonitoringHandler) SystemStatus(c *gin.Context) {
 func (h *MonitoringHandler) Dependencies(c *gin.Context) {
 	status, err := h.service.GetDependencyStatus(c.Request.Context())
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, status)
@@ -48,7 +48,7 @@ func (h *MonitoringHandler) Dependencies(c *gin.Context) {
 func (h *MonitoringHandler) Runtime(c *gin.Context) {
 	metrics, err := h.service.GetRuntimeMetrics(c.Request.Context())
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, metrics)
@@ -57,7 +57,7 @@ func (h *MonitoringHandler) Runtime(c *gin.Context) {
 func (h *MonitoringHandler) AuthStats(c *gin.Context) {
 	stats, err := h.service.GetAuthStats(c.Request.Context(), queryTime(c, "from"), queryTime(c, "to"))
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, stats)
@@ -66,7 +66,7 @@ func (h *MonitoringHandler) AuthStats(c *gin.Context) {
 func (h *MonitoringHandler) Errors(c *gin.Context) {
 	events, err := h.service.GetRecentErrors(c.Request.Context(), queryPagination(c))
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, events)
@@ -75,7 +75,7 @@ func (h *MonitoringHandler) Errors(c *gin.Context) {
 func (h *MonitoringHandler) AuditLogs(c *gin.Context) {
 	logs, err := h.service.GetRecentAuditLogs(c.Request.Context(), queryPagination(c))
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	OK(c, logs)

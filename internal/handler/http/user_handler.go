@@ -30,7 +30,7 @@ func (h *UserHandler) GetMe(c *gin.Context) {
 	}
 	usr, err := h.service.GetMe(c.Request.Context(), userID)
 	if err != nil {
-		_ = c.Error(err)
+		reportContextError(c, err)
 		return
 	}
 	response := userResponseFromDomain(*usr)

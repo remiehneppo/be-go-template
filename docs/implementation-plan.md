@@ -811,13 +811,13 @@ Checklist:
 
 Checklist:
 
-- [ ] `govulncheck ./...` pass.
-- [ ] `golangci-lint run` pass với config strictness phù hợp cho template.
-- [ ] `go test -race ./...` pass.
+- [x] `govulncheck ./...` pass.
+- [x] `golangci-lint run` pass với config strictness phù hợp cho template.
+- [x] `go test -race ./...` pass.
 - [ ] Test goroutine leak bằng `goleak` cho service/worker quan trọng.
 - [ ] Tất cả exported type/function quan trọng có godoc.
 - [ ] Dependency được pin version trong `go.sum`.
-- [ ] Docker image build bằng non-root user.
+- [x] Docker image build bằng non-root user.
 - [ ] Secret không được bake vào Docker image hoặc log startup.
 - [ ] Graceful shutdown dừng HTTP server, Mongo/Redis client, Prometheus/metrics routines, outbox worker, logger flush.
 - [ ] Request body size limit và response/per-route timeout được test.

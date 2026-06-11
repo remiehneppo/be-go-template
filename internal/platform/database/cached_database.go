@@ -119,7 +119,9 @@ func (d *CachedDatabase) readThrough(ctx context.Context, opts ReadOptions, dest
 			if loadErr := load(); loadErr != nil {
 				return loadErr
 			}
-			_ = d.cache.Set(ctx, opts.CacheKey, dest, opts.CacheTTL)
+			if err := d.cache.Set(ctx, opts.CacheKey, dest, opts.CacheTTL); err != nil {
+				d.log.Warn("cache set failed", logger.String("cache_key", opts.CacheKey), logger.Any("error", err))
+			}
 			return nil
 		}
 		return nil
