@@ -25,6 +25,9 @@ func TestLoadDefaults(t *testing.T) {
 	if !cfg.RateLimit.AuthEnabled || cfg.RateLimit.Fallback != "allow" {
 		t.Fatalf("RateLimit = %+v", cfg.RateLimit)
 	}
+	if cfg.Auth.LockoutMaxFailures != 5 || cfg.Auth.LockoutDuration <= 0 {
+		t.Fatalf("Auth = %+v", cfg.Auth)
+	}
 	if !cfg.Metrics.Enabled || cfg.Metrics.Path != "/metrics" {
 		t.Fatalf("Metrics = %+v", cfg.Metrics)
 	}

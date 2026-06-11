@@ -59,6 +59,15 @@ HTTP responses use this envelope:
 
 Internal logs may include operation names and wrapped causes. Client responses must only expose safe messages.
 
+## Account lockout
+
+Login failures are tracked as consecutive failed attempts on the user document.
+
+- `AUTH_LOCKOUT_MAX_FAILURES` controls when the account is temporarily locked.
+- `AUTH_LOCKOUT_DURATION` controls how long `locked_until` is set.
+- A successful login resets `failed_login_attempts` and clears `locked_until`.
+- Repository updates invalidate both `user:id:{id}` and `user:email:{email}` cache keys so auth decisions do not read stale lockout state.
+
 ## Logging contract
 
 - Enable terminal logs with `LOG_TO_TERMINAL=true`.

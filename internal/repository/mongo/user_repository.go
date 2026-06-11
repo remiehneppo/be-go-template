@@ -75,6 +75,37 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID string, at 
 	})
 }
 
+func (r *UserRepository) RecordLoginFailure(ctx context.Context, userID string, email string, failedAttempts int, lockedUntil *time.Time, updatedAt time.Time) error {
+	normalized := user.NormalizeEmail(email)
+	set := bson.M{
+		"failed_login_attempts": failedAttempts,
+		"updated_at":            updatedAt,
+	}
+	if lockedUntil != nil {
+		set["locked_until"] = *lockedUntil
+	}
+	return r.db.UpdateOne(ctx, usersCollection, bson.M{"_id": userID}, bson.M{
+		"$set": set,
+	}, database.WriteOptions{
+		LockKey:        userIDKey(userID),
+		InvalidateKeys: []string{userIDKey(userID), userEmailKey(normalized)},
+	})
+}
+
+func (r *UserRepository) ResetLoginFailures(ctx context.Context, userID string, email string, updatedAt time.Time) error {
+	normalized := user.NormalizeEmail(email)
+	return r.db.UpdateOne(ctx, usersCollection, bson.M{"_id": userID}, bson.M{
+		"$set": bson.M{
+			"failed_login_attempts": 0,
+			"updated_at":            updatedAt,
+		},
+		"$unset": bson.M{"locked_until": ""},
+	}, database.WriteOptions{
+		LockKey:        userIDKey(userID),
+		InvalidateKeys: []string{userIDKey(userID), userEmailKey(normalized)},
+	})
+}
+
 type userDocument struct {
 	ID                  string      `bson:"_id" json:"id"`
 	Email               string      `bson:"email" json:"email"`

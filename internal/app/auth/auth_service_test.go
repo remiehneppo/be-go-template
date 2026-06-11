@@ -94,6 +94,9 @@ func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	if len(audit.events) != 1 || audit.events[0].Action != "auth.login" || audit.events[0].ResourceID != result.SessionID {
 		t.Fatalf("audit = %+v", audit.events)
 	}
+	if users.resetFailureUserID != "u1" {
+		t.Fatalf("resetFailureUserID = %q", users.resetFailureUserID)
+	}
 }
 
 func TestServiceLoginFailureWritesHistory(t *testing.T) {
@@ -112,6 +115,33 @@ func TestServiceLoginFailureWritesHistory(t *testing.T) {
 	}
 	if len(history.events) != 1 || history.events[0].Success || history.events[0].FailureReason != "invalid_credentials" {
 		t.Fatalf("history = %+v", history.events)
+	}
+}
+
+func TestServiceLoginRecordsFailureAndLocksAccount(t *testing.T) {
+	usr := user.New("u@example.com", "hash", "User", time.Unix(1, 0))
+	usr.ID = "u1"
+	usr.FailedLoginAttempts = 4
+	users := &fakeUserRepository{found: &usr}
+	service := NewService(ServiceDependencies{
+		Users:              users,
+		Sessions:           &fakeSessionRepository{},
+		Tokens:             &fakeTokenService{},
+		Passwords:          fakePasswordHasher{compareErr: errors.New("mismatch")},
+		LockoutMaxFailures: 5,
+		LockoutDuration:    15 * time.Minute,
+	})
+	service.now = func() time.Time { return time.Unix(100, 0).UTC() }
+
+	_, err := service.Login(context.Background(), domainauth.LoginInput{Email: "u@example.com", Password: "wrong-password"}, domainauth.RequestMeta{})
+	if err == nil {
+		t.Fatal("Login() error = nil")
+	}
+	if users.failedAttempts != 5 {
+		t.Fatalf("failedAttempts = %d", users.failedAttempts)
+	}
+	if users.lockedUntil == nil || !users.lockedUntil.Equal(time.Unix(100, 0).Add(15*time.Minute)) {
+		t.Fatalf("lockedUntil = %v", users.lockedUntil)
 	}
 }
 
@@ -340,10 +370,13 @@ func (r *fakeLoginHistoryRepository) ListByUserID(ctx context.Context, userID st
 }
 
 type fakeUserRepository struct {
-	found           *user.User
-	findErr         error
-	created         user.User
-	lastLoginUserID string
+	found              *user.User
+	findErr            error
+	created            user.User
+	lastLoginUserID    string
+	resetFailureUserID string
+	failedAttempts     int
+	lockedUntil        *time.Time
 }
 
 func (r *fakeUserRepository) Create(ctx context.Context, usr user.User) error {
@@ -371,6 +404,17 @@ func (r *fakeUserRepository) EnsureRole(ctx context.Context, userID string, role
 
 func (r *fakeUserRepository) UpdateLastLogin(ctx context.Context, userID string, at time.Time) error {
 	r.lastLoginUserID = userID
+	return nil
+}
+
+func (r *fakeUserRepository) RecordLoginFailure(ctx context.Context, userID string, email string, failedAttempts int, lockedUntil *time.Time, updatedAt time.Time) error {
+	r.failedAttempts = failedAttempts
+	r.lockedUntil = lockedUntil
+	return nil
+}
+
+func (r *fakeUserRepository) ResetLoginFailures(ctx context.Context, userID string, email string, updatedAt time.Time) error {
+	r.resetFailureUserID = userID
 	return nil
 }
 

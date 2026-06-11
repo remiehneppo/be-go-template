@@ -17,6 +17,7 @@ type Config struct {
 	Mongo     MongoConfig
 	Redis     RedisConfig
 	RateLimit RateLimitConfig
+	Auth      AuthConfig
 	Metrics   MetricsConfig
 	Readiness ReadinessConfig
 }
@@ -76,6 +77,11 @@ type RateLimitConfig struct {
 	RefreshPerMinute  int64
 	RegisterPerMinute int64
 	Fallback          string
+}
+
+type AuthConfig struct {
+	LockoutMaxFailures int
+	LockoutDuration    time.Duration
 }
 
 type MetricsConfig struct {
@@ -141,6 +147,10 @@ func Load() (Config, error) {
 			RefreshPerMinute:  getInt64("AUTH_RATE_LIMIT_REFRESH_PER_MINUTE", 30),
 			RegisterPerMinute: getInt64("AUTH_RATE_LIMIT_REGISTER_PER_MINUTE", 5),
 			Fallback:          strings.ToLower(getString("RATE_LIMIT_FALLBACK", rateLimitFallbackDefault(getString("APP_ENV", "local")))),
+		},
+		Auth: AuthConfig{
+			LockoutMaxFailures: int(getInt64("AUTH_LOCKOUT_MAX_FAILURES", 5)),
+			LockoutDuration:    getDuration("AUTH_LOCKOUT_DURATION", 15*time.Minute),
 		},
 		Metrics: MetricsConfig{
 			Enabled: getBool("METRICS_ENABLED", true),
@@ -213,6 +223,12 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.RateLimit.LoginPerMinute < 0 || cfg.RateLimit.RefreshPerMinute < 0 || cfg.RateLimit.RegisterPerMinute < 0 {
 		return fmt.Errorf("auth rate limit values must not be negative")
+	}
+	if cfg.Auth.LockoutMaxFailures < 0 {
+		return fmt.Errorf("AUTH_LOCKOUT_MAX_FAILURES must not be negative")
+	}
+	if cfg.Auth.LockoutMaxFailures > 0 && cfg.Auth.LockoutDuration <= 0 {
+		return fmt.Errorf("AUTH_LOCKOUT_DURATION must be positive when lockout is enabled")
 	}
 	switch cfg.RateLimit.Fallback {
 	case "allow", "block":

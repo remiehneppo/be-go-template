@@ -75,6 +75,45 @@ func TestUserRepositoryEnsureRoleUsesAddToSet(t *testing.T) {
 	}
 }
 
+func TestUserRepositoryRecordLoginFailureInvalidatesIDAndEmail(t *testing.T) {
+	db := &fakeDB{}
+	repo := NewUserRepository(db)
+	at := time.Unix(30, 0)
+	lockedUntil := time.Unix(900, 0)
+
+	if err := repo.RecordLoginFailure(context.Background(), "u1", "USER@Example.COM", 5, &lockedUntil, at); err != nil {
+		t.Fatalf("RecordLoginFailure() error = %v", err)
+	}
+	update, ok := db.lastUpdate.(bson.M)
+	if !ok {
+		t.Fatalf("update type = %T", db.lastUpdate)
+	}
+	set, ok := update["$set"].(bson.M)
+	if !ok || set["failed_login_attempts"] != 5 || set["locked_until"] != lockedUntil {
+		t.Fatalf("update = %#v", update)
+	}
+	if !reflect.DeepEqual(db.lastWriteOptions.InvalidateKeys, []string{"user:id:u1", "user:email:user@example.com"}) {
+		t.Fatalf("InvalidateKeys = %#v", db.lastWriteOptions.InvalidateKeys)
+	}
+}
+
+func TestUserRepositoryResetLoginFailuresUnsetsLock(t *testing.T) {
+	db := &fakeDB{}
+	repo := NewUserRepository(db)
+	at := time.Unix(40, 0)
+
+	if err := repo.ResetLoginFailures(context.Background(), "u1", "user@example.com", at); err != nil {
+		t.Fatalf("ResetLoginFailures() error = %v", err)
+	}
+	update, ok := db.lastUpdate.(bson.M)
+	if !ok {
+		t.Fatalf("update type = %T", db.lastUpdate)
+	}
+	if _, ok := update["$unset"].(bson.M); !ok {
+		t.Fatalf("update = %#v", update)
+	}
+}
+
 func TestSessionRepositoryRotateRefreshTokenUsesStrictLockAndInvalidatesOldHash(t *testing.T) {
 	db := &fakeDB{}
 	repo := NewSessionRepository(db)

@@ -17,26 +17,30 @@ import (
 )
 
 type ServiceDependencies struct {
-	Users         user.Repository
-	Sessions      domainauth.SessionRepository
-	LoginHistory  domainauth.LoginHistoryRepository
-	AuditLogs     domainauth.AuditLogRepository
-	RevokedTokens domainauth.RevokedTokenRepository
-	Tokens        domainauth.TokenService
-	Passwords     PasswordHasher
-	RefreshTTL    time.Duration
+	Users              user.Repository
+	Sessions           domainauth.SessionRepository
+	LoginHistory       domainauth.LoginHistoryRepository
+	AuditLogs          domainauth.AuditLogRepository
+	RevokedTokens      domainauth.RevokedTokenRepository
+	Tokens             domainauth.TokenService
+	Passwords          PasswordHasher
+	RefreshTTL         time.Duration
+	LockoutMaxFailures int
+	LockoutDuration    time.Duration
 }
 
 type Service struct {
-	users         user.Repository
-	sessions      domainauth.SessionRepository
-	loginHistory  domainauth.LoginHistoryRepository
-	auditLogs     domainauth.AuditLogRepository
-	revokedTokens domainauth.RevokedTokenRepository
-	tokens        domainauth.TokenService
-	passwords     PasswordHasher
-	refreshTTL    time.Duration
-	now           func() time.Time
+	users              user.Repository
+	sessions           domainauth.SessionRepository
+	loginHistory       domainauth.LoginHistoryRepository
+	auditLogs          domainauth.AuditLogRepository
+	revokedTokens      domainauth.RevokedTokenRepository
+	tokens             domainauth.TokenService
+	passwords          PasswordHasher
+	refreshTTL         time.Duration
+	lockoutMaxFailures int
+	lockoutDuration    time.Duration
+	now                func() time.Time
 }
 
 func NewService(deps ServiceDependencies) *Service {
@@ -48,16 +52,22 @@ func NewService(deps ServiceDependencies) *Service {
 	if refreshTTL <= 0 {
 		refreshTTL = 30 * 24 * time.Hour
 	}
+	lockoutDuration := deps.LockoutDuration
+	if lockoutDuration <= 0 {
+		lockoutDuration = 15 * time.Minute
+	}
 	return &Service{
-		users:         deps.Users,
-		sessions:      deps.Sessions,
-		loginHistory:  deps.LoginHistory,
-		auditLogs:     deps.AuditLogs,
-		revokedTokens: deps.RevokedTokens,
-		tokens:        deps.Tokens,
-		passwords:     passwords,
-		refreshTTL:    refreshTTL,
-		now:           func() time.Time { return time.Now().UTC() },
+		users:              deps.Users,
+		sessions:           deps.Sessions,
+		loginHistory:       deps.LoginHistory,
+		auditLogs:          deps.AuditLogs,
+		revokedTokens:      deps.RevokedTokens,
+		tokens:             deps.Tokens,
+		passwords:          passwords,
+		refreshTTL:         refreshTTL,
+		lockoutMaxFailures: deps.LockoutMaxFailures,
+		lockoutDuration:    lockoutDuration,
+		now:                func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -110,16 +120,24 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 		return nil, apperrors.New(apperrors.CodeForbidden, "Account is not available", http.StatusForbidden)
 	}
 	if err := s.passwords.Compare(usr.PasswordHash, input.Password); err != nil {
-		s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: false, FailureReason: "invalid_credentials", IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: domainauth.NormalizeDeviceID(meta.DeviceID), CreatedAt: s.now()})
-		s.appendAuditLog(ctx, auditEvent("auth.login_failed", usr.ID, "user", usr.ID, meta, map[string]string{"email": email, "reason": "invalid_credentials"}))
+		now := s.now()
+		lockoutUntil := s.recordLoginFailure(ctx, *usr, now)
+		reason := "invalid_credentials"
+		if lockoutUntil != nil {
+			reason = "account_locked"
+		}
+		s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: false, FailureReason: reason, IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: domainauth.NormalizeDeviceID(meta.DeviceID), CreatedAt: now})
+		s.appendAuditLog(ctx, auditEvent("auth.login_failed", usr.ID, "user", usr.ID, meta, map[string]string{"email": email, "reason": reason}))
 		return nil, invalidCredentials()
 	}
 	result, err := s.issueAuthResult(ctx, *usr, meta)
 	if err != nil {
 		return nil, err
 	}
-	_ = s.users.UpdateLastLogin(ctx, usr.ID, s.now())
-	s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: true, IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: resultDeviceID(meta.DeviceID), CreatedAt: s.now()})
+	now := s.now()
+	_ = s.users.ResetLoginFailures(ctx, usr.ID, email, now)
+	_ = s.users.UpdateLastLogin(ctx, usr.ID, now)
+	s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: true, IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: resultDeviceID(meta.DeviceID), CreatedAt: now})
 	s.appendAuditLog(ctx, auditEvent("auth.login", usr.ID, "session", result.SessionID, meta, map[string]string{"email": email}))
 	return result, nil
 }
@@ -324,6 +342,20 @@ func (s *Service) appendAuditLog(ctx context.Context, event domainauth.AuditLog)
 		event.CreatedAt = s.now()
 	}
 	_ = s.auditLogs.Append(ctx, event)
+}
+
+func (s *Service) recordLoginFailure(ctx context.Context, usr user.User, now time.Time) *time.Time {
+	if s.users == nil || s.lockoutMaxFailures <= 0 {
+		return nil
+	}
+	attempts := usr.FailedLoginAttempts + 1
+	var lockedUntil *time.Time
+	if attempts >= s.lockoutMaxFailures {
+		until := now.Add(s.lockoutDuration)
+		lockedUntil = &until
+	}
+	_ = s.users.RecordLoginFailure(ctx, usr.ID, usr.Email, attempts, lockedUntil, now)
+	return lockedUntil
 }
 
 func auditEvent(action string, actorUserID string, resourceType string, resourceID string, meta domainauth.RequestMeta, metadata map[string]string) domainauth.AuditLog {

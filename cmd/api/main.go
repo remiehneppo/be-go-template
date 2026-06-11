@@ -121,13 +121,15 @@ func run() error {
 		return fmt.Errorf("init token service: %w", err)
 	}
 	authService := appauth.NewService(appauth.ServiceDependencies{
-		Users:         userRepo,
-		Sessions:      sessionRepo,
-		LoginHistory:  loginHistoryRepo,
-		AuditLogs:     auditLogRepo,
-		RevokedTokens: revokedTokenRepo,
-		Tokens:        tokenService,
-		RefreshTTL:    cfg.JWT.RefreshTTL,
+		Users:              userRepo,
+		Sessions:           sessionRepo,
+		LoginHistory:       loginHistoryRepo,
+		AuditLogs:          auditLogRepo,
+		RevokedTokens:      revokedTokenRepo,
+		Tokens:             tokenService,
+		RefreshTTL:         cfg.JWT.RefreshTTL,
+		LockoutMaxFailures: cfg.Auth.LockoutMaxFailures,
+		LockoutDuration:    cfg.Auth.LockoutDuration,
 	})
 	readiness := health.NewReadinessChecker(db, redisCache, health.ReadinessConfig{
 		Timeout:                cfg.Readiness.Timeout,

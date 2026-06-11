@@ -91,6 +91,14 @@ func (r *fakeUserRepository) UpdateLastLogin(ctx context.Context, userID string,
 	return nil
 }
 
+func (r *fakeUserRepository) RecordLoginFailure(ctx context.Context, userID string, email string, failedAttempts int, lockedUntil *time.Time, updatedAt time.Time) error {
+	return nil
+}
+
+func (r *fakeUserRepository) ResetLoginFailures(ctx context.Context, userID string, email string, updatedAt time.Time) error {
+	return nil
+}
+
 type fakePasswordHasher struct{}
 
 func (fakePasswordHasher) Hash(password string) (string, error) {

@@ -64,6 +64,8 @@ All config is loaded from environment variables. Local defaults are intentionall
 | `AUTH_RATE_LIMIT_REFRESH_PER_MINUTE` | `30` |
 | `AUTH_RATE_LIMIT_REGISTER_PER_MINUTE` | `5` |
 | `RATE_LIMIT_FALLBACK` | `allow` locally, `block` in production |
+| `AUTH_LOCKOUT_MAX_FAILURES` | `5` |
+| `AUTH_LOCKOUT_DURATION` | `15m` |
 | `METRICS_ENABLED` | `true` |
 | `METRICS_PATH` | `/metrics` |
 | `READY_TIMEOUT` | `2s` |
