@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -12,6 +13,7 @@ type Config struct {
 	App   AppConfig
 	HTTP  HTTPConfig
 	Log   LogConfig
+	JWT   JWTConfig
 	Mongo MongoConfig
 	Redis RedisConfig
 }
@@ -37,6 +39,14 @@ type LogConfig struct {
 	FilePath   string
 	ToTerminal bool
 	ToFile     bool
+}
+
+type JWTConfig struct {
+	AccessCurrentKey  string
+	AccessPreviousKey string
+	PreviousNotAfter  time.Time
+	AccessTTL         time.Duration
+	RefreshTTL        time.Duration
 }
 
 type MongoConfig struct {
@@ -78,6 +88,13 @@ func Load() (Config, error) {
 			FilePath:   getString("LOG_FILE_PATH", "logs/app.log"),
 			ToTerminal: getBool("LOG_TO_TERMINAL", true),
 			ToFile:     getBool("LOG_TO_FILE", false),
+		},
+		JWT: JWTConfig{
+			AccessCurrentKey:  getString("JWT_ACCESS_CURRENT_KEY", "local/"+base64Secret("local-access-secret-change-me")),
+			AccessPreviousKey: getString("JWT_ACCESS_PREVIOUS_KEY", ""),
+			PreviousNotAfter:  getTime("JWT_ACCESS_PREVIOUS_NOT_AFTER", time.Time{}),
+			AccessTTL:         getDuration("JWT_ACCESS_TTL", 15*time.Minute),
+			RefreshTTL:        getDuration("JWT_REFRESH_TTL", 30*24*time.Hour),
 		},
 		Mongo: MongoConfig{
 			URI:            getString("MONGO_URI", "mongodb://localhost:27017"),
@@ -129,6 +146,15 @@ func (cfg Config) Validate() error {
 	}
 	if !cfg.Log.ToTerminal && !cfg.Log.ToFile {
 		return fmt.Errorf("at least one log output must be enabled")
+	}
+	if cfg.JWT.AccessCurrentKey == "" {
+		return fmt.Errorf("JWT_ACCESS_CURRENT_KEY must not be empty")
+	}
+	if cfg.JWT.AccessTTL <= 0 {
+		return fmt.Errorf("JWT_ACCESS_TTL must be positive")
+	}
+	if cfg.JWT.RefreshTTL <= 0 {
+		return fmt.Errorf("JWT_REFRESH_TTL must be positive")
 	}
 	if cfg.Mongo.URI == "" {
 		return fmt.Errorf("MONGO_URI must not be empty")
@@ -205,4 +231,20 @@ func getCSV(key string, fallback []string) []string {
 		}
 	}
 	return out
+}
+
+func getTime(key string, fallback time.Time) time.Time {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func base64Secret(secret string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(secret))
 }
