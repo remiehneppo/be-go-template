@@ -157,11 +157,13 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	expiresAt := time.Now().Add(time.Hour)
 	tokens := &fakeTokenService{validatedClaims: &domainauth.AccessClaims{UserID: "u1", SessionID: "s1", TokenID: "jti1", ExpiresAt: expiresAt}}
 	sessions := &fakeSessionRepository{}
+	revoked := &fakeRevokedTokenRepository{}
 	service := NewService(ServiceDependencies{
-		Users:     &fakeUserRepository{},
-		Sessions:  sessions,
-		Tokens:    tokens,
-		Passwords: fakePasswordHasher{},
+		Users:         &fakeUserRepository{},
+		Sessions:      sessions,
+		RevokedTokens: revoked,
+		Tokens:        tokens,
+		Passwords:     fakePasswordHasher{},
 	})
 	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
 
@@ -170,6 +172,9 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	}
 	if tokens.blacklistedTokenID != "jti1" {
 		t.Fatalf("blacklistedTokenID = %q", tokens.blacklistedTokenID)
+	}
+	if revoked.token.TokenID != "jti1" || revoked.token.UserID != "u1" || revoked.token.SessionID != "s1" {
+		t.Fatalf("revoked token = %+v", revoked.token)
 	}
 	if sessions.revokedSessionID != "s1" || sessions.revokedReason != "logout" {
 		t.Fatalf("revoked = %q %q", sessions.revokedSessionID, sessions.revokedReason)
@@ -346,6 +351,22 @@ func (s *fakeTokenService) BlacklistAccessToken(ctx context.Context, tokenID str
 
 func (s *fakeTokenService) IsAccessTokenBlacklisted(ctx context.Context, tokenID string) (bool, error) {
 	return false, nil
+}
+
+type fakeRevokedTokenRepository struct {
+	token domainauth.RevokedToken
+}
+
+func (r *fakeRevokedTokenRepository) Append(ctx context.Context, token domainauth.RevokedToken) error {
+	r.token = token
+	return nil
+}
+
+func (r *fakeRevokedTokenRepository) FindByTokenID(ctx context.Context, tokenID string) (*domainauth.RevokedToken, error) {
+	if r.token.TokenID != tokenID {
+		return nil, database.ErrNotFound
+	}
+	return &r.token, nil
 }
 
 type fakePasswordHasher struct {

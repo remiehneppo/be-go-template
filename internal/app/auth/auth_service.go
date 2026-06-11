@@ -17,22 +17,24 @@ import (
 )
 
 type ServiceDependencies struct {
-	Users        user.Repository
-	Sessions     domainauth.SessionRepository
-	LoginHistory domainauth.LoginHistoryRepository
-	Tokens       domainauth.TokenService
-	Passwords    PasswordHasher
-	RefreshTTL   time.Duration
+	Users         user.Repository
+	Sessions      domainauth.SessionRepository
+	LoginHistory  domainauth.LoginHistoryRepository
+	RevokedTokens domainauth.RevokedTokenRepository
+	Tokens        domainauth.TokenService
+	Passwords     PasswordHasher
+	RefreshTTL    time.Duration
 }
 
 type Service struct {
-	users        user.Repository
-	sessions     domainauth.SessionRepository
-	loginHistory domainauth.LoginHistoryRepository
-	tokens       domainauth.TokenService
-	passwords    PasswordHasher
-	refreshTTL   time.Duration
-	now          func() time.Time
+	users         user.Repository
+	sessions      domainauth.SessionRepository
+	loginHistory  domainauth.LoginHistoryRepository
+	revokedTokens domainauth.RevokedTokenRepository
+	tokens        domainauth.TokenService
+	passwords     PasswordHasher
+	refreshTTL    time.Duration
+	now           func() time.Time
 }
 
 func NewService(deps ServiceDependencies) *Service {
@@ -45,13 +47,14 @@ func NewService(deps ServiceDependencies) *Service {
 		refreshTTL = 30 * 24 * time.Hour
 	}
 	return &Service{
-		users:        deps.Users,
-		sessions:     deps.Sessions,
-		loginHistory: deps.LoginHistory,
-		tokens:       deps.Tokens,
-		passwords:    passwords,
-		refreshTTL:   refreshTTL,
-		now:          func() time.Time { return time.Now().UTC() },
+		users:         deps.Users,
+		sessions:      deps.Sessions,
+		loginHistory:  deps.LoginHistory,
+		revokedTokens: deps.RevokedTokens,
+		tokens:        deps.Tokens,
+		passwords:     passwords,
+		refreshTTL:    refreshTTL,
+		now:           func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -164,6 +167,17 @@ func (s *Service) Logout(ctx context.Context, accessToken string, sessionID stri
 		return apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized)
 	}
 	ttl := time.Until(claims.ExpiresAt)
+	if s.revokedTokens != nil && claims.TokenID != "" {
+		if err := s.revokedTokens.Append(ctx, domainauth.RevokedToken{
+			TokenID:   claims.TokenID,
+			UserID:    claims.UserID,
+			SessionID: claims.SessionID,
+			ExpiresAt: claims.ExpiresAt,
+			RevokedAt: s.now(),
+		}); err != nil {
+			return err
+		}
+	}
 	if ttl > 0 {
 		if err := s.tokens.BlacklistAccessToken(ctx, claims.TokenID, ttl); err != nil {
 			return err
