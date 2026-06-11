@@ -104,6 +104,10 @@ func FromContext(ctx context.Context) Logger {
 	return noopLogger{}
 }
 
+func NewNoop() Logger {
+	return noopLogger{}
+}
+
 func String(key, value string) Field {
 	return Field{Key: key, Value: value}
 }
