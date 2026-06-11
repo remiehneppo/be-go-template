@@ -814,7 +814,7 @@ Checklist:
 - [x] `govulncheck ./...` pass.
 - [x] `golangci-lint run` pass với config strictness phù hợp cho template.
 - [x] `go test -race ./...` pass.
-- [ ] Test goroutine leak bằng `goleak` cho service/worker quan trọng.
+- [x] Test goroutine leak bằng `goleak` cho service/worker quan trọng.
 - [ ] Tất cả exported type/function quan trọng có godoc.
 - [ ] Dependency được pin version trong `go.sum`.
 - [x] Docker image build bằng non-root user.
