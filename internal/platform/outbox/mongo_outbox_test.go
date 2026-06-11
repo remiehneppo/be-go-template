@@ -113,6 +113,10 @@ func (d *fakeDatabase) DeleteOne(ctx context.Context, collection string, filter 
 	return nil
 }
 
+func (d *fakeDatabase) Count(ctx context.Context, collection string, filter any) (int64, error) {
+	return 0, nil
+}
+
 func (d *fakeDatabase) Ping(ctx context.Context) error {
 	return nil
 }

@@ -154,6 +154,35 @@ func TestAuditLogRepositoryBuildsFilter(t *testing.T) {
 	}
 }
 
+func TestMonitoringStatsRepositoryCountsAuthStats(t *testing.T) {
+	db := &fakeDB{countValues: []int64{3, 2, 4, 1, 5, 6}}
+	repo := NewMonitoringStatsRepository(db)
+	from := time.Unix(100, 0).UTC()
+	to := time.Unix(200, 0).UTC()
+
+	got, err := repo.GetAuthStats(context.Background(), from, to)
+	if err != nil {
+		t.Fatalf("GetAuthStats() error = %v", err)
+	}
+	if got.LoginSuccessCount != 3 || got.LoginFailureCount != 2 || got.ActiveSessionCount != 4 ||
+		got.RevokedSessionCount != 1 || got.RefreshCount != 5 || got.LogoutCount != 6 {
+		t.Fatalf("stats = %+v", got)
+	}
+	if db.countCalls != 6 {
+		t.Fatalf("countCalls = %d", db.countCalls)
+	}
+	if db.countCollections[0] != loginHistoryCollection || db.countCollections[2] != sessionsCollection || db.countCollections[4] != auditLogsCollection {
+		t.Fatalf("countCollections = %v", db.countCollections)
+	}
+	filter, ok := db.countFilters[0].(bson.M)
+	if !ok {
+		t.Fatalf("first filter type = %T", db.countFilters[0])
+	}
+	if filter["success"] != true {
+		t.Fatalf("first filter = %#v", filter)
+	}
+}
+
 type fakeDB struct {
 	findOneValue  any
 	findManyValue any
@@ -164,12 +193,17 @@ type fakeDB struct {
 	lastReadOptions  database.ReadOptions
 	lastWriteOptions database.WriteOptions
 
-	insertCalls     int
-	findOneCalls    int
-	findManyCalls   int
-	updateOneCalls  int
-	updateManyCalls int
-	deleteOneCalls  int
+	insertCalls      int
+	findOneCalls     int
+	findManyCalls    int
+	updateOneCalls   int
+	updateManyCalls  int
+	deleteOneCalls   int
+	countCalls       int
+	countValue       int64
+	countValues      []int64
+	countCollections []string
+	countFilters     []any
 }
 
 func (d *fakeDB) FindOne(ctx context.Context, collection string, filter any, dest any, opts database.ReadOptions) error {
@@ -219,6 +253,20 @@ func (d *fakeDB) DeleteOne(ctx context.Context, collection string, filter any, o
 	d.lastFilter = filter
 	d.lastWriteOptions = opts
 	return nil
+}
+
+func (d *fakeDB) Count(ctx context.Context, collection string, filter any) (int64, error) {
+	d.countCalls++
+	d.lastCollection = collection
+	d.lastFilter = filter
+	d.countCollections = append(d.countCollections, collection)
+	d.countFilters = append(d.countFilters, filter)
+	if len(d.countValues) > 0 {
+		value := d.countValues[0]
+		d.countValues = d.countValues[1:]
+		return value, nil
+	}
+	return d.countValue, nil
 }
 
 func (d *fakeDB) Ping(ctx context.Context) error {

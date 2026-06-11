@@ -19,6 +19,7 @@ type Dependencies struct {
 	Version           string
 	StartedAt         time.Time
 	DependencyChecker DependencyChecker
+	AuthStats         domainmonitoring.AuthStatsRepository
 	AuditLogs         auth.AuditLogRepository
 	ErrorEvents       domainmonitoring.ErrorEventRepository
 	Now               func() time.Time
@@ -29,6 +30,7 @@ type Service struct {
 	version           string
 	startedAt         time.Time
 	dependencyChecker DependencyChecker
+	authStats         domainmonitoring.AuthStatsRepository
 	auditLogs         auth.AuditLogRepository
 	errorEvents       domainmonitoring.ErrorEventRepository
 	now               func() time.Time
@@ -56,6 +58,7 @@ func NewService(deps Dependencies) *Service {
 		version:           version,
 		startedAt:         startedAt,
 		dependencyChecker: deps.DependencyChecker,
+		authStats:         deps.AuthStats,
 		auditLogs:         deps.AuditLogs,
 		errorEvents:       deps.ErrorEvents,
 		now:               now,
@@ -109,6 +112,9 @@ func (s *Service) GetDependencyStatus(ctx context.Context) (*domainmonitoring.De
 }
 
 func (s *Service) GetAuthStats(ctx context.Context, from time.Time, to time.Time) (*domainmonitoring.AuthStats, error) {
+	if s.authStats != nil {
+		return s.authStats.GetAuthStats(ctx, from, to)
+	}
 	return &domainmonitoring.AuthStats{From: from, To: to}, nil
 }
 

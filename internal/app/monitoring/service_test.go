@@ -59,6 +59,21 @@ func TestServiceDependencyStatusUsesChecker(t *testing.T) {
 	}
 }
 
+func TestServiceAuthStatsUsesRepository(t *testing.T) {
+	from := time.Unix(100, 0).UTC()
+	to := time.Unix(200, 0).UTC()
+	repo := &fakeAuthStatsRepository{stats: &monitoring.AuthStats{LoginSuccessCount: 3}}
+	service := NewService(Dependencies{AuthStats: repo})
+
+	got, err := service.GetAuthStats(context.Background(), from, to)
+	if err != nil {
+		t.Fatalf("GetAuthStats() error = %v", err)
+	}
+	if got.LoginSuccessCount != 3 || repo.from != from || repo.to != to {
+		t.Fatalf("stats = %+v repo range = %s %s", got, repo.from, repo.to)
+	}
+}
+
 type fakeDependencyChecker struct {
 	status monitoring.DependencyStatus
 	ready  bool
@@ -66,4 +81,16 @@ type fakeDependencyChecker struct {
 
 func (c *fakeDependencyChecker) Check(ctx context.Context) (monitoring.DependencyStatus, bool) {
 	return c.status, c.ready
+}
+
+type fakeAuthStatsRepository struct {
+	stats *monitoring.AuthStats
+	from  time.Time
+	to    time.Time
+}
+
+func (r *fakeAuthStatsRepository) GetAuthStats(ctx context.Context, from time.Time, to time.Time) (*monitoring.AuthStats, error) {
+	r.from = from
+	r.to = to
+	return r.stats, nil
 }

@@ -76,6 +76,10 @@ func (d *CachedDatabase) DeleteOne(ctx context.Context, collection string, filte
 	})
 }
 
+func (d *CachedDatabase) Count(ctx context.Context, collection string, filter any) (int64, error) {
+	return d.base.Count(ctx, collection, filter)
+}
+
 func (d *CachedDatabase) Ping(ctx context.Context) error {
 	return d.base.Ping(ctx)
 }

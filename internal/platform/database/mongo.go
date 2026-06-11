@@ -87,6 +87,10 @@ func (d *MongoDatabase) DeleteOne(ctx context.Context, collection string, filter
 	return nil
 }
 
+func (d *MongoDatabase) Count(ctx context.Context, collection string, filter any) (int64, error) {
+	return d.db.Collection(collection).CountDocuments(ctx, filter)
+}
+
 func (d *MongoDatabase) Ping(ctx context.Context) error {
 	return d.client.Ping(ctx, nil)
 }
