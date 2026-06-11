@@ -9,11 +9,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/remihneppo/be-go-template/internal/config"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/common"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
+	platformmetrics "github.com/remihneppo/be-go-template/internal/platform/metrics"
 	"github.com/remihneppo/be-go-template/internal/platform/ratelimit"
 )
 
@@ -97,6 +100,39 @@ func TestAuthHandlerLoginRateLimitReturns429(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "RATE_LIMITED") {
 		t.Fatalf("body = %s", rec.Body.String())
+	}
+}
+
+func TestRouterMetricsEndpointUsesPrometheusFormat(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	cfg := testConfig()
+	registry := prometheus.NewRegistry()
+	httpMetrics, err := platformmetrics.NewHTTPMetrics(registry, "testapp")
+	if err != nil {
+		t.Fatalf("NewHTTPMetrics() error = %v", err)
+	}
+	router := NewRouterWithDependencies(cfg, logger.NewNoop(), RouterDependencies{
+		HTTPMetrics:    httpMetrics,
+		MetricsHandler: gin.WrapH(promhttp.HandlerFor(registry, promhttp.HandlerOpts{})),
+	})
+
+	healthReq := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	healthRec := httptest.NewRecorder()
+	router.ServeHTTP(healthRec, healthReq)
+	if healthRec.Code != http.StatusOK {
+		t.Fatalf("health status = %d", healthRec.Code)
+	}
+
+	metricsReq := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	metricsRec := httptest.NewRecorder()
+	router.ServeHTTP(metricsRec, metricsReq)
+
+	if metricsRec.Code != http.StatusOK {
+		t.Fatalf("metrics status = %d body = %s", metricsRec.Code, metricsRec.Body.String())
+	}
+	body := metricsRec.Body.String()
+	if !strings.Contains(body, "testapp_http_requests_total") || !strings.Contains(body, `route="/healthz"`) {
+		t.Fatalf("metrics body = %s", body)
 	}
 }
 

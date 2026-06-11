@@ -17,6 +17,7 @@ type Config struct {
 	Mongo     MongoConfig
 	Redis     RedisConfig
 	RateLimit RateLimitConfig
+	Metrics   MetricsConfig
 }
 
 type AppConfig struct {
@@ -76,6 +77,11 @@ type RateLimitConfig struct {
 	Fallback          string
 }
 
+type MetricsConfig struct {
+	Enabled bool
+	Path    string
+}
+
 func Load() (Config, error) {
 	cfg := Config{
 		App: AppConfig{
@@ -127,6 +133,10 @@ func Load() (Config, error) {
 			RefreshPerMinute:  getInt64("AUTH_RATE_LIMIT_REFRESH_PER_MINUTE", 30),
 			RegisterPerMinute: getInt64("AUTH_RATE_LIMIT_REGISTER_PER_MINUTE", 5),
 			Fallback:          strings.ToLower(getString("RATE_LIMIT_FALLBACK", rateLimitFallbackDefault(getString("APP_ENV", "local")))),
+		},
+		Metrics: MetricsConfig{
+			Enabled: getBool("METRICS_ENABLED", true),
+			Path:    getString("METRICS_PATH", "/metrics"),
 		},
 	}
 
@@ -194,6 +204,9 @@ func (cfg Config) Validate() error {
 	case "allow", "block":
 	default:
 		return fmt.Errorf("RATE_LIMIT_FALLBACK must be allow or block")
+	}
+	if cfg.Metrics.Enabled && (cfg.Metrics.Path == "" || !strings.HasPrefix(cfg.Metrics.Path, "/")) {
+		return fmt.Errorf("METRICS_PATH must start with /")
 	}
 	return nil
 }

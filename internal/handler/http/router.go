@@ -8,16 +8,20 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/remihneppo/be-go-template/internal/config"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/middleware"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
+	"github.com/remihneppo/be-go-template/internal/platform/metrics"
 	"github.com/remihneppo/be-go-template/internal/platform/ratelimit"
 )
 
 type RouterDependencies struct {
-	AuthService domainauth.Service
-	RateLimiter ratelimit.Limiter
+	AuthService    domainauth.Service
+	HTTPMetrics    *metrics.HTTPMetrics
+	RateLimiter    ratelimit.Limiter
+	MetricsHandler gin.HandlerFunc
 }
 
 func NewRouter(cfg config.Config, log logger.Logger) *gin.Engine {
@@ -27,18 +31,32 @@ func NewRouter(cfg config.Config, log logger.Logger) *gin.Engine {
 func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps RouterDependencies) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
+	httpMetrics := deps.HTTPMetrics
+	if cfg.Metrics.Enabled && httpMetrics == nil {
+		var err error
+		httpMetrics, err = metrics.NewHTTPMetrics(nil, "")
+		if err != nil {
+			log.Warn("init HTTP metrics failed", logger.Any("error", err))
+		}
+	}
 
 	router.Use(middleware.Recovery(log))
 	router.Use(middleware.RequestID(log))
 	router.Use(middleware.CORS(cfg.HTTP.CORSAllowOrigins))
 	router.Use(middleware.BodyLimit(cfg.HTTP.BodyLimitBytes))
 	router.Use(middleware.Timeout(cfg.HTTP.RouteTimeout))
+	if cfg.Metrics.Enabled {
+		router.Use(middleware.Metrics(httpMetrics, cfg.Metrics.Path))
+	}
 	router.Use(middleware.Logging(log))
 	router.Use(middleware.ErrorHandler(log))
 
 	router.GET("/healthz", func(c *gin.Context) {
 		OK(c, gin.H{"status": "ok", "time": time.Now().UTC()})
 	})
+	if cfg.Metrics.Enabled {
+		router.GET(cfg.Metrics.Path, metricsEndpoint(deps.MetricsHandler))
+	}
 
 	v1 := router.Group("/v1")
 	if deps.AuthService != nil {
@@ -46,6 +64,13 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 	}
 
 	return router
+}
+
+func metricsEndpoint(handler gin.HandlerFunc) gin.HandlerFunc {
+	if handler != nil {
+		return handler
+	}
+	return gin.WrapH(promhttp.Handler())
 }
 
 func authRateLimitMiddleware(cfg config.Config, limiter ratelimit.Limiter) AuthRouteMiddleware {
