@@ -21,7 +21,7 @@ func TestAuthenticatePopulatesContext(t *testing.T) {
 		Roles:     []string{"user"},
 	}}
 	router := gin.New()
-	router.Use(Authenticate(tokens))
+	router.Use(Authenticate(tokens, nil))
 	router.GET("/me", func(c *gin.Context) {
 		if c.GetString(string(ctxkeys.UserID)) != "u1" {
 			t.Fatalf("gin user id = %q", c.GetString(string(ctxkeys.UserID)))
@@ -46,7 +46,7 @@ func TestAuthenticatePopulatesContext(t *testing.T) {
 func TestAuthenticateRejectsMissingBearerToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.Use(Authenticate(&fakeTokenService{}))
+	router.Use(Authenticate(&fakeTokenService{}, nil))
 	router.GET("/me", func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	})

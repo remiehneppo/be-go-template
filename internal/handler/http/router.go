@@ -29,6 +29,7 @@ type RouterDependencies struct {
 	AuthService    domainauth.Service
 	UserService    user.Service
 	TokenService   domainauth.TokenService
+	Sessions       domainauth.SessionRepository
 	Monitoring     monitoring.Service
 	ErrorEvents    middleware.ErrorEventReporter
 	HTTPMetrics    *metrics.HTTPMetrics
@@ -74,13 +75,13 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 
 	v1 := router.Group("/v1")
 	if deps.AuthService != nil {
-		NewAuthHandler(deps.AuthService, WithAuthRouteMiddleware(authRouteMiddleware(cfg, deps.RateLimiter, deps.TokenService))).RegisterRoutes(v1)
+		NewAuthHandler(deps.AuthService, WithAuthRouteMiddleware(authRouteMiddleware(cfg, deps.RateLimiter, deps.TokenService, deps.Sessions))).RegisterRoutes(v1)
 	}
 	if deps.UserService != nil {
-		NewUserHandler(deps.UserService).RegisterRoutes(v1, middleware.Authenticate(deps.TokenService))
+		NewUserHandler(deps.UserService).RegisterRoutes(v1, middleware.Authenticate(deps.TokenService, deps.Sessions))
 	}
 	if deps.Monitoring != nil {
-		admin := v1.Group("/admin", middleware.Authenticate(deps.TokenService), middleware.AdminGuard())
+		admin := v1.Group("/admin", middleware.Authenticate(deps.TokenService, deps.Sessions), middleware.AdminGuard())
 		NewMonitoringHandler(deps.Monitoring).RegisterRoutes(admin)
 	}
 
@@ -128,7 +129,7 @@ func metricsEndpoint(handler gin.HandlerFunc) gin.HandlerFunc {
 	return gin.WrapH(promhttp.Handler())
 }
 
-func authRouteMiddleware(cfg config.Config, limiter ratelimit.Limiter, tokens domainauth.TokenService) AuthRouteMiddleware {
+func authRouteMiddleware(cfg config.Config, limiter ratelimit.Limiter, tokens domainauth.TokenService, sessions domainauth.SessionRepository) AuthRouteMiddleware {
 	policy := func(limit int64, keyFunc func(*gin.Context) string) middleware.RateLimitPolicy {
 		return middleware.RateLimitPolicy{
 			Enabled:  cfg.RateLimit.AuthEnabled,
@@ -142,7 +143,7 @@ func authRouteMiddleware(cfg config.Config, limiter ratelimit.Limiter, tokens do
 		Register:  []gin.HandlerFunc{middleware.RateLimit(limiter, policy(cfg.RateLimit.RegisterPerMinute, ipRateLimitKey("auth:register")))},
 		Login:     []gin.HandlerFunc{middleware.RateLimit(limiter, policy(cfg.RateLimit.LoginPerMinute, jsonFieldRateLimitKey("auth:login", "email")))},
 		Refresh:   []gin.HandlerFunc{middleware.RateLimit(limiter, policy(cfg.RateLimit.RefreshPerMinute, ipRateLimitKey("auth:refresh")))},
-		Protected: []gin.HandlerFunc{middleware.Authenticate(tokens)},
+		Protected: []gin.HandlerFunc{middleware.Authenticate(tokens, sessions)},
 	}
 }
 

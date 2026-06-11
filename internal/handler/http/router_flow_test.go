@@ -61,6 +61,7 @@ func TestRouterAuthFlow(t *testing.T) {
 		AuthService:  authService,
 		UserService:  userService,
 		TokenService: tokenService,
+		Sessions:     sessions,
 	})
 
 	registerResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/register", map[string]any{
@@ -134,6 +135,97 @@ func TestRouterAuthFlow(t *testing.T) {
 	}
 	if got := len(sessions.activeByUser(registerData.User.ID)); got < 2 {
 		t.Fatalf("expected sessions to be persisted, got %d", got)
+	}
+}
+
+func TestRouterLogoutAllInvalidatesMultipleSessions(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	cfg := testConfig()
+	cfg.Metrics.Enabled = false
+	cfg.RateLimit.AuthEnabled = false
+	cfg.HTTP.CORSAllowOrigins = []string{"http://localhost:3000"}
+
+	users := newMemoryUserRepository()
+	sessions := newMemorySessionRepository()
+	loginHistory := &memoryLoginHistoryRepository{}
+	auditLogs := &memoryAuditLogRepository{}
+	revokedTokens := &memoryRevokedTokenRepository{}
+	tokenCache := newMemoryCache()
+
+	tokenService, err := appauth.NewTokenService(appauth.TokenConfig{
+		CurrentKey:       cfg.JWT.AccessCurrentKey,
+		PreviousKey:      cfg.JWT.AccessPreviousKey,
+		PreviousNotAfter: cfg.JWT.PreviousNotAfter,
+		AccessTTL:        15 * time.Minute,
+		RefreshTTL:       24 * time.Hour,
+	}, tokenCache, revokedTokens)
+	if err != nil {
+		t.Fatalf("NewTokenService() error = %v", err)
+	}
+
+	authService := appauth.NewService(appauth.ServiceDependencies{
+		Users:         users,
+		Sessions:      sessions,
+		LoginHistory:  loginHistory,
+		AuditLogs:     auditLogs,
+		RevokedTokens: revokedTokens,
+		Tokens:        tokenService,
+		RefreshTTL:    24 * time.Hour,
+	})
+	userService := appuser.NewService(users)
+	router := NewRouterWithDependencies(cfg, logger.NewNoop(), RouterDependencies{
+		AuthService:  authService,
+		UserService:  userService,
+		TokenService: tokenService,
+		Sessions:     sessions,
+	})
+
+	registerResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/register", map[string]any{
+		"email":    "user@example.com",
+		"password": "password123",
+		"name":     "User",
+	}, nil)
+	if registerResp.Code != http.StatusCreated {
+		t.Fatalf("register status = %d body = %s", registerResp.Code, registerResp.Body.String())
+	}
+	registerData := decodeAuthResultResponse(t, registerResp.Body.Bytes())
+
+	loginResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/login", map[string]any{
+		"email":    "user@example.com",
+		"password": "password123",
+	}, nil)
+	if loginResp.Code != http.StatusOK {
+		t.Fatalf("login status = %d body = %s", loginResp.Code, loginResp.Body.String())
+	}
+	loginData := decodeAuthResultResponse(t, loginResp.Body.Bytes())
+
+	logoutAllResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/logout-all", nil, map[string]string{
+		"Authorization": "Bearer " + loginData.AccessToken,
+	})
+	if logoutAllResp.Code != http.StatusOK {
+		t.Fatalf("logout-all status = %d body = %s", logoutAllResp.Code, logoutAllResp.Body.String())
+	}
+
+	meWithRegisterToken := doJSONRequest(t, router, http.MethodGet, "/v1/users/me", nil, map[string]string{
+		"Authorization": "Bearer " + registerData.AccessToken,
+	})
+	if meWithRegisterToken.Code != http.StatusUnauthorized {
+		t.Fatalf("register token status = %d body = %s", meWithRegisterToken.Code, meWithRegisterToken.Body.String())
+	}
+
+	meWithLoginToken := doJSONRequest(t, router, http.MethodGet, "/v1/users/me", nil, map[string]string{
+		"Authorization": "Bearer " + loginData.AccessToken,
+	})
+	if meWithLoginToken.Code != http.StatusUnauthorized {
+		t.Fatalf("login token status = %d body = %s", meWithLoginToken.Code, meWithLoginToken.Body.String())
+	}
+
+	active, err := sessions.ListActiveByUserID(context.Background(), registerData.User.ID)
+	if err != nil {
+		t.Fatalf("ListActiveByUserID() error = %v", err)
+	}
+	if len(active) != 0 {
+		t.Fatalf("expected no active sessions, got %d", len(active))
 	}
 }
 

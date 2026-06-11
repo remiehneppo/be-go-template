@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -9,10 +10,11 @@ import (
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/ctxkeys"
+	"github.com/remihneppo/be-go-template/internal/platform/database"
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 )
 
-func Authenticate(tokens domainauth.TokenService) gin.HandlerFunc {
+func Authenticate(tokens domainauth.TokenService, sessions domainauth.SessionRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		rawToken := bearerToken(c.GetHeader("Authorization"))
 		if rawToken == "" || tokens == nil {
@@ -25,6 +27,23 @@ func Authenticate(tokens domainauth.TokenService) gin.HandlerFunc {
 			writeError(c, apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized))
 			c.Abort()
 			return
+		}
+		if sessions != nil {
+			session, err := sessions.FindActiveByID(c.Request.Context(), claims.SessionID)
+			if err != nil {
+				if errors.Is(err, database.ErrNotFound) {
+					writeError(c, apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized))
+				} else {
+					writeError(c, apperrors.New(apperrors.CodeDependency, "Dependency error", http.StatusServiceUnavailable))
+				}
+				c.Abort()
+				return
+			}
+			if session == nil {
+				writeError(c, apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized))
+				c.Abort()
+				return
+			}
 		}
 		setAuthContext(c, claims)
 		c.Next()

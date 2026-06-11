@@ -403,7 +403,7 @@ Checklist:
 - [ ] Validate JWT signature và expiry.
 - [ ] Validate `jti`, `sub`, `session_id`.
 - [ ] Kiểm tra `jti` có nằm trong Redis blacklist không.
-- [ ] Kiểm tra session active qua repository/service hoặc database abstraction.
+- [x] Kiểm tra session active qua repository/service hoặc database abstraction.
 - [ ] Inject `user_id`, `session_id`, `token_id` vào Gin context.
 - [ ] Trả lỗi JSON thống nhất cho unauthenticated/forbidden.
 
@@ -745,7 +745,7 @@ Checklist:
 - [ ] Docker Compose starts MongoDB and Redis.
 - [ ] API boots, `/healthz` returns success, and `/readyz` returns success when dependencies are ready.
 - [x] End-to-end register -> login -> me -> refresh -> logout -> me fails.
-- [ ] Logout all invalidates multiple sessions.
+- [x] Logout all invalidates multiple sessions.
 - [ ] Cache key invalidates after user/session update.
 - [ ] Request writes access log to terminal/file path.
 - [ ] 5xx test path writes error log and error event with request id.
