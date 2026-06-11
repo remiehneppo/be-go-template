@@ -31,6 +31,8 @@ Important boundaries:
 
 All config is loaded from environment variables. Local defaults are intentionally runnable for development.
 
+Start from [`.env.example`](.env.example) when you want a complete local environment file.
+
 | Variable | Default |
 | --- | --- |
 | `APP_NAME` | `be-go-template` |

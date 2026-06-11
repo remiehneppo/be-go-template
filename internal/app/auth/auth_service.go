@@ -429,7 +429,7 @@ func newID() string {
 }
 
 func notImplemented(op string) error {
-	return apperrors.New(apperrors.CodeDependency, op+" is not implemented in this checkpoint", http.StatusServiceUnavailable)
+	return apperrors.New(apperrors.CodeDependency, op+" dependencies are not configured", http.StatusServiceUnavailable)
 }
 
 var _ domainauth.Service = (*Service)(nil)

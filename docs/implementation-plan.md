@@ -744,7 +744,7 @@ Checklist:
 
 - [ ] Docker Compose starts MongoDB and Redis.
 - [ ] API boots, `/healthz` returns success, and `/readyz` returns success when dependencies are ready.
-- [ ] End-to-end register -> login -> me -> refresh -> logout -> me fails.
+- [x] End-to-end register -> login -> me -> refresh -> logout -> me fails.
 - [ ] Logout all invalidates multiple sessions.
 - [ ] Cache key invalidates after user/session update.
 - [ ] Request writes access log to terminal/file path.
@@ -759,8 +759,8 @@ Checklist:
 
 ## 15. Documentation checklist
 
-- [ ] Tạo `README.md` hướng dẫn chạy local.
-- [ ] Tạo `.env.example`.
+- [x] Tạo `README.md` hướng dẫn chạy local.
+- [x] Tạo `.env.example`.
 - [ ] Tạo `docker-compose.yml` cho MongoDB + Redis.
 - [ ] Ghi danh sách endpoint và request/response mẫu.
 - [ ] Ghi kiến trúc layer và dependency direction.
