@@ -45,6 +45,9 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 			{Keys: bson.D{{Key: "idempotency_key", Value: 1}}, Options: options.Index().SetUnique(true)},
 			{Keys: bson.D{{Key: "status", Value: 1}, {Key: "process_after", Value: 1}}},
 		},
+		"schema_migrations": {
+			{Keys: bson.D{{Key: "version", Value: 1}}, Options: options.Index().SetUnique(true)},
+		},
 	}
 
 	for collection, indexes := range collections {
