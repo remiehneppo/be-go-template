@@ -17,4 +17,23 @@ This repository is a production-leaning Go backend template. It is designed arou
 
 ## Current checkpoint
 
-The first implementation checkpoint establishes bootstrap scaffolding, typed configuration, context key contracts, and logging primitives. Infrastructure adapters are implemented in later checkpoints.
+The template now has the main runtime skeleton wired end-to-end:
+
+- Gin API bootstrap with graceful shutdown.
+- Typed environment configuration.
+- Structured logging to terminal/file.
+- Context key contract for request, trace, auth, and logger fields.
+- Standard application errors and HTTP response envelope.
+- MongoDB adapter, Redis cache adapter, and cached database coordination.
+- Domain interfaces for auth, user, monitoring, and shared pagination/validation.
+- Mongo repositories for users, sessions, login history, audit logs, revoked tokens, error events, and monitoring stats.
+- JWT access token service with key id rotation and refresh-token support.
+- Auth register/login/refresh/logout/logout-all, device list, and login history endpoints.
+- Redis-backed token blacklist with MongoDB fallback.
+- Auth rate limiting with explicit fallback behavior.
+- Prometheus HTTP metrics.
+- Readiness dependency checks with healthy/degraded/unhealthy levels.
+- Admin monitoring endpoints.
+- Idempotent admin seed command.
+- Versioned Mongo migration runner.
+- Operations documentation for degradation behavior, logging, errors, migrations, and seed.
