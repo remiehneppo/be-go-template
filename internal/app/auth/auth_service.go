@@ -110,11 +110,73 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 }
 
 func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domainauth.RequestMeta) (*domainauth.AuthResult, error) {
-	return nil, notImplemented("AuthService.Refresh")
+	if err := s.requireAuthCore("AuthService.Refresh"); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(refreshToken) == "" {
+		return nil, invalidRefreshToken()
+	}
+	oldHash := s.tokens.HashRefreshToken(refreshToken)
+	session, err := s.sessions.FindByRefreshTokenHash(ctx, oldHash)
+	if err != nil || session == nil || !session.IsActive(s.now()) {
+		return nil, invalidRefreshToken()
+	}
+	usr, err := s.users.FindByID(ctx, session.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if usr.Status != user.StatusActive || usr.IsLocked(s.now()) {
+		return nil, apperrors.New(apperrors.CodeForbidden, "Account is not available", http.StatusForbidden)
+	}
+	newRefreshPlain, newRefreshHash, err := s.tokens.GenerateRefreshToken()
+	if err != nil {
+		return nil, err
+	}
+	newRefreshExpiresAt := s.now().Add(s.refreshTTL)
+	if err := s.sessions.RotateRefreshToken(ctx, session.ID, oldHash, newRefreshHash, newRefreshExpiresAt); err != nil {
+		return nil, err
+	}
+	accessToken, accessExpiresAt, err := s.tokens.GenerateAccessToken(ctx, domainauth.AccessClaims{
+		UserID:    usr.ID,
+		SessionID: session.ID,
+		TokenID:   newID(),
+		Roles:     rolesToStrings(usr.Roles),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &domainauth.AuthResult{
+		User:                  *usr,
+		SessionID:             session.ID,
+		AccessToken:           accessToken,
+		AccessTokenExpiresAt:  accessExpiresAt,
+		RefreshToken:          newRefreshPlain,
+		RefreshTokenExpiresAt: newRefreshExpiresAt,
+	}, nil
 }
 
 func (s *Service) Logout(ctx context.Context, accessToken string, sessionID string) error {
-	return notImplemented("AuthService.Logout")
+	if err := s.requireAuthCore("AuthService.Logout"); err != nil {
+		return err
+	}
+	claims, err := s.tokens.ValidateAccessToken(ctx, accessToken)
+	if err != nil {
+		return apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized)
+	}
+	ttl := time.Until(claims.ExpiresAt)
+	if ttl > 0 {
+		if err := s.tokens.BlacklistAccessToken(ctx, claims.TokenID, ttl); err != nil {
+			return err
+		}
+	}
+	targetSessionID := strings.TrimSpace(sessionID)
+	if targetSessionID == "" {
+		targetSessionID = claims.SessionID
+	}
+	if targetSessionID != "" {
+		return s.sessions.Revoke(ctx, targetSessionID, "logout", s.now())
+	}
+	return nil
 }
 
 func (s *Service) LogoutAll(ctx context.Context, userID string) error {
@@ -228,6 +290,10 @@ func validateCredentials(email string, password string) error {
 
 func invalidCredentials() error {
 	return apperrors.New(apperrors.CodeUnauthorized, "Invalid email or password", http.StatusUnauthorized)
+}
+
+func invalidRefreshToken() error {
+	return apperrors.New(apperrors.CodeUnauthorized, "Invalid refresh token", http.StatusUnauthorized)
 }
 
 func resultDeviceID(deviceID string) string {

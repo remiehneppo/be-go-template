@@ -105,6 +105,77 @@ func TestServiceLoginFailureWritesHistory(t *testing.T) {
 	}
 }
 
+func TestServiceRefreshRotatesTokenAndIssuesAccessToken(t *testing.T) {
+	expiresAt := time.Unix(1000, 0).UTC()
+	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", Roles: []user.Role{user.RoleUser}, Status: user.StatusActive}}
+	sessions := &fakeSessionRepository{
+		byRefreshHash: &domainauth.Session{
+			ID:                    "s1",
+			UserID:                "u1",
+			RefreshTokenHash:      "old-hash",
+			RefreshTokenExpiresAt: expiresAt,
+		},
+	}
+	tokens := &fakeTokenService{refreshPlain: "new-refresh", refreshHash: "new-hash", accessToken: "new-access", accessExpiresAt: time.Unix(200, 0)}
+	service := NewService(ServiceDependencies{
+		Users:      users,
+		Sessions:   sessions,
+		Tokens:     tokens,
+		Passwords:  fakePasswordHasher{},
+		RefreshTTL: time.Hour,
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	result, err := service.Refresh(context.Background(), "old-refresh", domainauth.RequestMeta{})
+	if err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+	if result.AccessToken != "new-access" || result.RefreshToken != "new-refresh" {
+		t.Fatalf("result = %+v", result)
+	}
+	if sessions.rotatedSessionID != "s1" || sessions.rotatedOldHash != "old-hash" || sessions.rotatedNewHash != "new-hash" {
+		t.Fatalf("rotation = %q %q %q", sessions.rotatedSessionID, sessions.rotatedOldHash, sessions.rotatedNewHash)
+	}
+	if tokens.lastAccessClaims.SessionID != "s1" || tokens.lastAccessClaims.UserID != "u1" {
+		t.Fatalf("access claims = %+v", tokens.lastAccessClaims)
+	}
+}
+
+func TestServiceRefreshRejectsInvalidToken(t *testing.T) {
+	service := NewService(ServiceDependencies{
+		Users:     &fakeUserRepository{},
+		Sessions:  &fakeSessionRepository{},
+		Tokens:    &fakeTokenService{},
+		Passwords: fakePasswordHasher{},
+	})
+	if _, err := service.Refresh(context.Background(), "missing", domainauth.RequestMeta{}); err == nil {
+		t.Fatal("Refresh() error = nil")
+	}
+}
+
+func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
+	expiresAt := time.Now().Add(time.Hour)
+	tokens := &fakeTokenService{validatedClaims: &domainauth.AccessClaims{UserID: "u1", SessionID: "s1", TokenID: "jti1", ExpiresAt: expiresAt}}
+	sessions := &fakeSessionRepository{}
+	service := NewService(ServiceDependencies{
+		Users:     &fakeUserRepository{},
+		Sessions:  sessions,
+		Tokens:    tokens,
+		Passwords: fakePasswordHasher{},
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	if err := service.Logout(context.Background(), "access-token", ""); err != nil {
+		t.Fatalf("Logout() error = %v", err)
+	}
+	if tokens.blacklistedTokenID != "jti1" {
+		t.Fatalf("blacklistedTokenID = %q", tokens.blacklistedTokenID)
+	}
+	if sessions.revokedSessionID != "s1" || sessions.revokedReason != "logout" {
+		t.Fatalf("revoked = %q %q", sessions.revokedSessionID, sessions.revokedReason)
+	}
+}
+
 func TestServiceListDevicesMapsActiveSessions(t *testing.T) {
 	sessions := &fakeSessionRepository{
 		active: []domainauth.Session{{
@@ -141,10 +212,15 @@ func TestServiceLogoutAllRevokesSessions(t *testing.T) {
 }
 
 type fakeSessionRepository struct {
-	active        []domainauth.Session
-	created       domainauth.Session
-	revokedUserID string
-	revokedReason string
+	active           []domainauth.Session
+	created          domainauth.Session
+	byRefreshHash    *domainauth.Session
+	rotatedSessionID string
+	rotatedOldHash   string
+	rotatedNewHash   string
+	revokedSessionID string
+	revokedUserID    string
+	revokedReason    string
 }
 
 func (r *fakeSessionRepository) Create(ctx context.Context, session domainauth.Session) error {
@@ -157,14 +233,22 @@ func (r *fakeSessionRepository) FindActiveByID(ctx context.Context, sessionID st
 }
 
 func (r *fakeSessionRepository) FindByRefreshTokenHash(ctx context.Context, hash string) (*domainauth.Session, error) {
-	return nil, nil
+	if r.byRefreshHash == nil || r.byRefreshHash.RefreshTokenHash != hash {
+		return nil, database.ErrNotFound
+	}
+	return r.byRefreshHash, nil
 }
 
 func (r *fakeSessionRepository) RotateRefreshToken(ctx context.Context, sessionID string, oldHash string, newHash string, expiresAt time.Time) error {
+	r.rotatedSessionID = sessionID
+	r.rotatedOldHash = oldHash
+	r.rotatedNewHash = newHash
 	return nil
 }
 
 func (r *fakeSessionRepository) Revoke(ctx context.Context, sessionID string, reason string, revokedAt time.Time) error {
+	r.revokedSessionID = sessionID
+	r.revokedReason = reason
 	return nil
 }
 
@@ -223,18 +307,25 @@ func (r *fakeUserRepository) UpdateLastLogin(ctx context.Context, userID string,
 }
 
 type fakeTokenService struct {
-	refreshPlain    string
-	refreshHash     string
-	accessToken     string
-	accessExpiresAt time.Time
+	refreshPlain       string
+	refreshHash        string
+	accessToken        string
+	accessExpiresAt    time.Time
+	lastAccessClaims   domainauth.AccessClaims
+	validatedClaims    *domainauth.AccessClaims
+	blacklistedTokenID string
 }
 
 func (s *fakeTokenService) GenerateAccessToken(ctx context.Context, claims domainauth.AccessClaims) (string, time.Time, error) {
+	s.lastAccessClaims = claims
 	return s.accessToken, s.accessExpiresAt, nil
 }
 
 func (s *fakeTokenService) ValidateAccessToken(ctx context.Context, token string) (*domainauth.AccessClaims, error) {
-	return nil, nil
+	if s.validatedClaims == nil {
+		return nil, errors.New("invalid token")
+	}
+	return s.validatedClaims, nil
 }
 
 func (s *fakeTokenService) GenerateRefreshToken() (plain string, hash string, err error) {
@@ -242,10 +333,14 @@ func (s *fakeTokenService) GenerateRefreshToken() (plain string, hash string, er
 }
 
 func (s *fakeTokenService) HashRefreshToken(plain string) string {
+	if plain == "old-refresh" {
+		return "old-hash"
+	}
 	return s.refreshHash
 }
 
 func (s *fakeTokenService) BlacklistAccessToken(ctx context.Context, tokenID string, ttl time.Duration) error {
+	s.blacklistedTokenID = tokenID
 	return nil
 }
 
