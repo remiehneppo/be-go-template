@@ -87,6 +87,10 @@ func (d *MongoDatabase) DeleteOne(ctx context.Context, collection string, filter
 	return nil
 }
 
+func (d *MongoDatabase) Ping(ctx context.Context) error {
+	return d.client.Ping(ctx, nil)
+}
+
 func (d *MongoDatabase) Close(ctx context.Context) error {
 	return d.client.Disconnect(ctx)
 }

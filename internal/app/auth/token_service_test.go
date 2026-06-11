@@ -229,6 +229,10 @@ func (c *memoryCache) WithLock(ctx context.Context, key string, ttl time.Duratio
 	return fn(ctx)
 }
 
+func (c *memoryCache) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (c *memoryCache) Close() error {
 	return nil
 }

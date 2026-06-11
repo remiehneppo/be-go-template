@@ -2,8 +2,10 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -11,17 +13,23 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/remihneppo/be-go-template/internal/config"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
+	"github.com/remihneppo/be-go-template/internal/domain/monitoring"
 	"github.com/remihneppo/be-go-template/internal/middleware"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
 	"github.com/remihneppo/be-go-template/internal/platform/metrics"
 	"github.com/remihneppo/be-go-template/internal/platform/ratelimit"
 )
 
+type ReadinessChecker interface {
+	Check(ctx context.Context) (monitoring.DependencyStatus, bool)
+}
+
 type RouterDependencies struct {
 	AuthService    domainauth.Service
 	HTTPMetrics    *metrics.HTTPMetrics
 	RateLimiter    ratelimit.Limiter
 	MetricsHandler gin.HandlerFunc
+	Readiness      ReadinessChecker
 }
 
 func NewRouter(cfg config.Config, log logger.Logger) *gin.Engine {
@@ -54,6 +62,7 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 	router.GET("/healthz", func(c *gin.Context) {
 		OK(c, gin.H{"status": "ok", "time": time.Now().UTC()})
 	})
+	router.GET("/readyz", readyz(deps.Readiness))
 	if cfg.Metrics.Enabled {
 		router.GET(cfg.Metrics.Path, metricsEndpoint(deps.MetricsHandler))
 	}
@@ -64,6 +73,40 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 	}
 
 	return router
+}
+
+func readyz(checker ReadinessChecker) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if checker == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"success": false,
+				"data": gin.H{
+					"status": monitoring.Unhealthy,
+					"dependencies": monitoring.DependencyStatus{
+						MongoDB: monitoring.DependencyCheck{Status: monitoring.Unhealthy, Error: "readiness checker not configured", CheckedAt: time.Now().UTC()},
+						Redis:   monitoring.DependencyCheck{Status: monitoring.Unhealthy, Error: "readiness checker not configured", CheckedAt: time.Now().UTC()},
+					},
+				},
+			})
+			return
+		}
+		dependencies, ready := checker.Check(c.Request.Context())
+		status := monitoring.Healthy
+		httpStatus := http.StatusOK
+		if !ready {
+			status = monitoring.Unhealthy
+			httpStatus = http.StatusServiceUnavailable
+		} else if dependencies.MongoDB.Status == monitoring.Degraded || dependencies.Redis.Status == monitoring.Degraded || dependencies.Redis.Status == monitoring.Unhealthy {
+			status = monitoring.Degraded
+		}
+		c.JSON(httpStatus, gin.H{
+			"success": ready,
+			"data": gin.H{
+				"status":       status,
+				"dependencies": dependencies,
+			},
+		})
+	}
 }
 
 func metricsEndpoint(handler gin.HandlerFunc) gin.HandlerFunc {

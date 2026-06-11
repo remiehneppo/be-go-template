@@ -207,6 +207,10 @@ func (d *fakeDatabase) DeleteOne(ctx context.Context, collection string, filter 
 	return nil
 }
 
+func (d *fakeDatabase) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (d *fakeDatabase) Close(ctx context.Context) error {
 	return nil
 }
@@ -260,6 +264,10 @@ func (c *fakeCache) WithLock(ctx context.Context, key string, ttl time.Duration,
 		return c.lockErr
 	}
 	return fn(ctx)
+}
+
+func (c *fakeCache) Ping(ctx context.Context) error {
+	return nil
 }
 
 func (c *fakeCache) Close() error {

@@ -123,6 +123,10 @@ func (c *RedisCache) WithLock(ctx context.Context, key string, ttl time.Duration
 	return fn(ctx)
 }
 
+func (c *RedisCache) Ping(ctx context.Context) error {
+	return c.client.Ping(ctx).Err()
+}
+
 func (c *RedisCache) Close() error {
 	return c.client.Close()
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/config"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/common"
+	"github.com/remihneppo/be-go-template/internal/domain/monitoring"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
 	platformmetrics "github.com/remihneppo/be-go-template/internal/platform/metrics"
@@ -136,6 +137,51 @@ func TestRouterMetricsEndpointUsesPrometheusFormat(t *testing.T) {
 	}
 }
 
+func TestRouterReadyzReturnsDependencyStatus(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		Readiness: &fakeReadiness{ready: true, status: monitoring.DependencyStatus{
+			MongoDB: monitoring.DependencyCheck{Status: monitoring.Healthy},
+			Redis:   monitoring.DependencyCheck{Status: monitoring.Unhealthy, Error: "redis down"},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"status":"degraded"`) || !strings.Contains(body, `"redis"`) {
+		t.Fatalf("body = %s", body)
+	}
+}
+
+func TestRouterReadyzReturns503WhenNotReady(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		Readiness: &fakeReadiness{ready: false, status: monitoring.DependencyStatus{
+			MongoDB: monitoring.DependencyCheck{Status: monitoring.Unhealthy, Error: "mongo down"},
+			Redis:   monitoring.DependencyCheck{Status: monitoring.Healthy},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"status":"unhealthy"`) {
+		t.Fatalf("body = %s", rec.Body.String())
+	}
+}
+
 func testConfig() config.Config {
 	cfg, err := config.Load()
 	if err != nil {
@@ -182,4 +228,13 @@ type fakeRouteLimiter struct {
 
 func (l *fakeRouteLimiter) Allow(ctx context.Context, key string, limit int64, window time.Duration) (ratelimit.Decision, error) {
 	return l.decision, nil
+}
+
+type fakeReadiness struct {
+	status monitoring.DependencyStatus
+	ready  bool
+}
+
+func (r *fakeReadiness) Check(ctx context.Context) (monitoring.DependencyStatus, bool) {
+	return r.status, r.ready
 }

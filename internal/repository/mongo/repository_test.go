@@ -221,6 +221,10 @@ func (d *fakeDB) DeleteOne(ctx context.Context, collection string, filter any, o
 	return nil
 }
 
+func (d *fakeDB) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (d *fakeDB) Close(ctx context.Context) error {
 	return nil
 }

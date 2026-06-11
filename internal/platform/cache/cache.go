@@ -18,5 +18,6 @@ type Cache interface {
 	Exists(ctx context.Context, key string) (bool, error)
 	Increment(ctx context.Context, key string, ttl time.Duration) (int64, error)
 	WithLock(ctx context.Context, key string, ttl time.Duration, fn func(ctx context.Context) error) error
+	Ping(ctx context.Context) error
 	Close() error
 }

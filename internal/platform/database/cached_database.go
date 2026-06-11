@@ -76,6 +76,10 @@ func (d *CachedDatabase) DeleteOne(ctx context.Context, collection string, filte
 	})
 }
 
+func (d *CachedDatabase) Ping(ctx context.Context) error {
+	return d.base.Ping(ctx)
+}
+
 func (d *CachedDatabase) Close(ctx context.Context) error {
 	if d.cache != nil {
 		if err := d.cache.Close(); err != nil {

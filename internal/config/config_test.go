@@ -28,6 +28,9 @@ func TestLoadDefaults(t *testing.T) {
 	if !cfg.Metrics.Enabled || cfg.Metrics.Path != "/metrics" {
 		t.Fatalf("Metrics = %+v", cfg.Metrics)
 	}
+	if cfg.Readiness.Timeout <= 0 || cfg.Readiness.RequiresRedis {
+		t.Fatalf("Readiness = %+v", cfg.Readiness)
+	}
 }
 
 func TestValidateRequiresLogOutput(t *testing.T) {
@@ -54,5 +57,8 @@ func TestRateLimitFallbackDefaultsToBlockInProduction(t *testing.T) {
 	}
 	if cfg.RateLimit.Fallback != "block" {
 		t.Fatalf("Fallback = %q", cfg.RateLimit.Fallback)
+	}
+	if !cfg.Readiness.RequiresRedis {
+		t.Fatal("Readiness.RequiresRedis = false")
 	}
 }

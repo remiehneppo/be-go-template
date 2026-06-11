@@ -9,5 +9,6 @@ type Database interface {
 	UpdateOne(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error
 	UpdateMany(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error
 	DeleteOne(ctx context.Context, collection string, filter any, opts WriteOptions) error
+	Ping(ctx context.Context) error
 	Close(ctx context.Context) error
 }

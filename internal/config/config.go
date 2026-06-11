@@ -18,6 +18,7 @@ type Config struct {
 	Redis     RedisConfig
 	RateLimit RateLimitConfig
 	Metrics   MetricsConfig
+	Readiness ReadinessConfig
 }
 
 type AppConfig struct {
@@ -82,6 +83,13 @@ type MetricsConfig struct {
 	Path    string
 }
 
+type ReadinessConfig struct {
+	Timeout                time.Duration
+	RequiresRedis          bool
+	MongoDegradedThreshold time.Duration
+	RedisDegradedThreshold time.Duration
+}
+
 func Load() (Config, error) {
 	cfg := Config{
 		App: AppConfig{
@@ -137,6 +145,12 @@ func Load() (Config, error) {
 		Metrics: MetricsConfig{
 			Enabled: getBool("METRICS_ENABLED", true),
 			Path:    getString("METRICS_PATH", "/metrics"),
+		},
+		Readiness: ReadinessConfig{
+			Timeout:                getDuration("READY_TIMEOUT", 2*time.Second),
+			RequiresRedis:          getBool("READY_REQUIRES_REDIS", getString("APP_ENV", "local") == "production"),
+			MongoDegradedThreshold: getDuration("MONGO_DEGRADED_THRESHOLD", 500*time.Millisecond),
+			RedisDegradedThreshold: getDuration("REDIS_DEGRADED_THRESHOLD", 200*time.Millisecond),
 		},
 	}
 
@@ -207,6 +221,15 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.Metrics.Enabled && (cfg.Metrics.Path == "" || !strings.HasPrefix(cfg.Metrics.Path, "/")) {
 		return fmt.Errorf("METRICS_PATH must start with /")
+	}
+	if cfg.Readiness.Timeout <= 0 {
+		return fmt.Errorf("READY_TIMEOUT must be positive")
+	}
+	if cfg.Readiness.MongoDegradedThreshold <= 0 {
+		return fmt.Errorf("MONGO_DEGRADED_THRESHOLD must be positive")
+	}
+	if cfg.Readiness.RedisDegradedThreshold <= 0 {
+		return fmt.Errorf("REDIS_DEGRADED_THRESHOLD must be positive")
 	}
 	return nil
 }
