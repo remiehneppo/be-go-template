@@ -9,6 +9,9 @@ type ReadOptions struct {
 	CacheKey   string
 	CacheTTL   time.Duration
 	LockOnMiss bool
+	Limit      int64
+	Offset     int64
+	Sort       any
 }
 
 type WriteOptions struct {

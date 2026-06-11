@@ -169,11 +169,12 @@ type fakeDatabase struct {
 	findOneValue  any
 	findManyValue any
 
-	findOneCalls  int
-	findManyCalls int
-	insertCalls   int
-	updateCalls   int
-	deleteCalls   int
+	findOneCalls    int
+	findManyCalls   int
+	insertCalls     int
+	updateCalls     int
+	updateManyCalls int
+	deleteCalls     int
 }
 
 func (d *fakeDatabase) FindOne(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
@@ -193,6 +194,11 @@ func (d *fakeDatabase) InsertOne(ctx context.Context, collection string, documen
 
 func (d *fakeDatabase) UpdateOne(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
 	d.updateCalls++
+	return nil
+}
+
+func (d *fakeDatabase) UpdateMany(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
+	d.updateManyCalls++
 	return nil
 }
 

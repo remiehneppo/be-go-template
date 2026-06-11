@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var ErrNotFound = errors.New("document not found")
@@ -30,7 +31,17 @@ func (d *MongoDatabase) FindOne(ctx context.Context, collection string, filter a
 }
 
 func (d *MongoDatabase) FindMany(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
-	cursor, err := d.db.Collection(collection).Find(ctx, filter)
+	findOpts := options.Find()
+	if opts.Limit > 0 {
+		findOpts.SetLimit(opts.Limit)
+	}
+	if opts.Offset > 0 {
+		findOpts.SetSkip(opts.Offset)
+	}
+	if opts.Sort != nil {
+		findOpts.SetSort(opts.Sort)
+	}
+	cursor, err := d.db.Collection(collection).Find(ctx, filter, findOpts)
 	if err != nil {
 		return err
 	}
@@ -45,6 +56,17 @@ func (d *MongoDatabase) InsertOne(ctx context.Context, collection string, docume
 
 func (d *MongoDatabase) UpdateOne(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
 	result, err := d.db.Collection(collection).UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (d *MongoDatabase) UpdateMany(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
+	result, err := d.db.Collection(collection).UpdateMany(ctx, filter, update)
 	if err != nil {
 		return err
 	}

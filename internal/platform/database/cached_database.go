@@ -64,6 +64,12 @@ func (d *CachedDatabase) UpdateOne(ctx context.Context, collection string, filte
 	})
 }
 
+func (d *CachedDatabase) UpdateMany(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
+	return d.write(ctx, opts, func() error {
+		return d.base.UpdateMany(ctx, collection, filter, update, opts)
+	})
+}
+
 func (d *CachedDatabase) DeleteOne(ctx context.Context, collection string, filter any, opts WriteOptions) error {
 	return d.write(ctx, opts, func() error {
 		return d.base.DeleteOne(ctx, collection, filter, opts)
