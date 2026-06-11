@@ -3,10 +3,12 @@ package cache
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -15,10 +17,12 @@ import (
 const defaultLockPrefix = "lock:"
 
 type RedisConfig struct {
-	Addr       string
-	Password   string
-	DB         int
-	LockPrefix string
+	Addr          string
+	Password      string
+	DB            int
+	LockPrefix    string
+	TLSEnabled    bool
+	TLSServerName string
 }
 
 type RedisCache struct {
@@ -31,11 +35,25 @@ func NewRedis(cfg RedisConfig) *RedisCache {
 	if lockPrefix == "" {
 		lockPrefix = defaultLockPrefix
 	}
-	client := redis.NewClient(&redis.Options{
+	options := &redis.Options{
 		Addr:     cfg.Addr,
 		Password: cfg.Password,
 		DB:       cfg.DB,
-	})
+	}
+	if cfg.TLSEnabled {
+		serverName := cfg.TLSServerName
+		if serverName == "" {
+			host, _, err := net.SplitHostPort(cfg.Addr)
+			if err == nil {
+				serverName = host
+			}
+		}
+		options.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			ServerName: serverName,
+		}
+	}
+	client := redis.NewClient(options)
 	return NewRedisWithClient(client, lockPrefix)
 }
 

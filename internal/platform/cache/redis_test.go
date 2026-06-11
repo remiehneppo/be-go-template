@@ -98,6 +98,18 @@ func TestRedisCacheIncrement(t *testing.T) {
 	}
 }
 
+func TestRedisCacheTLSConfigUsesServerName(t *testing.T) {
+	cache := NewRedis(RedisConfig{Addr: "redis.example.com:6380", TLSEnabled: true})
+	defer cache.Close()
+
+	if cache.client.Options().TLSConfig == nil {
+		t.Fatal("TLSConfig = nil")
+	}
+	if got := cache.client.Options().TLSConfig.ServerName; got != "redis.example.com" {
+		t.Fatalf("ServerName = %q", got)
+	}
+}
+
 func TestRedisCacheWithLockExcludesConcurrentOwner(t *testing.T) {
 	cache, cleanup := newTestCache(t)
 	defer cleanup()
