@@ -7,6 +7,7 @@ const (
 	UserID    Key = "user_id"
 	SessionID Key = "session_id"
 	TokenID   Key = "token_id"
+	Roles     Key = "roles"
 	TraceID   Key = "trace_id"
 	SpanID    Key = "span_id"
 	Logger    Key = "logger"

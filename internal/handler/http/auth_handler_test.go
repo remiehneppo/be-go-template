@@ -104,6 +104,39 @@ func TestAuthHandlerLoginRateLimitReturns429(t *testing.T) {
 	}
 }
 
+func TestAuthHandlerDevicesRequiresAccessToken(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	authService := &fakeAuthService{}
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		AuthService: authService,
+		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
+			UserID:    "u1",
+			SessionID: "s1",
+			TokenID:   "jti1",
+			Roles:     []string{"user"},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/devices", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("missing token status = %d body = %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/auth/devices", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("authorized status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if authService.listDevicesUserID != "u1" {
+		t.Fatalf("ListDevices user id = %q", authService.listDevicesUserID)
+	}
+}
+
 func TestRouterMetricsEndpointUsesPrometheusFormat(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := testConfig()
@@ -191,7 +224,8 @@ func testConfig() config.Config {
 }
 
 type fakeAuthService struct {
-	result *domainauth.AuthResult
+	result            *domainauth.AuthResult
+	listDevicesUserID string
 }
 
 func (s *fakeAuthService) Register(ctx context.Context, input domainauth.RegisterInput) (*domainauth.AuthResult, error) {
@@ -215,7 +249,8 @@ func (s *fakeAuthService) LogoutAll(ctx context.Context, userID string) error {
 }
 
 func (s *fakeAuthService) ListDevices(ctx context.Context, userID string) ([]domainauth.DeviceSession, error) {
-	return nil, nil
+	s.listDevicesUserID = userID
+	return []domainauth.DeviceSession{{SessionID: "s1", DeviceID: "d1"}}, nil
 }
 
 func (s *fakeAuthService) ListLoginHistory(ctx context.Context, userID string, pagination common.Pagination) ([]domainauth.LoginHistory, error) {
@@ -237,4 +272,32 @@ type fakeReadiness struct {
 
 func (r *fakeReadiness) Check(ctx context.Context) (monitoring.DependencyStatus, bool) {
 	return r.status, r.ready
+}
+
+type fakeHTTPTokenService struct {
+	claims *domainauth.AccessClaims
+}
+
+func (s *fakeHTTPTokenService) GenerateAccessToken(ctx context.Context, claims domainauth.AccessClaims) (string, time.Time, error) {
+	return "", time.Time{}, nil
+}
+
+func (s *fakeHTTPTokenService) ValidateAccessToken(ctx context.Context, token string) (*domainauth.AccessClaims, error) {
+	return s.claims, nil
+}
+
+func (s *fakeHTTPTokenService) GenerateRefreshToken() (plain string, hash string, err error) {
+	return "", "", nil
+}
+
+func (s *fakeHTTPTokenService) HashRefreshToken(plain string) string {
+	return ""
+}
+
+func (s *fakeHTTPTokenService) BlacklistAccessToken(ctx context.Context, tokenID string, ttl time.Duration) error {
+	return nil
+}
+
+func (s *fakeHTTPTokenService) IsAccessTokenBlacklisted(ctx context.Context, tokenID string) (bool, error) {
+	return false, nil
 }

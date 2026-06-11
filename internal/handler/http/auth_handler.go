@@ -18,9 +18,10 @@ type AuthHandler struct {
 }
 
 type AuthRouteMiddleware struct {
-	Register []gin.HandlerFunc
-	Login    []gin.HandlerFunc
-	Refresh  []gin.HandlerFunc
+	Register  []gin.HandlerFunc
+	Login     []gin.HandlerFunc
+	Refresh   []gin.HandlerFunc
+	Protected []gin.HandlerFunc
 }
 
 type AuthHandlerOption func(*AuthHandler)
@@ -44,10 +45,10 @@ func (h *AuthHandler) RegisterRoutes(group *gin.RouterGroup) {
 	auth.POST("/register", appendHandlers(h.middleware.Register, h.Register)...)
 	auth.POST("/login", appendHandlers(h.middleware.Login, h.Login)...)
 	auth.POST("/refresh", appendHandlers(h.middleware.Refresh, h.Refresh)...)
-	auth.POST("/logout", h.Logout)
-	auth.POST("/logout-all", h.LogoutAll)
-	auth.GET("/devices", h.ListDevices)
-	auth.GET("/login-history", h.ListLoginHistory)
+	auth.POST("/logout", appendHandlers(h.middleware.Protected, h.Logout)...)
+	auth.POST("/logout-all", appendHandlers(h.middleware.Protected, h.LogoutAll)...)
+	auth.GET("/devices", appendHandlers(h.middleware.Protected, h.ListDevices)...)
+	auth.GET("/login-history", appendHandlers(h.middleware.Protected, h.ListLoginHistory)...)
 }
 
 func appendHandlers(middleware []gin.HandlerFunc, final gin.HandlerFunc) []gin.HandlerFunc {
