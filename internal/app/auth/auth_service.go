@@ -3,10 +3,12 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
@@ -410,22 +412,25 @@ func rolesToStrings(roles []user.Role) []string {
 
 func newID() string {
 	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		panic(err)
+	if _, err := readRand(b[:]); err == nil {
+		b[6] = (b[6] & 0x0f) | 0x40
+		b[8] = (b[8] & 0x3f) | 0x80
+		buf := make([]byte, 36)
+		hex.Encode(buf[0:8], b[0:4])
+		buf[8] = '-'
+		hex.Encode(buf[9:13], b[4:6])
+		buf[13] = '-'
+		hex.Encode(buf[14:18], b[6:8])
+		buf[18] = '-'
+		hex.Encode(buf[19:23], b[8:10])
+		buf[23] = '-'
+		hex.Encode(buf[24:36], b[10:16])
+		return string(buf)
 	}
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	buf := make([]byte, 36)
-	hex.Encode(buf[0:8], b[0:4])
-	buf[8] = '-'
-	hex.Encode(buf[9:13], b[4:6])
-	buf[13] = '-'
-	hex.Encode(buf[14:18], b[6:8])
-	buf[18] = '-'
-	hex.Encode(buf[19:23], b[8:10])
-	buf[23] = '-'
-	hex.Encode(buf[24:36], b[10:16])
-	return string(buf)
+	seq := atomic.AddUint64(&idSequence, 1)
+	binary.LittleEndian.PutUint64(b[:8], uint64(time.Now().UTC().UnixNano()))
+	binary.LittleEndian.PutUint64(b[8:], seq)
+	return hex.EncodeToString(b[:])
 }
 
 func notImplemented(op string) error {
@@ -433,3 +438,8 @@ func notImplemented(op string) error {
 }
 
 var _ domainauth.Service = (*Service)(nil)
+
+var (
+	readRand   = rand.Read
+	idSequence uint64
+)

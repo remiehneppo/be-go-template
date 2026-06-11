@@ -12,6 +12,19 @@ import (
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 )
 
+func TestNewIDFallsBackWithoutPanic(t *testing.T) {
+	originalReadRand := readRand
+	defer func() { readRand = originalReadRand }()
+	readRand = func(b []byte) (int, error) {
+		return 0, errors.New("entropy unavailable")
+	}
+
+	value := newID()
+	if value == "" {
+		t.Fatal("newID() returned empty string")
+	}
+}
+
 func TestServiceRegisterCreatesUserSessionAndTokens(t *testing.T) {
 	users := &fakeUserRepository{findErr: database.ErrNotFound}
 	sessions := &fakeSessionRepository{}
