@@ -68,6 +68,10 @@ Login failures are tracked as consecutive failed attempts on the user document.
 - A successful login resets `failed_login_attempts` and clears `locked_until`.
 - Repository updates invalidate both `user:id:{id}` and `user:email:{email}` cache keys so auth decisions do not read stale lockout state.
 
+## User profile cache validation
+
+`GET /v1/users/me` returns an `ETag` header based on the safe response payload. A matching `If-None-Match` returns `304 Not Modified`.
+
 ## Logging contract
 
 - Enable terminal logs with `LOG_TO_TERMINAL=true`.

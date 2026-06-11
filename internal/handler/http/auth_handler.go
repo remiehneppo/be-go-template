@@ -183,17 +183,21 @@ func authResultResponseFromDomain(result *domainauth.AuthResult) authResultRespo
 		return authResultResponse{}
 	}
 	return authResultResponse{
-		User: userResponse{
-			ID:    result.User.ID,
-			Email: result.User.Email,
-			Name:  result.User.Name,
-			Roles: result.User.Roles,
-		},
+		User:                  userResponseFromDomain(result.User),
 		SessionID:             result.SessionID,
 		AccessToken:           result.AccessToken,
 		AccessTokenExpiresAt:  result.AccessTokenExpiresAt.Format(timeFormat),
 		RefreshToken:          result.RefreshToken,
 		RefreshTokenExpiresAt: result.RefreshTokenExpiresAt.Format(timeFormat),
+	}
+}
+
+func userResponseFromDomain(usr user.User) userResponse {
+	return userResponse{
+		ID:    usr.ID,
+		Email: usr.Email,
+		Name:  usr.Name,
+		Roles: usr.Roles,
 	}
 }
 

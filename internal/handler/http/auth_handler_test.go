@@ -172,6 +172,45 @@ func TestAuthHandlerDevicesReturnsNotModifiedForMatchingETag(t *testing.T) {
 	}
 }
 
+func TestUserMeReturnsProfileWithETag(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	userService := &fakeUserService{user: &user.User{ID: "u1", Email: "user@example.com", Name: "User", Roles: []user.Role{user.RoleUser}}}
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		UserService: userService,
+		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
+			UserID:    "u1",
+			SessionID: "s1",
+			TokenID:   "jti1",
+			Roles:     []string{"user"},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/users/me", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	etag := rec.Header().Get("ETag")
+
+	if rec.Code != http.StatusOK || etag == "" {
+		t.Fatalf("status = %d etag = %q body = %s", rec.Code, etag, rec.Body.String())
+	}
+	if userService.userID != "u1" {
+		t.Fatalf("GetMe user id = %q", userService.userID)
+	}
+	if strings.Contains(rec.Body.String(), "password_hash") {
+		t.Fatalf("response leaked password field: %s", rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/users/me", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	req.Header.Set("If-None-Match", etag)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotModified {
+		t.Fatalf("second status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestRouterMetricsEndpointUsesPrometheusFormat(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := testConfig()
@@ -351,6 +390,16 @@ type fakeRouteLimiter struct {
 
 func (l *fakeRouteLimiter) Allow(ctx context.Context, key string, limit int64, window time.Duration) (ratelimit.Decision, error) {
 	return l.decision, nil
+}
+
+type fakeUserService struct {
+	user   *user.User
+	userID string
+}
+
+func (s *fakeUserService) GetMe(ctx context.Context, userID string) (*user.User, error) {
+	s.userID = userID
+	return s.user, nil
 }
 
 type fakeReadiness struct {

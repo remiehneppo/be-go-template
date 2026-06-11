@@ -147,6 +147,7 @@ Public:
 
 Authenticated:
 
+- `GET /v1/users/me`
 - `POST /v1/auth/logout`
 - `POST /v1/auth/logout-all`
 - `GET /v1/auth/devices`

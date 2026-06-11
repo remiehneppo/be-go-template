@@ -28,7 +28,7 @@ The template now has the main runtime skeleton wired end-to-end:
 - Domain interfaces for auth, user, monitoring, and shared pagination/validation.
 - Mongo repositories for users, sessions, login history, audit logs, revoked tokens, error events, and monitoring stats.
 - JWT access token service with key id rotation and refresh-token support.
-- Auth register/login/refresh/logout/logout-all, device list, login history, and account lockout on repeated failed login.
+- Auth register/login/refresh/logout/logout-all, device list, login history, `/v1/users/me`, and account lockout on repeated failed login.
 - Redis-backed token blacklist with MongoDB fallback.
 - Auth rate limiting with explicit fallback behavior.
 - Prometheus HTTP metrics.

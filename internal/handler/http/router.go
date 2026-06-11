@@ -14,6 +14,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/config"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/monitoring"
+	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/middleware"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
 	"github.com/remihneppo/be-go-template/internal/platform/metrics"
@@ -26,6 +27,7 @@ type ReadinessChecker interface {
 
 type RouterDependencies struct {
 	AuthService    domainauth.Service
+	UserService    user.Service
 	TokenService   domainauth.TokenService
 	Monitoring     monitoring.Service
 	ErrorEvents    middleware.ErrorEventReporter
@@ -73,6 +75,9 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 	v1 := router.Group("/v1")
 	if deps.AuthService != nil {
 		NewAuthHandler(deps.AuthService, WithAuthRouteMiddleware(authRouteMiddleware(cfg, deps.RateLimiter, deps.TokenService))).RegisterRoutes(v1)
+	}
+	if deps.UserService != nil {
+		NewUserHandler(deps.UserService).RegisterRoutes(v1, middleware.Authenticate(deps.TokenService))
 	}
 	if deps.Monitoring != nil {
 		admin := v1.Group("/admin", middleware.Authenticate(deps.TokenService), middleware.AdminGuard())

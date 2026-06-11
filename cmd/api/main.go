@@ -12,6 +12,7 @@ import (
 	appauth "github.com/remihneppo/be-go-template/internal/app/auth"
 	appmonitoring "github.com/remihneppo/be-go-template/internal/app/monitoring"
 	appoutbox "github.com/remihneppo/be-go-template/internal/app/outbox"
+	appuser "github.com/remihneppo/be-go-template/internal/app/user"
 	"github.com/remihneppo/be-go-template/internal/bootstrap"
 	"github.com/remihneppo/be-go-template/internal/config"
 	httpserver "github.com/remihneppo/be-go-template/internal/handler/http"
@@ -131,6 +132,7 @@ func run() error {
 		LockoutMaxFailures: cfg.Auth.LockoutMaxFailures,
 		LockoutDuration:    cfg.Auth.LockoutDuration,
 	})
+	userService := appuser.NewService(userRepo)
 	readiness := health.NewReadinessChecker(db, redisCache, health.ReadinessConfig{
 		Timeout:                cfg.Readiness.Timeout,
 		RequiresRedis:          cfg.Readiness.RequiresRedis,
@@ -148,6 +150,7 @@ func run() error {
 	})
 	router := httpserver.NewRouterWithDependencies(cfg, log, httpserver.RouterDependencies{
 		AuthService:  authService,
+		UserService:  userService,
 		TokenService: tokenService,
 		Monitoring:   monitoringService,
 		ErrorEvents:  errorEventRepo,
