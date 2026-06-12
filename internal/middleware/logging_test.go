@@ -1,8 +1,13 @@
 package middleware
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -56,6 +61,80 @@ func TestLoggingMiddlewareUsesContextLoggerFields(t *testing.T) {
 	}
 	if !capture.hasKey("latency_ms") {
 		t.Fatalf("latency fields = %+v", capture.infoFields)
+	}
+}
+
+func TestLoggingMiddlewareWritesAccessLogToTerminalAndFile(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "app.log")
+	stdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() error = %v", err)
+	}
+	os.Stdout = w
+	defer func() {
+		os.Stdout = stdout
+	}()
+
+	log, closeFn, err := logger.New(logger.Config{
+		Level:      "info",
+		Format:     "json",
+		FilePath:   filePath,
+		ToTerminal: true,
+		ToFile:     true,
+		MaxSizeMB:  1,
+		MaxBackups: 1,
+		MaxAgeDays: 1,
+		Compress:   false,
+	})
+	if err != nil {
+		t.Fatalf("logger.New() error = %v", err)
+	}
+
+	router := gin.New()
+	router.Use(RequestID(log))
+	router.Use(Logging(log))
+	router.GET("/ping", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/ping?debug=true", nil)
+	req.Header.Set("X-Request-ID", "req-123")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("stdout close error = %v", err)
+	}
+	stdoutBytes, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("stdout read error = %v", err)
+	}
+	if err := closeFn(); err != nil {
+		t.Fatalf("logger close error = %v", err)
+	}
+	fileBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	for _, output := range []struct {
+		name string
+		data []byte
+	}{
+		{name: "stdout", data: stdoutBytes},
+		{name: "file", data: fileBytes},
+	} {
+		if !bytes.Contains(output.data, []byte(`"msg":"http request"`)) || !bytes.Contains(output.data, []byte(`"request_id":"req-123"`)) || !bytes.Contains(output.data, []byte(`"path":"/ping"`)) {
+			t.Fatalf("%s output = %s", output.name, string(output.data))
+		}
+	}
+	if !strings.Contains(string(stdoutBytes), `"query":"debug=true"`) {
+		t.Fatalf("stdout output = %s", string(stdoutBytes))
 	}
 }
 

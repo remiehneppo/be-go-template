@@ -747,8 +747,8 @@ Checklist:
 - [x] End-to-end register -> login -> me -> refresh -> logout -> me fails.
 - [x] Logout all invalidates multiple sessions.
 - [ ] Cache key invalidates after user/session update.
-- [ ] Request writes access log to terminal/file path.
-- [ ] 5xx test path writes error log and error event with request id.
+- [x] Request writes access log to terminal/file path.
+- [x] 5xx test path writes error log and error event with request id.
 - [ ] Monitoring auth stats reflect login/logout activity.
 - [x] Prometheus metrics include HTTP request counters/duration after traffic.
 - [ ] Transaction-capable environment handles register/login multi-write consistently.
@@ -840,8 +840,8 @@ Checklist:
 - [ ] Handler không chứa business logic.
 - [ ] Database/cache có thể mock trong unit test.
 - [ ] Cache coordination nằm dưới database abstraction, không nằm trong repository.
-- [ ] Log được ghi ra terminal.
-- [ ] Log được ghi ra file theo config.
+- [x] Log được ghi ra terminal.
+- [x] Log được ghi ra file theo config.
 - [ ] Mọi response lỗi có error code và request id.
 - [ ] Panic được recovery, log stack/cause, và trả response an toàn.
 - [x] Monitoring endpoints cung cấp system status, dependency status, runtime metrics, auth stats, recent errors, audit logs.

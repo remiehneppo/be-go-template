@@ -1,9 +1,13 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -217,6 +221,80 @@ func TestErrorHandlerAppendsErrorEvent(t *testing.T) {
 	event := reporter.events[0]
 	if event.RequestID != "req-1" || event.ErrorCode != string(apperrors.CodeConflict) || event.Path != "/boom" || event.Method != http.MethodGet {
 		t.Fatalf("event = %+v", event)
+	}
+}
+
+func TestErrorHandlerWritesServerErrorLogAndEventToTerminalAndFile(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "app.log")
+	stdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() error = %v", err)
+	}
+	os.Stdout = w
+	defer func() {
+		os.Stdout = stdout
+	}()
+
+	log, closeFn, err := logger.New(logger.Config{
+		Level:      "info",
+		Format:     "json",
+		FilePath:   filePath,
+		ToTerminal: true,
+		ToFile:     true,
+		MaxSizeMB:  1,
+		MaxBackups: 1,
+		MaxAgeDays: 1,
+		Compress:   false,
+	})
+	if err != nil {
+		t.Fatalf("logger.New() error = %v", err)
+	}
+	reporter := &fakeErrorReporter{}
+	router := gin.New()
+	router.Use(RequestID(log))
+	router.Use(ErrorHandler(log, reporter))
+	router.GET("/boom", func(c *gin.Context) {
+		ignoreError(c.Error(apperrors.New(apperrors.CodeInternal, "Internal server error", http.StatusInternalServerError)))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/boom", nil)
+	req.Header.Set("X-Request-ID", "req-1")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if len(reporter.events) != 1 || reporter.events[0].RequestID != "req-1" {
+		t.Fatalf("events = %+v", reporter.events)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("stdout close error = %v", err)
+	}
+	stdoutBytes, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("stdout read error = %v", err)
+	}
+	if err := closeFn(); err != nil {
+		t.Fatalf("logger close error = %v", err)
+	}
+	fileBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	for _, output := range []struct {
+		name string
+		data []byte
+	}{
+		{name: "stdout", data: stdoutBytes},
+		{name: "file", data: fileBytes},
+	} {
+		if !bytes.Contains(output.data, []byte(`"msg":"request failed"`)) || !bytes.Contains(output.data, []byte(`"request_id":"req-1"`)) || !bytes.Contains(output.data, []byte(`"error_code":"INTERNAL_ERROR"`)) {
+			t.Fatalf("%s output = %s", output.name, string(output.data))
+		}
 	}
 }
 
