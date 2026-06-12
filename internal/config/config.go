@@ -93,9 +93,10 @@ type RateLimitConfig struct {
 }
 
 type AuthConfig struct {
-	LockoutMaxFailures int
-	LockoutDuration    time.Duration
-	BcryptCost         int
+	LockoutMaxFailures     int
+	LockoutDuration        time.Duration
+	BcryptCost             int
+	RefreshIPAnomalyAction string
 }
 
 type MonitoringConfig struct {
@@ -189,9 +190,10 @@ func Load() (Config, error) {
 			Fallback:          strings.ToLower(getString("RATE_LIMIT_FALLBACK", rateLimitFallbackDefault(getString("APP_ENV", "local")))),
 		},
 		Auth: AuthConfig{
-			LockoutMaxFailures: int(getInt64("AUTH_LOCKOUT_MAX_FAILURES", 5)),
-			LockoutDuration:    getDuration("AUTH_LOCKOUT_DURATION", 15*time.Minute),
-			BcryptCost:         int(getInt64("BCRYPT_COST", int64(bcrypt.DefaultCost))),
+			LockoutMaxFailures:     int(getInt64("AUTH_LOCKOUT_MAX_FAILURES", 5)),
+			LockoutDuration:        getDuration("AUTH_LOCKOUT_DURATION", 15*time.Minute),
+			BcryptCost:             int(getInt64("BCRYPT_COST", int64(bcrypt.DefaultCost))),
+			RefreshIPAnomalyAction: strings.ToLower(getString("AUTH_REFRESH_IP_ANOMALY_ACTION", "audit")),
 		},
 		Monitoring: MonitoringConfig{
 			Enabled:                getBool("MONITORING_ENABLED", true),
@@ -346,6 +348,11 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.Auth.BcryptCost < bcrypt.MinCost || cfg.Auth.BcryptCost > bcrypt.MaxCost {
 		return fmt.Errorf("BCRYPT_COST must be between %d and %d", bcrypt.MinCost, bcrypt.MaxCost)
+	}
+	switch cfg.Auth.RefreshIPAnomalyAction {
+	case "audit", "revoke":
+	default:
+		return fmt.Errorf("AUTH_REFRESH_IP_ANOMALY_ACTION must be audit or revoke")
 	}
 	if len(cfg.Monitoring.AdminRoles) == 0 {
 		return fmt.Errorf("MONITORING_ADMIN_ROLES must not be empty")

@@ -664,8 +664,8 @@ Checklist:
 - [x] Production startup fail nếu CORS origin không explicit.
 - [x] Request body size limit mặc định 1MB cho auth/admin endpoints, có thể cấu hình.
 - [x] HTTP/server timeout và per-route timeout được cấu hình để tránh request treo vô hạn.
-- [ ] Refresh token binding: session lưu IP/UserAgent/DeviceID để audit; DeviceID không dùng làm security lookup.
-- [ ] Optional IP anomaly policy: nếu refresh từ IP khác bất thường, log warning/audit hoặc revoke theo config, mặc định chỉ audit để tránh false positive mobile network.
+- [x] Refresh token binding: session lưu IP/UserAgent/DeviceID để audit; DeviceID không dùng làm security lookup.
+- [x] Optional IP anomaly policy: nếu refresh từ IP khác bất thường, log warning/audit hoặc revoke theo config, mặc định chỉ audit để tránh false positive mobile network.
 - [ ] Account lockout policy: sau N lần login fail trong T phút thì tạm khóa bằng Redis hoặc `LockedUntil`; nếu chưa implement captcha, ghi rõ trong README.
 - [ ] Monitoring endpoints nằm sau auth và admin guard.
 - [ ] Admin guard kiểm tra role `admin`; user thường không truy cập được `/v1/admin/*`.
@@ -775,7 +775,7 @@ Checklist:
 - [ ] Ghi Prometheus `/metrics` setup và ví dụ scrape config.
 - [ ] Ghi Mongo transaction requirement nếu muốn atomic multi-document writes.
 - [ ] Ghi quy ước `FindMany` cache explicit-only và trách nhiệm `InvalidateKeys`.
-- [ ] Ghi DeviceID trust model.
+- [x] Ghi DeviceID trust model.
 - [ ] Ghi JWT `kid` rotation process.
 - [ ] Ghi outbox behavior và at-least-once semantics.
 - [ ] Ghi revoked token Redis + Mongo fallback.
@@ -787,8 +787,8 @@ Checklist:
 - [ ] Ghi seed admin user bằng `cmd/seed`.
 - [ ] Ghi migration/backfill/index strategy bằng `cmd/migrate`.
 - [x] Ghi JWT key format `<key-id>/<base64-secret>` và previous key `NotAfter`.
-- [ ] Ghi refresh token binding là audit/anomaly signal, không phải security lookup chính.
-- [ ] Ghi account lockout policy hoặc lý do intentionally scoped out.
+- [x] Ghi refresh token binding là audit/anomaly signal, không phải security lookup chính.
+- [x] Ghi account lockout policy hoặc lý do intentionally scoped out.
 
 ## 16. Thứ tự implement đề xuất
 

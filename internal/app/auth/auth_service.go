@@ -21,32 +21,34 @@ import (
 )
 
 type ServiceDependencies struct {
-	Users              user.Repository
-	Sessions           domainauth.SessionRepository
-	LoginHistory       domainauth.LoginHistoryRepository
-	AuditLogs          domainauth.AuditLogRepository
-	RevokedTokens      domainauth.RevokedTokenRepository
-	Tokens             domainauth.TokenService
-	Passwords          PasswordHasher
-	Metrics            *platformmetrics.AuthMetrics
-	RefreshTTL         time.Duration
-	LockoutMaxFailures int
-	LockoutDuration    time.Duration
+	Users                  user.Repository
+	Sessions               domainauth.SessionRepository
+	LoginHistory           domainauth.LoginHistoryRepository
+	AuditLogs              domainauth.AuditLogRepository
+	RevokedTokens          domainauth.RevokedTokenRepository
+	Tokens                 domainauth.TokenService
+	Passwords              PasswordHasher
+	Metrics                *platformmetrics.AuthMetrics
+	RefreshTTL             time.Duration
+	LockoutMaxFailures     int
+	LockoutDuration        time.Duration
+	RefreshIPAnomalyAction string
 }
 
 type Service struct {
-	users              user.Repository
-	sessions           domainauth.SessionRepository
-	loginHistory       domainauth.LoginHistoryRepository
-	auditLogs          domainauth.AuditLogRepository
-	revokedTokens      domainauth.RevokedTokenRepository
-	tokens             domainauth.TokenService
-	passwords          PasswordHasher
-	metrics            *platformmetrics.AuthMetrics
-	refreshTTL         time.Duration
-	lockoutMaxFailures int
-	lockoutDuration    time.Duration
-	now                func() time.Time
+	users                  user.Repository
+	sessions               domainauth.SessionRepository
+	loginHistory           domainauth.LoginHistoryRepository
+	auditLogs              domainauth.AuditLogRepository
+	revokedTokens          domainauth.RevokedTokenRepository
+	tokens                 domainauth.TokenService
+	passwords              PasswordHasher
+	metrics                *platformmetrics.AuthMetrics
+	refreshTTL             time.Duration
+	lockoutMaxFailures     int
+	lockoutDuration        time.Duration
+	refreshIPAnomalyAction string
+	now                    func() time.Time
 }
 
 func NewService(deps ServiceDependencies) *Service {
@@ -62,19 +64,24 @@ func NewService(deps ServiceDependencies) *Service {
 	if lockoutDuration <= 0 {
 		lockoutDuration = 15 * time.Minute
 	}
+	refreshIPAnomalyAction := strings.ToLower(strings.TrimSpace(deps.RefreshIPAnomalyAction))
+	if refreshIPAnomalyAction == "" {
+		refreshIPAnomalyAction = "audit"
+	}
 	return &Service{
-		users:              deps.Users,
-		sessions:           deps.Sessions,
-		loginHistory:       deps.LoginHistory,
-		auditLogs:          deps.AuditLogs,
-		revokedTokens:      deps.RevokedTokens,
-		tokens:             deps.Tokens,
-		passwords:          passwords,
-		metrics:            deps.Metrics,
-		refreshTTL:         refreshTTL,
-		lockoutMaxFailures: deps.LockoutMaxFailures,
-		lockoutDuration:    lockoutDuration,
-		now:                func() time.Time { return time.Now().UTC() },
+		users:                  deps.Users,
+		sessions:               deps.Sessions,
+		loginHistory:           deps.LoginHistory,
+		auditLogs:              deps.AuditLogs,
+		revokedTokens:          deps.RevokedTokens,
+		tokens:                 deps.Tokens,
+		passwords:              passwords,
+		metrics:                deps.Metrics,
+		refreshTTL:             refreshTTL,
+		lockoutMaxFailures:     deps.LockoutMaxFailures,
+		lockoutDuration:        lockoutDuration,
+		refreshIPAnomalyAction: refreshIPAnomalyAction,
+		now:                    func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -188,6 +195,32 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 		s.recordRefresh(false)
 		logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "account_unavailable"), logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
 		return nil, apperrors.New(apperrors.CodeForbidden, "Account is not available", http.StatusForbidden)
+	}
+	if refreshIPAnomalyReason(session.IP, meta.IP) != "" {
+		fields := []logger.Field{
+			logger.String("user_id", usr.ID),
+			logger.String("session_id", session.ID),
+			logger.String("session_ip", session.IP),
+			logger.String("request_ip", strings.TrimSpace(meta.IP)),
+			logger.String("action", s.refreshIPAnomalyAction),
+			logger.String("user_agent", meta.UserAgent),
+			logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)),
+		}
+		logAuthWarn(ctx, "auth refresh ip anomaly", fields...)
+		s.appendAuditLog(ctx, auditEvent("auth.refresh_ip_anomaly", usr.ID, "session", session.ID, meta, map[string]string{
+			"session_ip": session.IP,
+			"request_ip": strings.TrimSpace(meta.IP),
+			"action":     s.refreshIPAnomalyAction,
+		}))
+		if s.refreshIPAnomalyAction == "revoke" {
+			if session.TokenFamilyID != "" {
+				ignoreError(s.sessions.RevokeByTokenFamilyID(ctx, session.TokenFamilyID, "refresh_ip_anomaly", s.now()))
+			} else {
+				ignoreError(s.sessions.Revoke(ctx, session.ID, "refresh_ip_anomaly", s.now()))
+			}
+			s.recordRefresh(false)
+			return nil, invalidRefreshToken()
+		}
 	}
 	newRefreshPlain, newRefreshHash, err := s.tokens.GenerateRefreshToken()
 	if err != nil {
@@ -440,6 +473,15 @@ func resultDeviceID(deviceID string) string {
 		return normalized
 	}
 	return newID()
+}
+
+func refreshIPAnomalyReason(sessionIP string, requestIP string) string {
+	sessionIP = strings.TrimSpace(sessionIP)
+	requestIP = strings.TrimSpace(requestIP)
+	if sessionIP == "" || requestIP == "" || sessionIP == requestIP {
+		return ""
+	}
+	return "ip_changed"
 }
 
 func rolesToStrings(roles []user.Role) []string {

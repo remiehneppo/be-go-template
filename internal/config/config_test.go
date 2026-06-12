@@ -61,6 +61,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Auth.BcryptCost != bcrypt.DefaultCost {
 		t.Fatalf("Auth.BcryptCost = %d", cfg.Auth.BcryptCost)
 	}
+	if cfg.Auth.RefreshIPAnomalyAction != "audit" {
+		t.Fatalf("Auth.RefreshIPAnomalyAction = %q", cfg.Auth.RefreshIPAnomalyAction)
+	}
 	if !cfg.Errors.IncludeStack {
 		t.Fatal("Errors.IncludeStack = false")
 	}
@@ -269,6 +272,30 @@ func TestLoadSupportsRateLimitConfig(t *testing.T) {
 	}
 	if cfg.RateLimit.Fallback != "block" {
 		t.Fatalf("RateLimit.Fallback = %q", cfg.RateLimit.Fallback)
+	}
+}
+
+func TestLoadSupportsRefreshIPAnomalyConfig(t *testing.T) {
+	t.Setenv("AUTH_REFRESH_IP_ANOMALY_ACTION", "revoke")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Auth.RefreshIPAnomalyAction != "revoke" {
+		t.Fatalf("Auth.RefreshIPAnomalyAction = %q", cfg.Auth.RefreshIPAnomalyAction)
+	}
+}
+
+func TestValidateRejectsInvalidRefreshIPAnomalyAction(t *testing.T) {
+	t.Setenv("AUTH_REFRESH_IP_ANOMALY_ACTION", "invalid")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if got, want := err.Error(), "AUTH_REFRESH_IP_ANOMALY_ACTION must be audit or revoke"; got != want {
+		t.Fatalf("Load() error = %q, want %q", got, want)
 	}
 }
 

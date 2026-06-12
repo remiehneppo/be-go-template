@@ -77,6 +77,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `AUTH_LOCKOUT_MAX_FAILURES` | `5` |
 | `AUTH_LOCKOUT_DURATION` | `15m` |
 | `BCRYPT_COST` | `10` |
+| `AUTH_REFRESH_IP_ANOMALY_ACTION` | `audit` |
 | `MONITORING_ENABLED` | `true` |
 | `MONITORING_ADMIN_ROLES` | `admin` |
 | `METRICS_COLLECT_INTERVAL` | `30s` |

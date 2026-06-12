@@ -151,17 +151,18 @@ func run() error {
 		return fmt.Errorf("init token service: %w", err)
 	}
 	authService := appauth.NewService(appauth.ServiceDependencies{
-		Users:              userRepo,
-		Sessions:           sessionRepo,
-		LoginHistory:       loginHistoryRepo,
-		AuditLogs:          auditLogRepo,
-		RevokedTokens:      revokedTokenRepo,
-		Tokens:             tokenService,
-		Passwords:          appauth.BcryptHasher{Cost: cfg.Auth.BcryptCost},
-		Metrics:            authMetrics,
-		RefreshTTL:         cfg.JWT.RefreshTTL,
-		LockoutMaxFailures: cfg.Auth.LockoutMaxFailures,
-		LockoutDuration:    cfg.Auth.LockoutDuration,
+		Users:                  userRepo,
+		Sessions:               sessionRepo,
+		LoginHistory:           loginHistoryRepo,
+		AuditLogs:              auditLogRepo,
+		RevokedTokens:          revokedTokenRepo,
+		Tokens:                 tokenService,
+		Passwords:              appauth.BcryptHasher{Cost: cfg.Auth.BcryptCost},
+		Metrics:                authMetrics,
+		RefreshTTL:             cfg.JWT.RefreshTTL,
+		LockoutMaxFailures:     cfg.Auth.LockoutMaxFailures,
+		LockoutDuration:        cfg.Auth.LockoutDuration,
+		RefreshIPAnomalyAction: cfg.Auth.RefreshIPAnomalyAction,
 	})
 	userService := appuser.NewService(userRepo)
 	readiness := health.NewReadinessChecker(db, redisCache, health.ReadinessConfig{

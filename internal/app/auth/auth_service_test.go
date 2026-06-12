@@ -285,6 +285,92 @@ func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
 	}
 }
 
+func TestServiceRefreshAuditsIPAddressAnomalyByDefault(t *testing.T) {
+	expiresAt := time.Unix(1000, 0).UTC()
+	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", Roles: []user.Role{user.RoleUser}, Status: user.StatusActive}}
+	sessions := &fakeSessionRepository{
+		byRefreshHash: &domainauth.Session{
+			ID:                    "s1",
+			UserID:                "u1",
+			RefreshTokenHash:      "old-hash",
+			RefreshTokenExpiresAt: expiresAt,
+			TokenFamilyID:         "family1",
+			IP:                    "10.0.0.1",
+		},
+	}
+	audit := &fakeAuditLogRepository{}
+	capture := newAuthCaptureLogger()
+	tokens := &fakeTokenService{refreshPlain: "new-refresh", refreshHash: "new-hash", accessToken: "new-access", accessExpiresAt: time.Unix(200, 0)}
+	service := NewService(ServiceDependencies{
+		Users:      users,
+		Sessions:   sessions,
+		AuditLogs:  audit,
+		Tokens:     tokens,
+		Passwords:  fakePasswordHasher{},
+		RefreshTTL: time.Hour,
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	ctx := logger.WithContext(context.Background(), capture)
+	result, err := service.Refresh(ctx, "old-refresh", domainauth.RequestMeta{IP: "10.0.0.2", UserAgent: "ua", DeviceID: "550e8400-e29b-41d4-a716-446655440000"})
+	if err != nil {
+		t.Fatalf("Refresh() error = %v", err)
+	}
+	if result.RefreshToken != "new-refresh" || sessions.rotatedSessionID != "s1" {
+		t.Fatalf("result/rotation = %+v %q", result, sessions.rotatedSessionID)
+	}
+	if len(audit.events) < 2 || audit.events[0].Action != "auth.refresh_ip_anomaly" || audit.events[1].Action != "auth.refresh" {
+		t.Fatalf("audit = %+v", audit.events)
+	}
+	if !capture.hasEntry("warn", "auth refresh ip anomaly") || !capture.hasField("action", "audit") {
+		t.Fatalf("logger entries = %+v", capture.entries)
+	}
+}
+
+func TestServiceRefreshRevokesOnIPAddressAnomalyWhenConfigured(t *testing.T) {
+	expiresAt := time.Unix(1000, 0).UTC()
+	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", Roles: []user.Role{user.RoleUser}, Status: user.StatusActive}}
+	sessions := &fakeSessionRepository{
+		byRefreshHash: &domainauth.Session{
+			ID:                    "s1",
+			UserID:                "u1",
+			RefreshTokenHash:      "old-hash",
+			RefreshTokenExpiresAt: expiresAt,
+			TokenFamilyID:         "family1",
+			IP:                    "10.0.0.1",
+		},
+	}
+	audit := &fakeAuditLogRepository{}
+	capture := newAuthCaptureLogger()
+	service := NewService(ServiceDependencies{
+		Users:                  users,
+		Sessions:               sessions,
+		AuditLogs:              audit,
+		Tokens:                 &fakeTokenService{refreshPlain: "new-refresh", refreshHash: "new-hash", accessToken: "new-access", accessExpiresAt: time.Unix(200, 0)},
+		Passwords:              fakePasswordHasher{},
+		RefreshTTL:             time.Hour,
+		RefreshIPAnomalyAction: "revoke",
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	ctx := logger.WithContext(context.Background(), capture)
+	if _, err := service.Refresh(ctx, "old-refresh", domainauth.RequestMeta{IP: "10.0.0.2", UserAgent: "ua", DeviceID: "550e8400-e29b-41d4-a716-446655440000"}); err == nil {
+		t.Fatal("Refresh() error = nil")
+	}
+	if sessions.revokedFamilyID != "family1" || sessions.revokedReason != "refresh_ip_anomaly" {
+		t.Fatalf("revocation = %q %q", sessions.revokedFamilyID, sessions.revokedReason)
+	}
+	if sessions.rotatedSessionID != "" {
+		t.Fatalf("rotation should not happen, got %q", sessions.rotatedSessionID)
+	}
+	if len(audit.events) != 1 || audit.events[0].Action != "auth.refresh_ip_anomaly" {
+		t.Fatalf("audit = %+v", audit.events)
+	}
+	if !capture.hasEntry("warn", "auth refresh ip anomaly") || !capture.hasField("action", "revoke") {
+		t.Fatalf("logger entries = %+v", capture.entries)
+	}
+}
+
 func TestServiceRefreshRejectsInvalidToken(t *testing.T) {
 	service := NewService(ServiceDependencies{
 		Users:     &fakeUserRepository{},

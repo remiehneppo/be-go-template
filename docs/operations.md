@@ -68,6 +68,16 @@ Login failures are tracked as consecutive failed attempts on the user document.
 - A successful login resets `failed_login_attempts` and clears `locked_until`.
 - Repository updates invalidate both `user:id:{id}` and `user:email:{email}` cache keys so auth decisions do not read stale lockout state.
 
+## Refresh token binding
+
+Session records keep `ip`, `user_agent`, and `device_id` for audit and device history.
+
+- `DeviceID` is validated as UUID v4 when the client sends it.
+- If the client omits `DeviceID`, the server generates one.
+- `DeviceID` is for UX and audit only; refresh and session lookup never use it as a security key.
+- `AUTH_REFRESH_IP_ANOMALY_ACTION=audit` logs and audits refreshes from a new IP.
+- `AUTH_REFRESH_IP_ANOMALY_ACTION=revoke` revokes the session family on refresh IP mismatch.
+
 ## User profile cache validation
 
 `GET /v1/users/me` returns an `ETag` header based on the safe response payload. A matching `If-None-Match` returns `304 Not Modified`.
