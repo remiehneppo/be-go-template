@@ -42,6 +42,11 @@ services:
       MONGO_URI: mongodb://mongo:27017
       MONGO_DATABASE: be_go_template
       REDIS_ADDR: redis:6379
+      OUTBOX_ENABLED: "true"
+      OUTBOX_DRAIN_INTERVAL: 5s
+      OUTBOX_BATCH_SIZE: 10
+      OUTBOX_MAX_RETRIES: 10
+      OUTBOX_RETRY_DELAY: 1m
       LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "true"
       LOG_FILE_PATH: /var/log/be-go-template/app.log

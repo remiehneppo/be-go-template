@@ -761,7 +761,7 @@ Checklist:
 
 - [x] Tạo `README.md` hướng dẫn chạy local.
 - [x] Tạo `.env.example`.
-- [ ] Tạo `docker-compose.yml` cho MongoDB + Redis.
+- [x] Tạo `docker-compose.yml` cho MongoDB + Redis.
 - [ ] Ghi danh sách endpoint và request/response mẫu.
 - [ ] Ghi kiến trúc layer và dependency direction.
 - [ ] Ghi cách mock database/cache/repository/service khi test.
