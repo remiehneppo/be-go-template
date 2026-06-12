@@ -14,6 +14,7 @@ import (
 
 const requestIDHeader = "X-Request-ID"
 const traceIDHeader = "X-Trace-ID"
+const spanIDHeader = "X-Span-ID"
 
 func RequestID(log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -25,14 +26,26 @@ func RequestID(log logger.Logger) gin.HandlerFunc {
 		if traceID == "" {
 			traceID = requestID
 		}
+		spanID := sanitizeID(c.GetHeader(spanIDHeader))
 
 		ctx := context.WithValue(c.Request.Context(), ctxkeys.RequestID, requestID)
 		ctx = context.WithValue(ctx, ctxkeys.TraceID, traceID)
-		ctx = logger.WithContext(ctx, log.With(logger.String("request_id", requestID), logger.String("trace_id", traceID)))
+		ctx = context.WithValue(ctx, ctxkeys.SpanID, spanID)
+		fields := []logger.Field{
+			logger.String("request_id", requestID),
+			logger.String("trace_id", traceID),
+		}
+		if spanID != "" {
+			fields = append(fields, logger.String("span_id", spanID))
+		}
+		ctx = logger.WithContext(ctx, log.With(fields...))
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Set(string(ctxkeys.RequestID), requestID)
 		c.Set(string(ctxkeys.TraceID), traceID)
+		if spanID != "" {
+			c.Set(string(ctxkeys.SpanID), spanID)
+		}
 		c.Header(requestIDHeader, requestID)
 		c.Next()
 	}

@@ -190,7 +190,7 @@ X-Device-Name: <human-readable-device-name>
 ## Observability
 
 - Structured logging can write to terminal and file.
-- Request logs include request id, trace id, method, path, query, status, latency, ip, user agent, and user/session fields when available.
+- Request logs include request id, trace id, span id, method, path, query, status, latency, ip, user agent, and user/session fields when available.
 - Error responses use a stable envelope with `success`, `request_id`, and structured `error`.
 - Prometheus metrics are exposed at `METRICS_PATH`.
 - Admin monitoring endpoints expose runtime, dependency, auth, audit, and recent error views.

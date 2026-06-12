@@ -104,6 +104,7 @@ Login failures are tracked as consecutive failed attempts on the user document.
 - Enable file logs with `LOG_TO_FILE=true` and `LOG_FILE_PATH`.
 - Do not log passwords, refresh tokens, access tokens, JWT secrets, Redis passwords, or Mongo credentials.
 - Request id is propagated through context and included in logs when available.
+- Trace id and span id are propagated through context when the client provides them.
 - Auth middleware adds user id, session id, and token id to context for downstream logging.
 
 ## Migration contract

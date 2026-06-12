@@ -253,7 +253,7 @@ Checklist:
 
 - [ ] Tạo package `internal/platform/ctxkeys` để định nghĩa toàn bộ context key tập trung.
 - [ ] Dùng unexported/custom key type, không dùng raw string key trực tiếp trong middleware/service.
-- [ ] Key tối thiểu: `request_id`, `user_id`, `session_id`, `token_id`, `trace_id`, `span_id`, `logger`.
+- [x] Key tối thiểu: `request_id`, `user_id`, `session_id`, `token_id`, `trace_id`, `span_id`, `logger`.
 - [x] Middleware request id set `request_id` và logger vào context.
 - [x] Auth middleware bổ sung `user_id`, `session_id`, `token_id` vào context.
 - [x] Middleware tracing-readiness đọc `X-Trace-ID` nếu có, validate format, nếu không có thì có thể dùng request id làm trace id tạm.
@@ -587,7 +587,7 @@ Checklist:
 - [ ] Nếu client gửi `X-Request-ID` hợp lệ thì reuse, nếu không server sinh mới.
 - [ ] Response luôn trả `X-Request-ID`.
 - [x] Nếu client/load balancer gửi `X-Trace-ID`, validate và đưa vào context/log; response có thể trả lại `X-Trace-ID`.
-- [ ] Log include `trace_id` và `span_id` nếu có trong context để sẵn sàng tích hợp OpenTelemetry sau này.
+- [x] Log include `trace_id` và `span_id` nếu có trong context để sẵn sàng tích hợp OpenTelemetry sau này.
 - [x] Access log ghi khi request kết thúc.
 - [x] Access log có method, path, query, status, latency, ip, user agent, request id, user id nếu có.
 - [ ] App log dùng structured JSON ở production.

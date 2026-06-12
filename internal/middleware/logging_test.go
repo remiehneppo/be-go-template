@@ -35,6 +35,7 @@ func TestLoggingMiddlewareUsesContextLoggerFields(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/me?debug=true", nil)
 	req.Header.Set("X-Request-ID", "req-123")
 	req.Header.Set("X-Trace-ID", "trace-123")
+	req.Header.Set("X-Span-ID", "span-123")
 	req.Header.Set("Authorization", "Bearer access-token")
 	req.Header.Set("User-Agent", "be-go-template-test/1.0")
 	rec := httptest.NewRecorder()
@@ -47,7 +48,7 @@ func TestLoggingMiddlewareUsesContextLoggerFields(t *testing.T) {
 	if capture.lastMessage != "http request" {
 		t.Fatalf("message = %q", capture.lastMessage)
 	}
-	if !capture.hasField("request_id", "req-123") || !capture.hasField("trace_id", "trace-123") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", "s1") || !capture.hasField("token_id", "jti1") {
+	if !capture.hasField("request_id", "req-123") || !capture.hasField("trace_id", "trace-123") || !capture.hasField("span_id", "span-123") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", "s1") || !capture.hasField("token_id", "jti1") {
 		t.Fatalf("logger fields = %+v", capture.fields)
 	}
 	if !capture.hasField("method", http.MethodGet) || !capture.hasField("path", "/me") || !capture.hasField("query", "debug=true") || !capture.hasField("status", http.StatusNoContent) || !capture.hasKey("ip") || !capture.hasField("user_agent", "be-go-template-test/1.0") {

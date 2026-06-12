@@ -63,6 +63,33 @@ func TestRequestIDUsesIncomingTraceHeader(t *testing.T) {
 	}
 }
 
+func TestRequestIDUsesIncomingSpanHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	capture := &traceCaptureLogger{}
+	router := gin.New()
+	router.Use(RequestID(capture))
+	router.GET("/ping", func(c *gin.Context) {
+		if got, _ := c.Request.Context().Value(ctxkeys.SpanID).(string); got != "span-123" {
+			t.Fatalf("context span id = %q", got)
+		}
+		c.Status(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	req.Header.Set("X-Request-ID", "req-123")
+	req.Header.Set("X-Span-ID", "span-123")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if !capture.hasField("span_id", "span-123") {
+		t.Fatalf("logger fields = %+v", capture.fields)
+	}
+}
+
 func TestRequestIDFallsBackToRequestIDForInvalidTraceHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	capture := &traceCaptureLogger{}
@@ -87,6 +114,29 @@ func TestRequestIDFallsBackToRequestIDForInvalidTraceHeader(t *testing.T) {
 	}
 	if !capture.hasField("trace_id", "req-123") {
 		t.Fatalf("logger fields = %+v", capture.fields)
+	}
+}
+
+func TestCORSAllowsTraceAndSpanHeaders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(CORS([]string{"https://app.example.com"}))
+	router.OPTIONS("/ping", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodOptions, "/ping", nil)
+	req.Header.Set("Origin", "https://app.example.com")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	allowHeaders := rec.Header().Get("Access-Control-Allow-Headers")
+	if !strings.Contains(allowHeaders, "X-Trace-ID") || !strings.Contains(allowHeaders, "X-Span-ID") {
+		t.Fatalf("allow headers = %q", allowHeaders)
 	}
 }
 
