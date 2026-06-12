@@ -43,3 +43,41 @@ func TestDependencyWrapsAsRetryableServiceUnavailable(t *testing.T) {
 		t.Fatalf("Cause = %v", got.Unwrap())
 	}
 }
+
+func TestFromErrorMapsDomainSentinels(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		code Code
+	}{
+		{name: "not_found", err: ErrNotFound, code: CodeNotFound},
+		{name: "unauthorized", err: ErrUnauthorized, code: CodeUnauthorized},
+		{name: "forbidden", err: ErrForbidden, code: CodeForbidden},
+		{name: "conflict", err: ErrConflict, code: CodeConflict},
+		{name: "validation", err: ErrValidation, code: CodeValidation},
+		{name: "token_expired", err: ErrTokenExpired, code: CodeTokenExpired},
+		{name: "token_revoked", err: ErrTokenRevoked, code: CodeTokenRevoked},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := FromError(tc.err)
+			if got.Code != tc.code {
+				t.Fatalf("Code = %s", got.Code)
+			}
+			if got.HTTPStatus != StatusForCode(tc.code) {
+				t.Fatalf("HTTPStatus = %d", got.HTTPStatus)
+			}
+		})
+	}
+}
+
+func TestTokenErrorConstructorsWrapSentinels(t *testing.T) {
+	expired := TokenExpired("expired")
+	if !errors.Is(expired, ErrTokenExpired) {
+		t.Fatal("TokenExpired() does not wrap ErrTokenExpired")
+	}
+	revoked := TokenRevoked("revoked")
+	if !errors.Is(revoked, ErrTokenRevoked) {
+		t.Fatal("TokenRevoked() does not wrap ErrTokenRevoked")
+	}
+}

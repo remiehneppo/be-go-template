@@ -7,6 +7,16 @@ import (
 	"runtime/debug"
 )
 
+var (
+	ErrNotFound     = errors.New("not found")
+	ErrUnauthorized = errors.New("unauthorized")
+	ErrForbidden    = errors.New("forbidden")
+	ErrConflict     = errors.New("conflict")
+	ErrValidation   = errors.New("validation failed")
+	ErrTokenRevoked = errors.New("token revoked")
+	ErrTokenExpired = errors.New("token expired")
+)
+
 type ValidationDetail struct {
 	Field  string         `json:"field"`
 	Reason string         `json:"reason"`
@@ -83,6 +93,7 @@ func TokenExpired(message string) *AppError {
 		Message:     message,
 		SafeMessage: "Unauthorized",
 		HTTPStatus:  http.StatusUnauthorized,
+		Cause:       ErrTokenExpired,
 	}
 }
 
@@ -95,6 +106,7 @@ func TokenRevoked(message string) *AppError {
 		Message:     message,
 		SafeMessage: "Unauthorized",
 		HTTPStatus:  http.StatusUnauthorized,
+		Cause:       ErrTokenRevoked,
 	}
 }
 
@@ -125,6 +137,22 @@ func FromError(err error) *AppError {
 	var appErr *AppError
 	if errors.As(err, &appErr) {
 		return appErr
+	}
+	switch {
+	case errors.Is(err, ErrNotFound):
+		return New(CodeNotFound, "Not found", http.StatusNotFound)
+	case errors.Is(err, ErrUnauthorized):
+		return New(CodeUnauthorized, "Unauthorized", http.StatusUnauthorized)
+	case errors.Is(err, ErrForbidden):
+		return New(CodeForbidden, "Forbidden", http.StatusForbidden)
+	case errors.Is(err, ErrConflict):
+		return New(CodeConflict, "Conflict", http.StatusConflict)
+	case errors.Is(err, ErrValidation):
+		return Validation("Validation failed", nil)
+	case errors.Is(err, ErrTokenExpired):
+		return TokenExpired(err.Error())
+	case errors.Is(err, ErrTokenRevoked):
+		return TokenRevoked(err.Error())
 	}
 	return Wrap("", err, CodeInternal, "Internal server error", http.StatusInternalServerError)
 }
