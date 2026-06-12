@@ -39,8 +39,8 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 			From:              time.Unix(100, 0).UTC(),
 			To:                time.Unix(200, 0).UTC(),
 		},
-		errors: []auth.ErrorEvent{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", Operation: "AuthService.Refresh"}},
-		audits: []auth.AuditLog{{ID: "a1", Action: "auth.login"}},
+		errors: []auth.ErrorEvent{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", Operation: "AuthService.Refresh", Message: "safe message", Cause: "db password leaked", Stack: "panic stack", Path: "/v1/auth/refresh", Method: http.MethodPost, Status: http.StatusInternalServerError, UserID: "u1", CreatedAt: time.Unix(12, 0).UTC()}},
+		audits: []auth.AuditLog{{ID: "a1", Action: "auth.login", Metadata: map[string]string{"refresh_token": "secret-refresh", "email": "admin@example.com"}}},
 	}
 	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
 		Monitoring: service,
@@ -99,6 +99,22 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 	}
 	if service.auditFilter.ActorUserID != "admin-1" || service.auditFilter.Action != "auth.login" || service.auditFilter.ResourceType != "session" || service.auditFilter.ResourceID != "s1" {
 		t.Fatalf("audit filter = %+v", service.auditFilter)
+	}
+
+	errorsReq := httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/errors?request_id=req-1", nil)
+	errorsReq.Header.Set("Authorization", "Bearer access-token")
+	errorsRec := httptest.NewRecorder()
+	router.ServeHTTP(errorsRec, errorsReq)
+	if strings.Contains(errorsRec.Body.String(), "db password leaked") || strings.Contains(errorsRec.Body.String(), "panic stack") || strings.Contains(errorsRec.Body.String(), `"cause"`) || strings.Contains(errorsRec.Body.String(), `"stack"`) {
+		t.Fatalf("errors body leaked sensitive data: %s", errorsRec.Body.String())
+	}
+
+	auditReq := httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/audit-logs?actor_user_id=admin-1", nil)
+	auditReq.Header.Set("Authorization", "Bearer access-token")
+	auditRec := httptest.NewRecorder()
+	router.ServeHTTP(auditRec, auditReq)
+	if !strings.Contains(auditRec.Body.String(), `"[REDACTED]"`) || strings.Contains(auditRec.Body.String(), "secret-refresh") {
+		t.Fatalf("audit body leaked sensitive data: %s", auditRec.Body.String())
 	}
 }
 

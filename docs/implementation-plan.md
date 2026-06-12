@@ -622,8 +622,8 @@ Checklist:
 - [x] Cache/database layer ghi metrics: cache hit/miss, lock wait duration, Mongo/Redis dependency errors.
 - [x] Auth service ghi metrics: login success/failure, refresh success/failure, logout, active sessions gauge nếu tính được.
 - [x] Monitoring endpoints trả response thống nhất như API còn lại.
-- [ ] Monitoring endpoints không expose secret, connection string, token, stack trace raw cho non-admin.
-- [ ] Chuẩn bị interface để sau này admin panel gọi trực tiếp qua HTTP API.
+- [x] Monitoring endpoints không expose secret, connection string, token, stack trace raw cho non-admin.
+- [x] Chuẩn bị interface để sau này admin panel gọi trực tiếp qua HTTP API.
 
 ## 12. API policy: RBAC, pagination, rate limit
 

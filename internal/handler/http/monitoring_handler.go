@@ -2,6 +2,7 @@ package http
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -70,7 +71,7 @@ func (h *MonitoringHandler) Errors(c *gin.Context) {
 		reportContextError(c, err)
 		return
 	}
-	OK(c, events)
+	OK(c, sanitizeErrorEvents(events))
 }
 
 func (h *MonitoringHandler) AuditLogs(c *gin.Context) {
@@ -79,7 +80,7 @@ func (h *MonitoringHandler) AuditLogs(c *gin.Context) {
 		reportContextError(c, err)
 		return
 	}
-	OK(c, logs)
+	OK(c, sanitizeAuditLogs(logs))
 }
 
 func queryPagination(c *gin.Context) common.Pagination {
@@ -132,4 +133,91 @@ func queryAuditLogFilter(c *gin.Context) auth.AuditLogFilter {
 		From:         queryTime(c, "from"),
 		To:           queryTime(c, "to"),
 	}
+}
+
+type monitoringErrorEventView struct {
+	RequestID string    `json:"request_id"`
+	ErrorCode string    `json:"error_code"`
+	Operation string    `json:"operation,omitempty"`
+	Message   string    `json:"message"`
+	Path      string    `json:"path"`
+	Method    string    `json:"method"`
+	Status    int       `json:"status"`
+	UserID    string    `json:"user_id,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type monitoringAuditLogView struct {
+	ID           string            `json:"id"`
+	ActorUserID  string            `json:"actor_user_id"`
+	Action       string            `json:"action"`
+	ResourceType string            `json:"resource_type"`
+	ResourceID   string            `json:"resource_id"`
+	IP           string            `json:"ip"`
+	UserAgent    string            `json:"user_agent"`
+	RequestID    string            `json:"request_id"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
+	CreatedAt    time.Time         `json:"created_at"`
+}
+
+func sanitizeErrorEvents(events []auth.ErrorEvent) []monitoringErrorEventView {
+	views := make([]monitoringErrorEventView, 0, len(events))
+	for _, event := range events {
+		views = append(views, monitoringErrorEventView{
+			RequestID: event.RequestID,
+			ErrorCode: event.ErrorCode,
+			Operation: event.Operation,
+			Message:   event.Message,
+			Path:      event.Path,
+			Method:    event.Method,
+			Status:    event.Status,
+			UserID:    event.UserID,
+			CreatedAt: event.CreatedAt,
+		})
+	}
+	return views
+}
+
+func sanitizeAuditLogs(logs []auth.AuditLog) []monitoringAuditLogView {
+	views := make([]monitoringAuditLogView, 0, len(logs))
+	for _, log := range logs {
+		views = append(views, monitoringAuditLogView{
+			ID:           log.ID,
+			ActorUserID:  log.ActorUserID,
+			Action:       log.Action,
+			ResourceType: log.ResourceType,
+			ResourceID:   log.ResourceID,
+			IP:           log.IP,
+			UserAgent:    log.UserAgent,
+			RequestID:    log.RequestID,
+			Metadata:     redactMetadata(log.Metadata),
+			CreatedAt:    log.CreatedAt,
+		})
+	}
+	return views
+}
+
+func redactMetadata(metadata map[string]string) map[string]string {
+	if len(metadata) == 0 {
+		return nil
+	}
+	redacted := make(map[string]string, len(metadata))
+	for key, value := range metadata {
+		if isSensitiveField(key) {
+			redacted[key] = "[REDACTED]"
+			continue
+		}
+		redacted[key] = value
+	}
+	return redacted
+}
+
+func isSensitiveField(key string) bool {
+	normalized := strings.ToLower(key)
+	for _, marker := range []string{"password", "token", "secret", "authorization", "refresh"} {
+		if strings.Contains(normalized, marker) {
+			return true
+		}
+	}
+	return false
 }

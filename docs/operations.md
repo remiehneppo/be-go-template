@@ -260,8 +260,8 @@ Endpoint groups:
 - `GET /v1/admin/monitoring/dependencies` returns Mongo/Redis readiness health.
 - `GET /v1/admin/monitoring/runtime` returns runtime process metrics.
 - `GET /v1/admin/monitoring/auth-stats` returns login/logout/refresh counters within the requested time range.
-- `GET /v1/admin/monitoring/errors` returns recent error events with filter support.
-- `GET /v1/admin/monitoring/audit-logs` returns audit events with filter support.
+- `GET /v1/admin/monitoring/errors` returns recent error events with filter support and omits raw stack/cause from the response body.
+- `GET /v1/admin/monitoring/audit-logs` returns audit events with filter support and redacts secret-bearing metadata values.
 
 ## Logging contract
 
