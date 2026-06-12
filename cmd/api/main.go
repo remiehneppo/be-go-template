@@ -47,6 +47,10 @@ func run() error {
 		FilePath:   cfg.Log.FilePath,
 		ToTerminal: cfg.Log.ToTerminal,
 		ToFile:     cfg.Log.ToFile,
+		MaxSizeMB:  cfg.Log.MaxSizeMB,
+		MaxBackups: cfg.Log.MaxBackups,
+		MaxAgeDays: cfg.Log.MaxAgeDays,
+		Compress:   cfg.Log.Compress,
 	})
 	if err != nil {
 		return fmt.Errorf("init logger: %w", err)

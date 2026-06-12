@@ -233,19 +233,19 @@ Checklist:
 
 Checklist:
 
-- [ ] Tạo `internal/platform/logger.Logger` interface.
-- [ ] Hỗ trợ level `debug`, `info`, `warn`, `error`.
-- [ ] Hỗ trợ structured fields: `request_id`, `user_id`, `session_id`, `ip`, `method`, `path`, `status`, `latency_ms`, `error_code`.
-- [ ] Hỗ trợ `With(fields...) Logger` để truyền context qua layer.
+- [x] Tạo `internal/platform/logger.Logger` interface.
+- [x] Hỗ trợ level `debug`, `info`, `warn`, `error`.
+- [x] Hỗ trợ structured fields: `request_id`, `user_id`, `session_id`, `ip`, `method`, `path`, `status`, `latency_ms`, `error_code`.
+- [x] Hỗ trợ `With(fields...) Logger` để truyền context qua layer.
 - [x] Hỗ trợ `WithContext(ctx, logger)` và `FromContext(ctx)` để carry `request_id`, `user_id`, `session_id` qua service/repository.
-- [ ] Ghi log ra terminal.
-- [ ] Ghi log ra file.
-- [ ] File log có cấu hình path, max size, max age, max backups, compress rotation.
+- [x] Ghi log ra terminal.
+- [x] Ghi log ra file.
+- [x] File log có cấu hình path, max size, max age, max backups, compress rotation.
 - [ ] Tách access log và application/error log nếu config bật.
-- [ ] Không log password, refresh token, access token, secret.
-- [ ] Có helper mask/redact field nhạy cảm.
-- [ ] Unit test logger không ghi secret/token ra output.
-- [ ] Unit test `ContextLogger` giữ được request fields khi đi qua nhiều layer.
+- [x] Không log password, refresh token, access token, secret.
+- [x] Có helper mask/redact field nhạy cảm.
+- [x] Unit test logger không ghi secret/token ra output.
+- [x] Unit test `ContextLogger` giữ được request fields khi đi qua nhiều layer.
 
 ### 3.6. Context propagation contract
 
@@ -501,7 +501,7 @@ Checklist:
 - [ ] Thêm Redis TLS config: `REDIS_TLS_ENABLED`, `REDIS_TLS_CA_CERT`, `REDIS_TLS_SERVER_NAME`.
 - [ ] Thêm HTTP safety config: `HTTP_READ_TIMEOUT`, `HTTP_WRITE_TIMEOUT`, `HTTP_IDLE_TIMEOUT`, `HTTP_BODY_LIMIT_BYTES`, `ROUTE_TIMEOUT_DEFAULT`.
 - [ ] Thêm CORS config: `CORS_ALLOWED_ORIGINS`, `CORS_ALLOWED_METHODS`, `CORS_ALLOWED_HEADERS`.
-- [ ] Thêm logging config: `LOG_LEVEL`, `LOG_FORMAT`, `LOG_TO_CONSOLE`, `LOG_TO_FILE`, `LOG_FILE_PATH`, `LOG_MAX_SIZE_MB`, `LOG_MAX_BACKUPS`, `LOG_MAX_AGE_DAYS`, `LOG_COMPRESS`.
+- [x] Thêm logging config: `LOG_LEVEL`, `LOG_FORMAT`, `LOG_TO_CONSOLE`, `LOG_TO_FILE`, `LOG_FILE_PATH`, `LOG_MAX_SIZE_MB`, `LOG_MAX_BACKUPS`, `LOG_MAX_AGE_DAYS`, `LOG_COMPRESS`.
 - [ ] Thêm monitoring config: `MONITORING_ENABLED`, `MONITORING_ADMIN_ROLES`, `METRICS_COLLECT_INTERVAL`, `PROMETHEUS_ENABLED`, `PROMETHEUS_PATH`, `MONGO_DEGRADED_THRESHOLD_MS`, `REDIS_DEGRADED_THRESHOLD_MS`.
 - [ ] Thêm rate limit config: `AUTH_RATE_LIMIT_ENABLED`, `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE`, `AUTH_RATE_LIMIT_REFRESH_PER_MINUTE`, `AUTH_RATE_LIMIT_REGISTER_PER_MINUTE`, `RATE_LIMIT_FALLBACK`.
 - [ ] Thêm outbox config: `OUTBOX_ENABLED`, `OUTBOX_DRAIN_INTERVAL`, `OUTBOX_BATCH_SIZE`, `OUTBOX_MAX_RETRIES`.

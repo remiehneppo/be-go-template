@@ -41,9 +41,13 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:5173` |
 | `LOG_LEVEL` | `info` |
 | `LOG_FORMAT` | `json` |
-| `LOG_TO_TERMINAL` | `true` |
+| `LOG_TO_CONSOLE` | `true` |
 | `LOG_TO_FILE` | `false` |
 | `LOG_FILE_PATH` | `logs/app.log` |
+| `LOG_MAX_SIZE_MB` | `100` |
+| `LOG_MAX_BACKUPS` | `10` |
+| `LOG_MAX_AGE_DAYS` | `30` |
+| `LOG_COMPRESS` | `true` |
 | `JWT_ACCESS_CURRENT_KEY` | `local/<base64-secret>` |
 | `JWT_ACCESS_PREVIOUS_KEY` | empty |
 | `JWT_ACCESS_PREVIOUS_NOT_AFTER` | empty |

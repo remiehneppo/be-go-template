@@ -43,6 +43,10 @@ type LogConfig struct {
 	FilePath   string
 	ToTerminal bool
 	ToFile     bool
+	MaxSizeMB  int
+	MaxBackups int
+	MaxAgeDays int
+	Compress   bool
 }
 
 type JWTConfig struct {
@@ -115,8 +119,12 @@ func Load() (Config, error) {
 			Level:      strings.ToLower(getString("LOG_LEVEL", "info")),
 			Format:     strings.ToLower(getString("LOG_FORMAT", "json")),
 			FilePath:   getString("LOG_FILE_PATH", "logs/app.log"),
-			ToTerminal: getBool("LOG_TO_TERMINAL", true),
+			ToTerminal: getBoolAny("LOG_TO_CONSOLE", "LOG_TO_TERMINAL", true),
 			ToFile:     getBool("LOG_TO_FILE", false),
+			MaxSizeMB:  int(getInt64("LOG_MAX_SIZE_MB", 100)),
+			MaxBackups: int(getInt64("LOG_MAX_BACKUPS", 10)),
+			MaxAgeDays: int(getInt64("LOG_MAX_AGE_DAYS", 30)),
+			Compress:   getBool("LOG_COMPRESS", true),
 		},
 		JWT: JWTConfig{
 			AccessCurrentKey:  getString("JWT_ACCESS_CURRENT_KEY", "local/"+base64Secret("local-access-secret-change-me")),
@@ -197,6 +205,20 @@ func (cfg Config) Validate() error {
 	if !cfg.Log.ToTerminal && !cfg.Log.ToFile {
 		return fmt.Errorf("at least one log output must be enabled")
 	}
+	if cfg.Log.ToFile {
+		if cfg.Log.FilePath == "" {
+			return fmt.Errorf("LOG_FILE_PATH must not be empty when file logging is enabled")
+		}
+		if cfg.Log.MaxSizeMB <= 0 {
+			return fmt.Errorf("LOG_MAX_SIZE_MB must be positive")
+		}
+		if cfg.Log.MaxBackups < 0 {
+			return fmt.Errorf("LOG_MAX_BACKUPS must not be negative")
+		}
+		if cfg.Log.MaxAgeDays < 0 {
+			return fmt.Errorf("LOG_MAX_AGE_DAYS must not be negative")
+		}
+	}
 	if cfg.JWT.AccessCurrentKey == "" {
 		return fmt.Errorf("JWT_ACCESS_CURRENT_KEY must not be empty")
 	}
@@ -274,6 +296,24 @@ func getBool(key string, fallback bool) bool {
 		return fallback
 	}
 	return parsed
+}
+
+func getBoolAny(key string, alias string, fallback bool) bool {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		parsed, err := strconv.ParseBool(value)
+		if err == nil {
+			return parsed
+		}
+	}
+	if alias != "" {
+		if value := strings.TrimSpace(os.Getenv(alias)); value != "" {
+			parsed, err := strconv.ParseBool(value)
+			if err == nil {
+				return parsed
+			}
+		}
+	}
+	return fallback
 }
 
 func getInt64(key string, fallback int64) int64 {

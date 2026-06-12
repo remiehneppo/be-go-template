@@ -42,7 +42,7 @@ services:
       MONGO_URI: mongodb://mongo:27017
       MONGO_DATABASE: be_go_template
       REDIS_ADDR: redis:6379
-      LOG_TO_TERMINAL: "true"
+      LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "true"
       LOG_FILE_PATH: /var/log/be-go-template/app.log
       CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
@@ -62,7 +62,7 @@ services:
       MONGO_URI: mongodb://mongo:27017
       MONGO_DATABASE: be_go_template
       REDIS_ADDR: redis:6379
-      LOG_TO_TERMINAL: "true"
+      LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
 
   seed:
@@ -78,7 +78,7 @@ services:
       MONGO_URI: mongodb://mongo:27017
       MONGO_DATABASE: be_go_template
       REDIS_ADDR: redis:6379
-      LOG_TO_TERMINAL: "true"
+      LOG_TO_CONSOLE: "true"
       LOG_TO_FILE: "false"
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}

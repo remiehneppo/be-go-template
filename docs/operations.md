@@ -100,8 +100,8 @@ Login failures are tracked as consecutive failed attempts on the user document.
 
 ## Logging contract
 
-- Enable terminal logs with `LOG_TO_TERMINAL=true`.
-- Enable file logs with `LOG_TO_FILE=true` and `LOG_FILE_PATH`.
+- Enable console logs with `LOG_TO_CONSOLE=true`.
+- Enable file logs with `LOG_TO_FILE=true`, `LOG_FILE_PATH`, and rotation knobs `LOG_MAX_SIZE_MB`, `LOG_MAX_BACKUPS`, `LOG_MAX_AGE_DAYS`, `LOG_COMPRESS`.
 - Do not log passwords, refresh tokens, access tokens, JWT secrets, Redis passwords, or Mongo credentials.
 - Request id is propagated through context and included in logs when available.
 - Trace id and span id are propagated through context when the client provides them.

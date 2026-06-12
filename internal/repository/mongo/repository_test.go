@@ -115,7 +115,7 @@ func TestUserRepositoryResetLoginFailuresUnsetsLock(t *testing.T) {
 }
 
 func TestSessionRepositoryRotateRefreshTokenUsesStrictLockAndInvalidatesOldHash(t *testing.T) {
-	db := &fakeDB{}
+	db := &fakeDB{findOneValue: sessionDocument{ID: "s1", UserID: "u1"}}
 	repo := NewSessionRepository(db)
 
 	err := repo.RotateRefreshToken(context.Background(), "s1", "old", "new", time.Unix(100, 0))
@@ -131,14 +131,14 @@ func TestSessionRepositoryRotateRefreshTokenUsesStrictLockAndInvalidatesOldHash(
 	if db.lastWriteOptions.LockKey != "session:id:s1" {
 		t.Fatalf("LockKey = %q", db.lastWriteOptions.LockKey)
 	}
-	wantInvalidation := []string{"session:id:s1", "session:refresh:old"}
+	wantInvalidation := []string{"session:id:s1", "session:refresh:old", "session:user:u1:active"}
 	if !reflect.DeepEqual(db.lastWriteOptions.InvalidateKeys, wantInvalidation) {
 		t.Fatalf("InvalidateKeys = %#v", db.lastWriteOptions.InvalidateKeys)
 	}
 }
 
 func TestSessionRepositoryRevokeAllUsesUpdateMany(t *testing.T) {
-	db := &fakeDB{}
+	db := &fakeDB{findManyValue: []sessionDocument{{ID: "s1", UserID: "u1", RefreshTokenHash: "old1"}, {ID: "s2", UserID: "u1", RefreshTokenHash: "old2"}}}
 	repo := NewSessionRepository(db)
 
 	if err := repo.RevokeAllByUserID(context.Background(), "u1", "logout_all", time.Unix(10, 0)); err != nil {
@@ -150,10 +150,14 @@ func TestSessionRepositoryRevokeAllUsesUpdateMany(t *testing.T) {
 	if db.lastWriteOptions.LockKey != "session:user:u1:active" || !db.lastWriteOptions.StrictLock {
 		t.Fatalf("write options = %+v", db.lastWriteOptions)
 	}
+	wantInvalidation := []string{"session:user:u1:active", "session:id:s1", "session:refresh:old1", "session:id:s2", "session:refresh:old2"}
+	if !reflect.DeepEqual(db.lastWriteOptions.InvalidateKeys, wantInvalidation) {
+		t.Fatalf("InvalidateKeys = %#v", db.lastWriteOptions.InvalidateKeys)
+	}
 }
 
 func TestSessionRepositoryRevokeByTokenFamilyIDUsesUpdateMany(t *testing.T) {
-	db := &fakeDB{}
+	db := &fakeDB{findManyValue: []sessionDocument{{ID: "s1", UserID: "u1", RefreshTokenHash: "old1"}}}
 	repo := NewSessionRepository(db)
 
 	if err := repo.RevokeByTokenFamilyID(context.Background(), "family1", "reuse", time.Unix(10, 0)); err != nil {
@@ -164,6 +168,10 @@ func TestSessionRepositoryRevokeByTokenFamilyIDUsesUpdateMany(t *testing.T) {
 	}
 	if db.lastWriteOptions.LockKey != "session:family:family1" || !db.lastWriteOptions.StrictLock {
 		t.Fatalf("write options = %+v", db.lastWriteOptions)
+	}
+	wantInvalidation := []string{"session:family:family1", "session:id:s1", "session:refresh:old1", "session:user:u1:active"}
+	if !reflect.DeepEqual(db.lastWriteOptions.InvalidateKeys, wantInvalidation) {
+		t.Fatalf("InvalidateKeys = %#v", db.lastWriteOptions.InvalidateKeys)
 	}
 }
 

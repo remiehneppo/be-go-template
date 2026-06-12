@@ -5,6 +5,7 @@ import "testing"
 func TestLoadDefaults(t *testing.T) {
 	t.Setenv("APP_NAME", "")
 	t.Setenv("APP_ENV", "")
+	t.Setenv("LOG_TO_CONSOLE", "")
 	t.Setenv("LOG_TO_TERMINAL", "")
 	t.Setenv("LOG_TO_FILE", "")
 
@@ -28,6 +29,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Auth.LockoutMaxFailures != 5 || cfg.Auth.LockoutDuration <= 0 {
 		t.Fatalf("Auth = %+v", cfg.Auth)
 	}
+	if cfg.Log.MaxSizeMB != 100 || cfg.Log.MaxBackups != 10 || cfg.Log.MaxAgeDays != 30 || !cfg.Log.Compress {
+		t.Fatalf("Log rotation defaults = %+v", cfg.Log)
+	}
 	if !cfg.Metrics.Enabled || cfg.Metrics.Path != "/metrics" {
 		t.Fatalf("Metrics = %+v", cfg.Metrics)
 	}
@@ -43,6 +47,32 @@ func TestValidateRequiresLogOutput(t *testing.T) {
 	}
 	cfg.Log.ToTerminal = false
 	cfg.Log.ToFile = false
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("Validate() error = nil")
+	}
+}
+
+func TestLoadSupportsConsoleAlias(t *testing.T) {
+	t.Setenv("LOG_TO_CONSOLE", "true")
+	t.Setenv("LOG_TO_TERMINAL", "false")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.Log.ToTerminal {
+		t.Fatal("LOG_TO_CONSOLE should override LOG_TO_TERMINAL")
+	}
+}
+
+func TestValidateRequiresRotationConfigWhenFileLoggingEnabled(t *testing.T) {
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	cfg.Log.ToFile = true
+	cfg.Log.FilePath = ""
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("Validate() error = nil")

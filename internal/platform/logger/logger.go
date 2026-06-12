@@ -8,9 +8,13 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/remihneppo/be-go-template/internal/platform/ctxkeys"
 )
@@ -34,12 +38,17 @@ type Config struct {
 	FilePath   string
 	ToTerminal bool
 	ToFile     bool
+	MaxSizeMB  int
+	MaxBackups int
+	MaxAgeDays int
+	Compress   bool
 }
 
 type CloseFunc func() error
 
 type structuredLogger struct {
 	level  slog.Level
+	format string
 	writer io.Writer
 	fields []Field
 	mu     *sync.Mutex
@@ -60,9 +69,13 @@ func New(cfg Config) (Logger, CloseFunc, error) {
 		if err := os.MkdirAll(filepath.Dir(cfg.FilePath), 0o755); err != nil {
 			return nil, nil, err
 		}
-		file, err := os.OpenFile(cfg.FilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-		if err != nil {
-			return nil, nil, err
+		file := &lumberjack.Logger{
+			Filename:   cfg.FilePath,
+			MaxSize:    positiveOrDefault(cfg.MaxSizeMB, 100),
+			MaxBackups: nonNegativeOrDefault(cfg.MaxBackups, 10),
+			MaxAge:     nonNegativeOrDefault(cfg.MaxAgeDays, 30),
+			Compress:   cfg.Compress,
+			LocalTime:  true,
 		}
 		writers = append(writers, file)
 		closers = append(closers, file)
@@ -73,6 +86,7 @@ func New(cfg Config) (Logger, CloseFunc, error) {
 
 	logger := &structuredLogger{
 		level:  level,
+		format: strings.ToLower(strings.TrimSpace(cfg.Format)),
 		writer: io.MultiWriter(writers...),
 		mu:     &sync.Mutex{},
 	}
@@ -157,7 +171,7 @@ func (l *structuredLogger) write(level slog.Level, msg string, fields ...Field) 
 		}
 		entry[field.Key] = redact(field.Key, field.Value)
 	}
-	line, err := json.Marshal(entry)
+	line, err := formatEntry(l.format, entry)
 	if err != nil {
 		line = []byte(`{"level":"error","msg":"failed to marshal log entry"}`)
 	}
@@ -190,6 +204,57 @@ func redact(key string, value any) any {
 		}
 	}
 	return value
+}
+
+func formatEntry(format string, entry map[string]any) ([]byte, error) {
+	if format == "text" {
+		return formatTextEntry(entry), nil
+	}
+	return json.Marshal(entry)
+}
+
+func formatTextEntry(entry map[string]any) []byte {
+	keys := make([]string, 0, len(entry))
+	for key := range entry {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	for i, key := range keys {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(key)
+		b.WriteByte('=')
+		b.WriteString(formatFieldValue(entry[key]))
+	}
+	return []byte(b.String())
+}
+
+func formatFieldValue(value any) string {
+	switch v := value.(type) {
+	case string:
+		return strconv.Quote(v)
+	case fmt.Stringer:
+		return strconv.Quote(v.String())
+	default:
+		return fmt.Sprint(v)
+	}
+}
+
+func positiveOrDefault(value int, fallback int) int {
+	if value > 0 {
+		return value
+	}
+	return fallback
+}
+
+func nonNegativeOrDefault(value int, fallback int) int {
+	if value >= 0 {
+		return value
+	}
+	return fallback
 }
 
 type noopLogger struct{}

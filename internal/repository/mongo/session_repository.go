@@ -58,6 +58,10 @@ func (r *SessionRepository) FindByRefreshTokenHash(ctx context.Context, hash str
 
 func (r *SessionRepository) RotateRefreshToken(ctx context.Context, sessionID string, oldHash string, newHash string, expiresAt time.Time) error {
 	now := time.Now().UTC()
+	session, err := r.findActiveByIDNoCache(ctx, sessionID)
+	if err != nil {
+		return err
+	}
 	return r.db.UpdateOne(ctx, sessionsCollection, bson.M{
 		"_id":                      sessionID,
 		"refresh_token_hash":       oldHash,
@@ -70,7 +74,7 @@ func (r *SessionRepository) RotateRefreshToken(ctx context.Context, sessionID st
 		"updated_at":               now,
 	}}, database.WriteOptions{
 		LockKey:        sessionIDKey(sessionID),
-		InvalidateKeys: []string{sessionIDKey(sessionID), sessionRefreshKey(oldHash)},
+		InvalidateKeys: []string{sessionIDKey(sessionID), sessionRefreshKey(oldHash), userActiveSessionsKey(session.UserID)},
 		StrictLock:     true,
 	})
 }
@@ -88,6 +92,14 @@ func (r *SessionRepository) Revoke(ctx context.Context, sessionID string, reason
 }
 
 func (r *SessionRepository) RevokeAllByUserID(ctx context.Context, userID string, reason string, revokedAt time.Time) error {
+	sessions, err := r.findActiveSessionsByUserIDNoCache(ctx, userID)
+	if err != nil {
+		return err
+	}
+	invalidateKeys := []string{userActiveSessionsKey(userID)}
+	for _, session := range sessions {
+		invalidateKeys = append(invalidateKeys, sessionIDKey(session.ID), sessionRefreshKey(session.RefreshTokenHash))
+	}
 	return r.db.UpdateMany(ctx, sessionsCollection, bson.M{
 		"user_id":    userID,
 		"revoked_at": bson.M{"$exists": false},
@@ -97,12 +109,20 @@ func (r *SessionRepository) RevokeAllByUserID(ctx context.Context, userID string
 		"updated_at":     revokedAt,
 	}}, database.WriteOptions{
 		LockKey:        userActiveSessionsKey(userID),
-		InvalidateKeys: []string{userActiveSessionsKey(userID)},
+		InvalidateKeys: uniqueStrings(invalidateKeys),
 		StrictLock:     true,
 	})
 }
 
 func (r *SessionRepository) RevokeByTokenFamilyID(ctx context.Context, tokenFamilyID string, reason string, revokedAt time.Time) error {
+	sessions, err := r.findActiveSessionsByTokenFamilyIDNoCache(ctx, tokenFamilyID)
+	if err != nil {
+		return err
+	}
+	invalidateKeys := []string{"session:family:" + tokenFamilyID}
+	for _, session := range sessions {
+		invalidateKeys = append(invalidateKeys, sessionIDKey(session.ID), sessionRefreshKey(session.RefreshTokenHash), userActiveSessionsKey(session.UserID))
+	}
 	return r.db.UpdateMany(ctx, sessionsCollection, bson.M{
 		"token_family_id": tokenFamilyID,
 		"revoked_at":      bson.M{"$exists": false},
@@ -112,7 +132,7 @@ func (r *SessionRepository) RevokeByTokenFamilyID(ctx context.Context, tokenFami
 		"updated_at":     revokedAt,
 	}}, database.WriteOptions{
 		LockKey:        "session:family:" + tokenFamilyID,
-		InvalidateKeys: []string{},
+		InvalidateKeys: uniqueStrings(invalidateKeys),
 		StrictLock:     true,
 	})
 }
@@ -145,6 +165,18 @@ func (f activeSessionsFilter) CacheKeyParts() []string {
 func (f activeSessionsFilter) MarshalBSON() ([]byte, error) {
 	return bson.Marshal(bson.M{
 		"user_id":                  f.UserID,
+		"revoked_at":               bson.M{"$exists": false},
+		"refresh_token_expires_at": bson.M{"$gt": time.Now().UTC()},
+	})
+}
+
+type tokenFamilyActiveSessionsFilter struct {
+	TokenFamilyID string
+}
+
+func (f tokenFamilyActiveSessionsFilter) MarshalBSON() ([]byte, error) {
+	return bson.Marshal(bson.M{
+		"token_family_id":          f.TokenFamilyID,
 		"revoked_at":               bson.M{"$exists": false},
 		"refresh_token_expires_at": bson.M{"$gt": time.Now().UTC()},
 	})
@@ -203,4 +235,48 @@ func (d sessionDocument) toDomain() auth.Session {
 		CreatedAt:             d.CreatedAt,
 		UpdatedAt:             d.UpdatedAt,
 	}
+}
+
+func (r *SessionRepository) findActiveByIDNoCache(ctx context.Context, sessionID string) (*sessionDocument, error) {
+	var doc sessionDocument
+	if err := r.db.FindOne(ctx, sessionsCollection, bson.M{
+		"_id":                      sessionID,
+		"revoked_at":               bson.M{"$exists": false},
+		"refresh_token_expires_at": bson.M{"$gt": time.Now().UTC()},
+	}, &doc, database.ReadOptions{}); err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}
+
+func (r *SessionRepository) findActiveSessionsByUserIDNoCache(ctx context.Context, userID string) ([]sessionDocument, error) {
+	var docs []sessionDocument
+	if err := r.db.FindMany(ctx, sessionsCollection, activeSessionsFilter{UserID: userID}, &docs, database.ReadOptions{}); err != nil {
+		return nil, err
+	}
+	return docs, nil
+}
+
+func (r *SessionRepository) findActiveSessionsByTokenFamilyIDNoCache(ctx context.Context, tokenFamilyID string) ([]sessionDocument, error) {
+	var docs []sessionDocument
+	if err := r.db.FindMany(ctx, sessionsCollection, tokenFamilyActiveSessionsFilter{TokenFamilyID: tokenFamilyID}, &docs, database.ReadOptions{}); err != nil {
+		return nil, err
+	}
+	return docs, nil
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
 }
