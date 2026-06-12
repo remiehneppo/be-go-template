@@ -41,9 +41,10 @@ func Error(c *gin.Context, err error) {
 		Success:   false,
 		RequestID: RequestID(c),
 		Error: gin.H{
-			"code":    appErr.Code,
-			"message": appErr.SafeMessage,
-			"details": appErr.Details,
+			"code":      appErr.Code,
+			"message":   appErr.SafeMessage,
+			"details":   appErr.Details,
+			"retryable": appErr.Retryable,
 		},
 	})
 }

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,6 +24,26 @@ func TestErrorResponseUsesSafeMessage(t *testing.T) {
 	}
 	if !strings.Contains(body, "safe message") {
 		t.Fatalf("response missing safe message: %s", body)
+	}
+}
+
+func TestErrorResponseIncludesRetryableForDependencyErrors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+
+	Error(c, apperrors.Dependency("MongoDatabase.FindOne", assertErr("timeout")))
+
+	var response struct {
+		Error struct {
+			Retryable bool `json:"retryable"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v body = %s", err, rec.Body.String())
+	}
+	if !response.Error.Retryable {
+		t.Fatalf("retryable = false body = %s", rec.Body.String())
 	}
 }
 

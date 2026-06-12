@@ -108,6 +108,7 @@ Validation errors use a stable schema:
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Invalid input",
+    "retryable": false,
     "details": [
       {
         "field": "body",
@@ -122,6 +123,8 @@ Validation errors use a stable schema:
 ```
 
 Structured validation details may also use `reason="invalid_type"` with `meta` fields such as `expected` when JSON types do not match the request shape.
+
+Server-side dependency errors set `retryable: true` in the error envelope. Client-side validation and authorization errors set `retryable: false`.
 
 Error code table:
 
