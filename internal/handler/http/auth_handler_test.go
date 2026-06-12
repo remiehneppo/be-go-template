@@ -68,6 +68,7 @@ func TestAuthHandlerInvalidJSONReturnsValidationError(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{`))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Request-ID", "req-123")
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -90,6 +91,12 @@ func TestAuthHandlerInvalidJSONReturnsValidationError(t *testing.T) {
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v body = %s", err, rec.Body.String())
+	}
+	if response.RequestID != "req-123" {
+		t.Fatalf("request_id = %q body = %s", response.RequestID, rec.Body.String())
+	}
+	if got := rec.Header().Get("X-Request-ID"); got != "req-123" {
+		t.Fatalf("X-Request-ID = %q body = %s", got, rec.Body.String())
 	}
 	if response.Success {
 		t.Fatal("success = true")

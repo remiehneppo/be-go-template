@@ -729,8 +729,8 @@ Checklist:
 - [ ] Protected endpoint with blacklisted token returns 401.
 - [ ] Devices endpoint returns active devices.
 - [x] Login history endpoint paginates.
-- [ ] Error response always includes `request_id`.
-- [ ] Response header always includes `X-Request-ID`.
+- [x] Error response always includes `request_id`.
+- [x] Response header always includes `X-Request-ID`.
 - [ ] Monitoring endpoints require auth/admin guard.
 - [ ] Monitoring status/dependencies/runtime endpoints return expected shape.
 - [ ] User role cannot access `/v1/admin/*`.
