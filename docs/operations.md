@@ -97,6 +97,8 @@ HTTP responses use this envelope:
 
 Internal logs may include operation names and wrapped causes. Client responses must only expose safe messages.
 
+Successful HTTP responses use the same wrapper shape with `success: true` and the payload in `data`. That includes auth, user, monitoring, `/healthz`, and `/readyz` responses.
+
 Validation errors use a stable schema:
 
 ```json

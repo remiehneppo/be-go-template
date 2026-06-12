@@ -569,7 +569,7 @@ Checklist:
 - [x] Handler map domain error sang HTTP status.
 - [x] Response lỗi thống nhất: `code`, `message`, `request_id`, `details` nếu là validation error an toàn.
 - [x] Validation error details chuẩn hóa dạng array `{field, reason, meta}`; `reason` là code ổn định cho frontend i18n.
-- [ ] Response success thống nhất: `data`.
+- [x] Response success thống nhất: `data`.
 - [x] Không trả internal error detail ra client.
 - [x] Middleware recovery bắt panic, log stack trace, trả `INTERNAL_ERROR`.
 - [x] Middleware error handler log tất cả lỗi 5xx ở level error.
@@ -862,7 +862,7 @@ Checklist:
 - [x] Dependency health trả `healthy/degraded/unhealthy` theo threshold config.
 - [x] `GET /v1/users/me` và device list hỗ trợ ETag/304.
 - [x] Validation errors có field-level stable reason codes.
-- [ ] Database abstraction dùng typed read/write options, lock fallback/strict behavior rõ ràng và test được.
+- [x] Database abstraction dùng typed read/write options, lock fallback/strict behavior rõ ràng và test được.
 - [x] `FindMany` cache được enforce bằng `CacheableFilter`, không chỉ là convention.
 - [x] Outbox có unique `IdempotencyKey` và worker idempotent để tránh duplicate audit/history.
 - [x] Token family reuse detection phân biệt active-stale hash, logout, expired session và race theo policy.
