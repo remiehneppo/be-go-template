@@ -74,6 +74,7 @@ type RedisConfig struct {
 	DB            int
 	LockPrefix    string
 	TLSEnabled    bool
+	TLSCACert     string
 	TLSServerName string
 }
 
@@ -161,6 +162,7 @@ func Load() (Config, error) {
 			DB:            int(getInt64("REDIS_DB", 0)),
 			LockPrefix:    getString("REDIS_LOCK_PREFIX", "lock:"),
 			TLSEnabled:    getBool("REDIS_TLS_ENABLED", false),
+			TLSCACert:     getString("REDIS_TLS_CA_CERT", ""),
 			TLSServerName: getString("REDIS_TLS_SERVER_NAME", ""),
 		},
 		RateLimit: RateLimitConfig{

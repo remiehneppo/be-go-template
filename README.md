@@ -64,6 +64,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `REDIS_DB` | `0` |
 | `REDIS_LOCK_PREFIX` | `lock:` |
 | `REDIS_TLS_ENABLED` | `false` |
+| `REDIS_TLS_CA_CERT` | empty |
 | `REDIS_TLS_SERVER_NAME` | empty |
 | `AUTH_RATE_LIMIT_ENABLED` | `true` |
 | `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE` | `10` |
@@ -87,6 +88,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 
 Production startup requires explicit non-wildcard `CORS_ALLOWED_ORIGINS`.
 `MONGO_READ_PREFERENCE` accepts `primary`, `primaryPreferred`, `secondary`, `secondaryPreferred`, or `nearest`.
+`REDIS_TLS_CA_CERT` points to a PEM CA bundle file when Redis TLS is enabled.
 
 JWT key format:
 

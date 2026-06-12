@@ -498,7 +498,7 @@ Checklist:
 
 - [ ] `.env.example` gồm `APP_ENV`, `HTTP_ADDR`, `MONGO_URI`, `MONGO_DATABASE`, `REDIS_ADDR`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET_CURRENT`, `JWT_ACCESS_SECRET_PREVIOUS`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `BCRYPT_COST`.
 - [ ] Thêm Mongo config: `MONGO_MAX_POOL_SIZE`, `MONGO_MIN_POOL_SIZE`, `MONGO_CONNECT_TIMEOUT`, `MONGO_READ_PREFERENCE`.
-- [ ] Thêm Redis TLS config: `REDIS_TLS_ENABLED`, `REDIS_TLS_CA_CERT`, `REDIS_TLS_SERVER_NAME`.
+- [x] Thêm Redis TLS config: `REDIS_TLS_ENABLED`, `REDIS_TLS_CA_CERT`, `REDIS_TLS_SERVER_NAME`.
 - [ ] Thêm HTTP safety config: `HTTP_READ_TIMEOUT`, `HTTP_WRITE_TIMEOUT`, `HTTP_IDLE_TIMEOUT`, `HTTP_BODY_LIMIT_BYTES`, `ROUTE_TIMEOUT_DEFAULT`.
 - [ ] Thêm CORS config: `CORS_ALLOWED_ORIGINS`, `CORS_ALLOWED_METHODS`, `CORS_ALLOWED_HEADERS`.
 - [x] Thêm logging config: `LOG_LEVEL`, `LOG_FORMAT`, `LOG_TO_CONSOLE`, `LOG_TO_FILE`, `LOG_FILE_PATH`, `LOG_MAX_SIZE_MB`, `LOG_MAX_BACKUPS`, `LOG_MAX_AGE_DAYS`, `LOG_COMPRESS`.
@@ -823,7 +823,7 @@ Checklist:
 - [x] Request body size limit và response/per-route timeout được test.
 - [x] CORS production không cho wildcard và startup fail nếu config thiếu.
 - [x] Mongo pool/read preference config được validate.
-- [ ] Redis TLS config được document và parse đúng.
+- [x] Redis TLS config được document và parse đúng.
 
 ## 17. Acceptance criteria
 

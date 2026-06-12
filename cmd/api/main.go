@@ -93,14 +93,18 @@ func run() error {
 		return fmt.Errorf("ensure indexes: %w", err)
 	}
 
-	redisCache := cache.NewRedis(cache.RedisConfig{
+	redisCache, err := cache.NewRedis(cache.RedisConfig{
 		Addr:          cfg.Redis.Addr,
 		Password:      cfg.Redis.Password,
 		DB:            cfg.Redis.DB,
 		LockPrefix:    cfg.Redis.LockPrefix,
 		TLSEnabled:    cfg.Redis.TLSEnabled,
+		TLSCACert:     cfg.Redis.TLSCACert,
 		TLSServerName: cfg.Redis.TLSServerName,
 	})
+	if err != nil {
+		return fmt.Errorf("init redis cache: %w", err)
+	}
 	defer func() {
 		if err := redisCache.Close(); err != nil {
 			log.Warn("redis close failed", logger.Any("error", err))

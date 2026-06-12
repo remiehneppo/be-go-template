@@ -2,7 +2,14 @@ package cache
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
+	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -99,7 +106,10 @@ func TestRedisCacheIncrement(t *testing.T) {
 }
 
 func TestRedisCacheTLSConfigUsesServerName(t *testing.T) {
-	cache := NewRedis(RedisConfig{Addr: "redis.example.com:6380", TLSEnabled: true})
+	cache, err := NewRedis(RedisConfig{Addr: "redis.example.com:6380", TLSEnabled: true})
+	if err != nil {
+		t.Fatalf("NewRedis() error = %v", err)
+	}
 	defer cache.Close()
 
 	if cache.client.Options().TLSConfig == nil {
@@ -108,6 +118,67 @@ func TestRedisCacheTLSConfigUsesServerName(t *testing.T) {
 	if got := cache.client.Options().TLSConfig.ServerName; got != "redis.example.com" {
 		t.Fatalf("ServerName = %q", got)
 	}
+}
+
+func TestRedisCacheTLSConfigLoadsCACert(t *testing.T) {
+	dir := t.TempDir()
+	caPath := dir + "/redis-ca.pem"
+	if err := os.WriteFile(caPath, mustGenerateCACertPEM(t), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cache, err := NewRedis(RedisConfig{Addr: "redis.example.com:6380", TLSEnabled: true, TLSCACert: caPath})
+	if err != nil {
+		t.Fatalf("NewRedis() error = %v", err)
+	}
+	defer cache.Close()
+
+	cfg := cache.client.Options().TLSConfig
+	if cfg == nil {
+		t.Fatal("TLSConfig = nil")
+	}
+	if cfg.RootCAs == nil {
+		t.Fatal("RootCAs = nil")
+	}
+	if got := cfg.ServerName; got != "redis.example.com" {
+		t.Fatalf("ServerName = %q", got)
+	}
+}
+
+func TestRedisCacheTLSConfigRejectsInvalidCACert(t *testing.T) {
+	dir := t.TempDir()
+	caPath := dir + "/redis-ca.pem"
+	if err := os.WriteFile(caPath, []byte("not pem"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	_, err := NewRedis(RedisConfig{Addr: "redis.example.com:6380", TLSEnabled: true, TLSCACert: caPath})
+	if err == nil {
+		t.Fatal("NewRedis() error = nil")
+	}
+}
+
+func mustGenerateCACertPEM(t *testing.T) []byte {
+	t.Helper()
+
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "redis-ca"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &priv.PublicKey, priv)
+	if err != nil {
+		t.Fatalf("CreateCertificate() error = %v", err)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 }
 
 func TestRedisCacheWithLockExcludesConcurrentOwner(t *testing.T) {

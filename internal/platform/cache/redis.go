@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -22,6 +24,7 @@ type RedisConfig struct {
 	DB            int
 	LockPrefix    string
 	TLSEnabled    bool
+	TLSCACert     string
 	TLSServerName string
 }
 
@@ -30,7 +33,7 @@ type RedisCache struct {
 	lockPrefix string
 }
 
-func NewRedis(cfg RedisConfig) *RedisCache {
+func NewRedis(cfg RedisConfig) (*RedisCache, error) {
 	lockPrefix := cfg.LockPrefix
 	if lockPrefix == "" {
 		lockPrefix = defaultLockPrefix
@@ -41,6 +44,9 @@ func NewRedis(cfg RedisConfig) *RedisCache {
 		DB:       cfg.DB,
 	}
 	if cfg.TLSEnabled {
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
 		serverName := cfg.TLSServerName
 		if serverName == "" {
 			host, _, err := net.SplitHostPort(cfg.Addr)
@@ -48,13 +54,22 @@ func NewRedis(cfg RedisConfig) *RedisCache {
 				serverName = host
 			}
 		}
-		options.TLSConfig = &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			ServerName: serverName,
+		tlsConfig.ServerName = serverName
+		if cfg.TLSCACert != "" {
+			caCert, err := os.ReadFile(cfg.TLSCACert)
+			if err != nil {
+				return nil, fmt.Errorf("read redis tls ca cert: %w", err)
+			}
+			pool := x509.NewCertPool()
+			if !pool.AppendCertsFromPEM(caCert) {
+				return nil, fmt.Errorf("parse redis tls ca cert: invalid pem")
+			}
+			tlsConfig.RootCAs = pool
 		}
+		options.TLSConfig = tlsConfig
 	}
 	client := redis.NewClient(options)
-	return NewRedisWithClient(client, lockPrefix)
+	return NewRedisWithClient(client, lockPrefix), nil
 }
 
 func NewRedisWithClient(client *redis.Client, lockPrefix string) *RedisCache {

@@ -105,6 +105,26 @@ func TestRateLimitFallbackDefaultsToBlockInProduction(t *testing.T) {
 	}
 }
 
+func TestLoadSupportsRedisTLSConfig(t *testing.T) {
+	t.Setenv("REDIS_TLS_ENABLED", "true")
+	t.Setenv("REDIS_TLS_CA_CERT", "/tmp/redis-ca.pem")
+	t.Setenv("REDIS_TLS_SERVER_NAME", "redis.example.com")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.Redis.TLSEnabled {
+		t.Fatal("Redis.TLSEnabled = false")
+	}
+	if cfg.Redis.TLSCACert != "/tmp/redis-ca.pem" {
+		t.Fatalf("Redis.TLSCACert = %q", cfg.Redis.TLSCACert)
+	}
+	if cfg.Redis.TLSServerName != "redis.example.com" {
+		t.Fatalf("Redis.TLSServerName = %q", cfg.Redis.TLSServerName)
+	}
+}
+
 func TestValidateRejectsInvalidMongoPoolConfig(t *testing.T) {
 	t.Setenv("MONGO_MAX_POOL_SIZE", "0")
 	t.Setenv("MONGO_MIN_POOL_SIZE", "1")
