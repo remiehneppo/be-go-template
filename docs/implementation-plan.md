@@ -733,9 +733,9 @@ Checklist:
 - [x] Response header always includes `X-Request-ID`.
 - [x] Monitoring endpoints require auth/admin guard.
 - [x] Monitoring status/dependencies/runtime endpoints return expected shape.
-- [ ] User role cannot access `/v1/admin/*`.
-- [ ] Admin role can access `/v1/admin/*`.
-- [ ] Auth rate limit returns 429 when exceeded.
+- [x] User role cannot access `/v1/admin/*`.
+- [x] Admin role can access `/v1/admin/*`.
+- [x] Auth rate limit returns 429 when exceeded.
 - [x] `/metrics` returns Prometheus exposition format when enabled.
 - [x] `GET /v1/users/me` and device list return 304 for matching ETag.
 - [x] Validation errors return field-level details with stable reason codes.
