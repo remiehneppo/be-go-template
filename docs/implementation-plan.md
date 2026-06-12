@@ -364,16 +364,16 @@ Checklist:
 - [x] Hash password bằng bcrypt.
 - [x] Trả access token, refresh token, user summary, session/device info.
 - [x] Không trả refresh token hash, access token jti nội bộ, hoặc thông tin device của user khác.
-- [ ] `POST /v1/auth/login`.
-- [ ] Validate credentials.
-- [ ] Ghi login history.
-- [ ] Tạo session mới.
-- [ ] Trả access token và refresh token.
-- [ ] `POST /v1/auth/refresh`.
-- [ ] Validate refresh token hash.
-- [ ] Kiểm tra session chưa revoked và chưa expired.
-- [ ] Rotate refresh token.
-- [ ] Trả access token mới và refresh token mới.
+- [x] `POST /v1/auth/login`.
+- [x] Validate credentials.
+- [x] Ghi login history.
+- [x] Tạo session mới.
+- [x] Trả access token và refresh token.
+- [x] `POST /v1/auth/refresh`.
+- [x] Validate refresh token hash.
+- [x] Kiểm tra session chưa revoked và chưa expired.
+- [x] Rotate refresh token.
+- [x] Trả access token mới và refresh token mới.
 
 ### 5.2. Protected endpoints
 
@@ -386,23 +386,23 @@ Checklist:
 - [x] `POST /v1/auth/logout-all`.
 - [x] Revoke mọi session của user hiện tại.
 - [x] Blacklist access token hiện tại.
-- [ ] `GET /v1/auth/devices`.
-- [ ] Trả danh sách session active của user.
-- [ ] Hỗ trợ `ETag`/`If-None-Match`; trả `304 Not Modified` nếu device list không đổi.
+- [x] `GET /v1/auth/devices`.
+- [x] Trả danh sách session active của user.
+- [x] Hỗ trợ `ETag`/`If-None-Match`; trả `304 Not Modified` nếu device list không đổi.
 - [x] `GET /v1/auth/login-history`.
 - [x] Trả lịch sử login có pagination.
-- [ ] `GET /v1/users/me`.
-- [ ] Trả user hiện tại.
-- [ ] Hỗ trợ `ETag`/`If-None-Match`; trả `304 Not Modified` nếu profile không đổi.
+- [x] `GET /v1/users/me`.
+- [x] Trả user hiện tại.
+- [x] Hỗ trợ `ETag`/`If-None-Match`; trả `304 Not Modified` nếu profile không đổi.
 
 ### 5.3. Auth middleware
 
 Checklist:
 
-- [ ] Parse `Authorization: Bearer <token>`.
-- [ ] Validate JWT signature và expiry.
-- [ ] Validate `jti`, `sub`, `session_id`.
-- [ ] Kiểm tra `jti` có nằm trong Redis blacklist không.
+- [x] Parse `Authorization: Bearer <token>`.
+- [x] Validate JWT signature và expiry.
+- [x] Validate `jti`, `sub`, `session_id`.
+- [x] Kiểm tra `jti` có nằm trong Redis blacklist không.
 - [x] Kiểm tra session active qua repository/service hoặc database abstraction.
 - [ ] Inject `user_id`, `session_id`, `token_id` vào Gin context.
 - [ ] Trả lỗi JSON thống nhất cho unauthenticated/forbidden.
