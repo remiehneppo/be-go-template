@@ -10,18 +10,19 @@ import (
 )
 
 type Config struct {
-	App       AppConfig
-	HTTP      HTTPConfig
-	Log       LogConfig
-	JWT       JWTConfig
-	Mongo     MongoConfig
-	Redis     RedisConfig
-	RateLimit RateLimitConfig
-	Auth      AuthConfig
-	Errors    ErrorConfig
-	Outbox    OutboxConfig
-	Metrics   MetricsConfig
-	Readiness ReadinessConfig
+	App        AppConfig
+	HTTP       HTTPConfig
+	Log        LogConfig
+	JWT        JWTConfig
+	Mongo      MongoConfig
+	Redis      RedisConfig
+	RateLimit  RateLimitConfig
+	Auth       AuthConfig
+	Monitoring MonitoringConfig
+	Errors     ErrorConfig
+	Outbox     OutboxConfig
+	Metrics    MetricsConfig
+	Readiness  ReadinessConfig
 }
 
 type AppConfig struct {
@@ -92,6 +93,12 @@ type RateLimitConfig struct {
 type AuthConfig struct {
 	LockoutMaxFailures int
 	LockoutDuration    time.Duration
+}
+
+type MonitoringConfig struct {
+	Enabled                bool
+	AdminRoles             []string
+	MetricsCollectInterval time.Duration
 }
 
 type ErrorConfig struct {
@@ -182,6 +189,11 @@ func Load() (Config, error) {
 			LockoutMaxFailures: int(getInt64("AUTH_LOCKOUT_MAX_FAILURES", 5)),
 			LockoutDuration:    getDuration("AUTH_LOCKOUT_DURATION", 15*time.Minute),
 		},
+		Monitoring: MonitoringConfig{
+			Enabled:                getBool("MONITORING_ENABLED", true),
+			AdminRoles:             getCSV("MONITORING_ADMIN_ROLES", []string{"admin"}),
+			MetricsCollectInterval: getDuration("METRICS_COLLECT_INTERVAL", 30*time.Second),
+		},
 		Errors: ErrorConfig{
 			IncludeStack: getBool("ERROR_INCLUDE_STACK", getString("APP_ENV", "local") != "production"),
 		},
@@ -193,8 +205,8 @@ func Load() (Config, error) {
 			RetryDelay:        getDuration("OUTBOX_RETRY_DELAY", time.Minute),
 		},
 		Metrics: MetricsConfig{
-			Enabled: getBool("METRICS_ENABLED", true),
-			Path:    getString("METRICS_PATH", "/metrics"),
+			Enabled: getBoolAny("PROMETHEUS_ENABLED", "METRICS_ENABLED", true),
+			Path:    getString("PROMETHEUS_PATH", getString("METRICS_PATH", "/metrics")),
 		},
 		Readiness: ReadinessConfig{
 			Timeout:                getDuration("READY_TIMEOUT", 2*time.Second),
@@ -304,6 +316,12 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.Auth.LockoutMaxFailures > 0 && cfg.Auth.LockoutDuration <= 0 {
 		return fmt.Errorf("AUTH_LOCKOUT_DURATION must be positive when lockout is enabled")
+	}
+	if len(cfg.Monitoring.AdminRoles) == 0 {
+		return fmt.Errorf("MONITORING_ADMIN_ROLES must not be empty")
+	}
+	if cfg.Monitoring.MetricsCollectInterval <= 0 {
+		return fmt.Errorf("METRICS_COLLECT_INTERVAL must be positive")
 	}
 	if cfg.Outbox.DrainInterval <= 0 {
 		return fmt.Errorf("OUTBOX_DRAIN_INTERVAL must be positive")

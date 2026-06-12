@@ -62,9 +62,12 @@ func Authenticate(tokens domainauth.TokenService, sessions domainauth.SessionRep
 	}
 }
 
-func AdminGuard() gin.HandlerFunc {
+func AdminGuard(allowedRoles ...string) gin.HandlerFunc {
+	if len(allowedRoles) == 0 {
+		allowedRoles = []string{string(user.RoleAdmin)}
+	}
 	return func(c *gin.Context) {
-		if !hasRole(c, string(user.RoleAdmin)) {
+		if !hasAnyRole(c, allowedRoles) {
 			writeError(c, apperrors.New(apperrors.CodeForbidden, "Forbidden", http.StatusForbidden))
 			c.Abort()
 			return
@@ -87,9 +90,16 @@ func setAuthContext(c *gin.Context, claims *domainauth.AccessClaims) {
 	c.Request = c.Request.WithContext(ctx)
 }
 
-func hasRole(c *gin.Context, role string) bool {
+func hasAnyRole(c *gin.Context, allowedRoles []string) bool {
+	if len(allowedRoles) == 0 {
+		return false
+	}
+	roleSet := make(map[string]struct{}, len(allowedRoles))
+	for _, role := range allowedRoles {
+		roleSet[role] = struct{}{}
+	}
 	for _, candidate := range contextRoles(c) {
-		if candidate == role {
+		if _, ok := roleSet[candidate]; ok {
 			return true
 		}
 	}

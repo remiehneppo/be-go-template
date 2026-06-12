@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/remihneppo/be-go-template/internal/config"
 	"github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/common"
 	domainmonitoring "github.com/remihneppo/be-go-template/internal/domain/monitoring"
@@ -92,6 +93,32 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 	}
 	if service.auditFilter.ActorUserID != "admin-1" || service.auditFilter.Action != "auth.login" || service.auditFilter.ResourceType != "session" || service.auditFilter.ResourceID != "s1" {
 		t.Fatalf("audit filter = %+v", service.auditFilter)
+	}
+}
+
+func TestMonitoringRoutesDisabledByConfig(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	cfg := config.Config{}
+	cfg.App.Name = "test"
+	cfg.HTTP.CORSAllowOrigins = []string{"http://localhost:3000"}
+	cfg.Monitoring.Enabled = false
+
+	router := NewRouterWithDependencies(cfg, logger.NewNoop(), RouterDependencies{
+		Monitoring: &monitoringServiceStub{},
+		TokenService: &fakeHTTPTokenService{claims: &auth.AccessClaims{
+			UserID:    "admin-1",
+			SessionID: "s1",
+			TokenID:   "jti1",
+			Roles:     []string{string(user.RoleAdmin)},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/status", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
 	}
 }
 

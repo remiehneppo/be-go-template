@@ -81,8 +81,8 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 	if deps.UserService != nil {
 		NewUserHandler(deps.UserService).RegisterRoutes(v1, middleware.Authenticate(deps.TokenService, deps.Sessions))
 	}
-	if deps.Monitoring != nil {
-		admin := v1.Group("/admin", middleware.Authenticate(deps.TokenService, deps.Sessions), middleware.AdminGuard())
+	if deps.Monitoring != nil && cfg.Monitoring.Enabled {
+		admin := v1.Group("/admin", middleware.Authenticate(deps.TokenService, deps.Sessions), middleware.AdminGuard(cfg.Monitoring.AdminRoles...))
 		NewMonitoringHandler(deps.Monitoring).RegisterRoutes(admin)
 	}
 

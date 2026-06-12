@@ -76,6 +76,11 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `RATE_LIMIT_FALLBACK` | `allow` locally, `block` in production |
 | `AUTH_LOCKOUT_MAX_FAILURES` | `5` |
 | `AUTH_LOCKOUT_DURATION` | `15m` |
+| `MONITORING_ENABLED` | `true` |
+| `MONITORING_ADMIN_ROLES` | `admin` |
+| `METRICS_COLLECT_INTERVAL` | `30s` |
+| `PROMETHEUS_ENABLED` | `true` |
+| `PROMETHEUS_PATH` | `/metrics` |
 | `ERROR_INCLUDE_STACK` | `true` locally, `false` in production |
 | `OUTBOX_ENABLED` | `true` |
 | `OUTBOX_DRAIN_INTERVAL` | `5s` |
@@ -92,6 +97,9 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 Production startup requires explicit non-wildcard `CORS_ALLOWED_ORIGINS`.
 Local default allows `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:3000`, and `http://127.0.0.1:5173`.
 `CORS_ALLOWED_HEADERS` includes the device headers used by auth requests.
+`MONITORING_ADMIN_ROLES` accepts a comma-separated list of roles allowed on `/v1/admin/*`.
+`METRICS_COLLECT_INTERVAL` controls how long monitoring auth stats stay cached.
+`PROMETHEUS_ENABLED` and `PROMETHEUS_PATH` are aliases for the metrics endpoint config.
 `MONGO_READ_PREFERENCE` accepts `primary`, `primaryPreferred`, `secondary`, `secondaryPreferred`, or `nearest`.
 `REDIS_TLS_CA_CERT` points to a PEM CA bundle file when Redis TLS is enabled.
 `ETAG_ENABLED=false` disables `ETag` and `If-None-Match` handling on profile/device endpoints.

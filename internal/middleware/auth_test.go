@@ -133,6 +133,26 @@ func TestAdminGuardAllowsOnlyAdminRole(t *testing.T) {
 	}
 }
 
+func TestAdminGuardAllowsConfiguredRole(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set(string(ctxkeys.Roles), []string{"ops"})
+		c.Next()
+	})
+	router.Use(AdminGuard("ops", "auditor"))
+	router.GET("/admin", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin", nil))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestAdminGuardRejectsUserRole(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()

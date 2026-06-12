@@ -55,6 +55,15 @@ func TestLoadDefaults(t *testing.T) {
 	if !cfg.Errors.IncludeStack {
 		t.Fatal("Errors.IncludeStack = false")
 	}
+	if !cfg.Monitoring.Enabled {
+		t.Fatal("Monitoring.Enabled = false")
+	}
+	if got, want := cfg.Monitoring.AdminRoles, []string{"admin"}; !equalStrings(got, want) {
+		t.Fatalf("Monitoring.AdminRoles = %+v, want %+v", got, want)
+	}
+	if cfg.Monitoring.MetricsCollectInterval != 30*time.Second {
+		t.Fatalf("Monitoring.MetricsCollectInterval = %s", cfg.Monitoring.MetricsCollectInterval)
+	}
 	if !cfg.Outbox.Enabled || cfg.Outbox.DrainInterval <= 0 || cfg.Outbox.BatchSize != 10 || cfg.Outbox.DefaultMaxRetries != 10 || cfg.Outbox.RetryDelay <= 0 {
 		t.Fatalf("Outbox = %+v", cfg.Outbox)
 	}
@@ -235,6 +244,34 @@ func TestLoadSupportsCORSConfig(t *testing.T) {
 	}
 	if got, want := cfg.HTTP.CORSAllowHeaders, []string{"Authorization", "X-Request-ID"}; !equalStrings(got, want) {
 		t.Fatalf("CORSAllowHeaders = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoadSupportsMonitoringConfig(t *testing.T) {
+	t.Setenv("MONITORING_ENABLED", "false")
+	t.Setenv("MONITORING_ADMIN_ROLES", "ops,auditor")
+	t.Setenv("METRICS_COLLECT_INTERVAL", "45s")
+	t.Setenv("PROMETHEUS_ENABLED", "false")
+	t.Setenv("PROMETHEUS_PATH", "/prometheus")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Monitoring.Enabled {
+		t.Fatal("Monitoring.Enabled = true")
+	}
+	if got, want := cfg.Monitoring.AdminRoles, []string{"ops", "auditor"}; !equalStrings(got, want) {
+		t.Fatalf("Monitoring.AdminRoles = %+v, want %+v", got, want)
+	}
+	if cfg.Monitoring.MetricsCollectInterval != 45*time.Second {
+		t.Fatalf("Monitoring.MetricsCollectInterval = %s", cfg.Monitoring.MetricsCollectInterval)
+	}
+	if cfg.Metrics.Enabled {
+		t.Fatal("Metrics.Enabled = true")
+	}
+	if cfg.Metrics.Path != "/prometheus" {
+		t.Fatalf("Metrics.Path = %q", cfg.Metrics.Path)
 	}
 }
 

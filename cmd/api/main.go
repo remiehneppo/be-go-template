@@ -15,6 +15,7 @@ import (
 	appuser "github.com/remihneppo/be-go-template/internal/app/user"
 	"github.com/remihneppo/be-go-template/internal/bootstrap"
 	"github.com/remihneppo/be-go-template/internal/config"
+	domainmonitoring "github.com/remihneppo/be-go-template/internal/domain/monitoring"
 	httpserver "github.com/remihneppo/be-go-template/internal/handler/http"
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
@@ -176,12 +177,17 @@ func run() error {
 		AuthStats:         monitoringStatsRepo,
 		AuditLogs:         auditLogRepo,
 		ErrorEvents:       errorEventRepo,
+		AuthStatsTTL:      cfg.Monitoring.MetricsCollectInterval,
 	})
+	var monitoringRouteService domainmonitoring.Service
+	if cfg.Monitoring.Enabled {
+		monitoringRouteService = monitoringService
+	}
 	router := httpserver.NewRouterWithDependencies(cfg, log, httpserver.RouterDependencies{
 		AuthService:  authService,
 		UserService:  userService,
 		TokenService: tokenService,
-		Monitoring:   monitoringService,
+		Monitoring:   monitoringRouteService,
 		ErrorEvents:  errorEventRepo,
 		RateLimiter:  ratelimit.NewRedisLimiter(redisCache),
 		Readiness:    readiness,
