@@ -411,10 +411,10 @@ Checklist:
 
 Checklist:
 
-- [ ] `GET /healthz` chỉ kiểm tra process HTTP còn sống, không ping dependency nặng.
-- [ ] `GET /readyz` ping MongoDB và Redis với timeout mặc định 2 giây.
-- [ ] `/readyz` trả `503` nếu MongoDB không sẵn sàng.
-- [ ] Redis down làm `/readyz` degraded hoặc fail theo config `READY_REQUIRES_REDIS`; default local có thể degraded, production nên explicit.
+- [x] `GET /healthz` chỉ kiểm tra process HTTP còn sống, không ping dependency nặng.
+- [x] `GET /readyz` ping MongoDB và Redis với timeout mặc định 2 giây.
+- [x] `/readyz` trả `503` nếu MongoDB không sẵn sàng.
+- [x] Redis down làm `/readyz` degraded hoặc fail theo config `READY_REQUIRES_REDIS`; default local có thể degraded, production nên explicit.
 
 ### 5.5. Monitoring endpoints
 
@@ -545,8 +545,8 @@ Checklist:
 - [x] Graceful shutdown server, Mongo, Redis.
 - [x] Stop outbox worker gracefully.
 - [x] Flush/sync logger khi shutdown.
-- [ ] Health endpoint `/healthz` kiểm tra process sống.
-- [ ] Ready endpoint `/readyz` ping MongoDB và Redis với timeout.
+- [x] Health endpoint `/healthz` kiểm tra process sống.
+- [x] Ready endpoint `/readyz` ping MongoDB và Redis với timeout.
 - [ ] Tạo `cmd/seed` CLI để seed admin user đầu tiên và test data local.
 - [ ] Tạo `cmd/migrate` CLI cho Mongo schema evolution/backfill/index changes.
 - [ ] Migration có version tracking collection, log version applied/skipped/failed.
@@ -869,5 +869,5 @@ Checklist:
 - [ ] `cmd/seed` seed được admin đầu tiên mà không qua public register.
 - [ ] `cmd/migrate` quản lý index/backfill/schema evolution có version tracking.
 - [ ] Graceful degradation matrix được implement/config rõ cho Redis/Mongo/outbox/rate limit.
-- [ ] `/healthz` và `/readyz` có behavior khác nhau, timeout rõ ràng.
+- [x] `/healthz` và `/readyz` có behavior khác nhau, timeout rõ ràng.
 - [x] CORS, body size limit, HTTP timeout, Mongo pool, Redis TLS đều có config và validation.
