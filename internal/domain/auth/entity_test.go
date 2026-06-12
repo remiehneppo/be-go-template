@@ -16,6 +16,9 @@ func TestNormalizeDeviceIDRequiresUUIDV4(t *testing.T) {
 	if got := NormalizeDeviceID("x" + valid); got != "" {
 		t.Fatalf("NormalizeDeviceID(invalid) = %q", got)
 	}
+	if got := NormalizeDeviceID(valid + valid); got != "" {
+		t.Fatalf("NormalizeDeviceID(oversized) = %q", got)
+	}
 }
 
 func TestSessionIsActive(t *testing.T) {

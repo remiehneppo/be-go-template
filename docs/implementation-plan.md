@@ -708,7 +708,7 @@ Checklist:
 - [ ] Session rotation invalidates `session:id`, old `session:refresh`, and active device list keys.
 - [ ] Outbox enqueue/drain/retry handles temporary audit write failure.
 - [ ] Outbox unique `IdempotencyKey` ngăn duplicate khi caller retry sau timeout.
-- [ ] DeviceID validation rejects invalid/oversized input and never drives security lookup.
+- [x] DeviceID validation rejects invalid/oversized input and never drives security lookup.
 - [x] JWT `kid` validates current and previous key.
 - [x] JWT previous key hết hiệu lực theo `NotAfter`.
 - [ ] Redis blacklist miss falls back to Mongo revoked token repository.
