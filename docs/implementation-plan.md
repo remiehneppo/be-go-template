@@ -284,7 +284,7 @@ Checklist:
 - [ ] `OutboxEvent` gồm `ID`, `IdempotencyKey`, `Type`, `Payload`, `MaxRetries`, `RetryCount`, `Status`, `ProcessAfter`, `CreatedAt`, `UpdatedAt`.
 - [ ] Caller sinh `ID`; với event có business dedup phải sinh `IdempotencyKey` deterministic, ví dụ `login:{user_id}:{request_id}` hoặc `audit:{request_id}:{action}`.
 - [ ] Mongo unique index trên `idempotency_key` để retry ở layer trên không tạo duplicate event.
-- [ ] Worker xử lý idempotent theo `IdempotencyKey`/event target, không chỉ theo Mongo `_id`.
+- [x] Worker xử lý idempotent theo `IdempotencyKey`/event target, không chỉ theo Mongo `_id`.
 - [x] Implement `MongoOutbox` ghi event vào collection `outbox_events`.
 - [x] Implement background worker drain outbox theo interval và retry với backoff.
 - [x] Outbox event hỗ trợ tối thiểu audit log, error event, login history async fallback.
@@ -773,12 +773,12 @@ Checklist:
 - [x] Ghi pagination/filter convention.
 - [x] Ghi auth rate limit policy.
 - [ ] Ghi Prometheus `/metrics` setup và ví dụ scrape config.
-- [ ] Ghi Mongo transaction requirement nếu muốn atomic multi-document writes.
+- [x] Ghi Mongo transaction requirement nếu muốn atomic multi-document writes.
 - [ ] Ghi quy ước `FindMany` cache explicit-only và trách nhiệm `InvalidateKeys`.
 - [x] Ghi DeviceID trust model.
 - [ ] Ghi JWT `kid` rotation process.
-- [ ] Ghi outbox behavior và at-least-once semantics.
-- [ ] Ghi revoked token Redis + Mongo fallback.
+- [x] Ghi outbox behavior và at-least-once semantics.
+- [x] Ghi revoked token Redis + Mongo fallback.
 - [x] Ghi `HealthLevel` threshold config.
 - [x] Ghi ETag behavior cho poll-heavy endpoints.
 - [x] Ghi validation error schema.
@@ -864,7 +864,7 @@ Checklist:
 - [ ] Validation errors có field-level stable reason codes.
 - [ ] Database abstraction dùng typed read/write options, lock fallback/strict behavior rõ ràng và test được.
 - [ ] `FindMany` cache được enforce bằng `CacheableFilter`, không chỉ là convention.
-- [ ] Outbox có unique `IdempotencyKey` và worker idempotent để tránh duplicate audit/history.
+- [x] Outbox có unique `IdempotencyKey` và worker idempotent để tránh duplicate audit/history.
 - [ ] Token family reuse detection phân biệt active-stale hash, logout, expired session và race theo policy.
 - [ ] `cmd/seed` seed được admin đầu tiên mà không qua public register.
 - [ ] `cmd/migrate` quản lý index/backfill/schema evolution có version tracking.

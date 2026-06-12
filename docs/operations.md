@@ -198,6 +198,20 @@ Outbox runtime is configurable with:
 - `OUTBOX_MAX_RETRIES`
 - `OUTBOX_RETRY_DELAY`
 
+Outbox processing is at-least-once, not exactly-once.
+
+- The worker treats duplicate-key conflicts from the target repository as success.
+- Side-effect handlers must remain idempotent for the same logical payload.
+- Duplicate outbox inserts are prevented by `idempotency_key`; duplicate downstream writes are ignored when they hit the same Mongo document key.
+
+## Mongo transaction policy
+
+The template does not rely on MongoDB multi-document transactions for the core auth flow.
+
+- Direct writes are kept within a single repository boundary where possible.
+- Cross-collection side effects use outbox retry instead of transaction coupling.
+- If a deployment wants atomic multi-document writes, it must add transaction support explicitly at the infrastructure boundary.
+
 Admin monitoring reads from the final `audit_logs` and `error_events` collections, not from the queue.
 
 ## Admin seed contract

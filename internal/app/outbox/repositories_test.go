@@ -9,6 +9,7 @@ import (
 
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/common"
+	"github.com/remihneppo/be-go-template/internal/platform/database"
 	platformoutbox "github.com/remihneppo/be-go-template/internal/platform/outbox"
 )
 
@@ -97,6 +98,26 @@ func TestHandlerRoutesEvents(t *testing.T) {
 	}
 }
 
+func TestHandlerIgnoresDuplicateKeyConflicts(t *testing.T) {
+	auditRepo := &duplicateAuditLogRepository{}
+	loginRepo := &duplicateLoginHistoryRepository{}
+	errorRepo := &duplicateErrorEventRepository{}
+	handler := NewHandler(auditRepo, loginRepo, errorRepo)
+
+	if err := handler.Handle(context.Background(), platformoutbox.Event{Type: TypeAuditLog, Payload: mustMarshal(t, domainauth.AuditLog{ID: "a1"})}); err != nil {
+		t.Fatalf("Handle(audit) error = %v", err)
+	}
+	if err := handler.Handle(context.Background(), platformoutbox.Event{Type: TypeLoginHistory, Payload: mustMarshal(t, domainauth.LoginHistory{ID: "l1"})}); err != nil {
+		t.Fatalf("Handle(login) error = %v", err)
+	}
+	if err := handler.Handle(context.Background(), platformoutbox.Event{Type: TypeErrorEvent, Payload: mustMarshal(t, domainauth.ErrorEvent{RequestID: "req-1"})}); err != nil {
+		t.Fatalf("Handle(error) error = %v", err)
+	}
+	if auditRepo.calls != 1 || loginRepo.calls != 1 || errorRepo.calls != 1 {
+		t.Fatalf("calls = audit:%d login:%d error:%d", auditRepo.calls, loginRepo.calls, errorRepo.calls)
+	}
+}
+
 type fakeOutbox struct {
 	events []platformoutbox.Event
 }
@@ -155,6 +176,45 @@ func (r *fakeLoginHistoryRepository) Append(ctx context.Context, event domainaut
 
 func (r *fakeLoginHistoryRepository) ListByUserID(ctx context.Context, userID string, pagination common.Pagination) ([]domainauth.LoginHistory, error) {
 	return r.events, nil
+}
+
+type duplicateAuditLogRepository struct {
+	calls int
+}
+
+func (r *duplicateAuditLogRepository) Append(ctx context.Context, event domainauth.AuditLog) error {
+	r.calls++
+	return database.ErrConflict
+}
+
+func (r *duplicateAuditLogRepository) List(ctx context.Context, filter domainauth.AuditLogFilter, pagination common.Pagination) ([]domainauth.AuditLog, error) {
+	return nil, nil
+}
+
+type duplicateLoginHistoryRepository struct {
+	calls int
+}
+
+func (r *duplicateLoginHistoryRepository) Append(ctx context.Context, event domainauth.LoginHistory) error {
+	r.calls++
+	return database.ErrConflict
+}
+
+func (r *duplicateLoginHistoryRepository) ListByUserID(ctx context.Context, userID string, pagination common.Pagination) ([]domainauth.LoginHistory, error) {
+	return nil, nil
+}
+
+type duplicateErrorEventRepository struct {
+	calls int
+}
+
+func (r *duplicateErrorEventRepository) Append(ctx context.Context, event domainauth.ErrorEvent) error {
+	r.calls++
+	return database.ErrConflict
+}
+
+func (r *duplicateErrorEventRepository) List(ctx context.Context, filter domainauth.ErrorEventFilter, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
+	return nil, nil
 }
 
 type failingLoginHistoryRepository struct{}

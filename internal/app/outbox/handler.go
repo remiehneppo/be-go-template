@@ -3,10 +3,12 @@ package outbox
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	domainmonitoring "github.com/remihneppo/be-go-template/internal/domain/monitoring"
+	"github.com/remihneppo/be-go-template/internal/platform/database"
 	platformoutbox "github.com/remihneppo/be-go-template/internal/platform/outbox"
 )
 
@@ -30,7 +32,7 @@ func (h *Handler) Handle(ctx context.Context, event platformoutbox.Event) error 
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return err
 		}
-		return h.auditLogs.Append(ctx, payload)
+		return ignoreConflict(h.auditLogs.Append(ctx, payload))
 	case TypeErrorEvent:
 		if h.errorEvents == nil {
 			return fmt.Errorf("error event repository is required")
@@ -39,7 +41,7 @@ func (h *Handler) Handle(ctx context.Context, event platformoutbox.Event) error 
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return err
 		}
-		return h.errorEvents.Append(ctx, payload)
+		return ignoreConflict(h.errorEvents.Append(ctx, payload))
 	case TypeLoginHistory:
 		if h.loginHistory == nil {
 			return fmt.Errorf("login history repository is required")
@@ -48,8 +50,15 @@ func (h *Handler) Handle(ctx context.Context, event platformoutbox.Event) error 
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return err
 		}
-		return h.loginHistory.Append(ctx, payload)
+		return ignoreConflict(h.loginHistory.Append(ctx, payload))
 	default:
 		return fmt.Errorf("unsupported outbox event type %q", event.Type)
 	}
+}
+
+func ignoreConflict(err error) error {
+	if err == nil || !errors.Is(err, database.ErrConflict) {
+		return err
+	}
+	return nil
 }
