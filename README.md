@@ -160,9 +160,9 @@ Admin:
 - `GET /v1/admin/monitoring/status`
 - `GET /v1/admin/monitoring/dependencies`
 - `GET /v1/admin/monitoring/runtime`
-- `GET /v1/admin/monitoring/auth-stats`
-- `GET /v1/admin/monitoring/errors`
-- `GET /v1/admin/monitoring/audit-logs`
+- `GET /v1/admin/monitoring/auth-stats?from=&to=`
+- `GET /v1/admin/monitoring/errors?limit=&offset=&cursor=&error_code=&request_id=&status=&from=&to=`
+- `GET /v1/admin/monitoring/audit-logs?limit=&offset=&cursor=&actor_user_id=&action=&resource_type=&resource_id=&request_id=&from=&to=`
 
 Protected endpoints require:
 

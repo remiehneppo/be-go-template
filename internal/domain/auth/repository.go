@@ -33,12 +33,22 @@ type RevokedTokenRepository interface {
 	FindByTokenID(ctx context.Context, tokenID string) (*RevokedToken, error)
 }
 
+type ErrorEventFilter struct {
+	ErrorCode string
+	RequestID string
+	Status    int
+	From      time.Time
+	To        time.Time
+}
+
 type AuditLogFilter struct {
-	ActorUserID string
-	Action      string
-	RequestID   string
-	From        time.Time
-	To          time.Time
+	ActorUserID  string
+	Action       string
+	ResourceType string
+	ResourceID   string
+	RequestID    string
+	From         time.Time
+	To           time.Time
 }
 
 type RevokedToken struct {

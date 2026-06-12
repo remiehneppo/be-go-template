@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/common"
 	"github.com/remihneppo/be-go-template/internal/domain/monitoring"
 )
@@ -64,7 +65,7 @@ func (h *MonitoringHandler) AuthStats(c *gin.Context) {
 }
 
 func (h *MonitoringHandler) Errors(c *gin.Context) {
-	events, err := h.service.GetRecentErrors(c.Request.Context(), queryPagination(c))
+	events, err := h.service.GetRecentErrors(c.Request.Context(), queryErrorEventFilter(c), queryPagination(c))
 	if err != nil {
 		reportContextError(c, err)
 		return
@@ -73,7 +74,7 @@ func (h *MonitoringHandler) Errors(c *gin.Context) {
 }
 
 func (h *MonitoringHandler) AuditLogs(c *gin.Context) {
-	logs, err := h.service.GetRecentAuditLogs(c.Request.Context(), queryPagination(c))
+	logs, err := h.service.GetRecentAuditLogs(c.Request.Context(), queryAuditLogFilter(c), queryPagination(c))
 	if err != nil {
 		reportContextError(c, err)
 		return
@@ -107,4 +108,27 @@ func queryTime(c *gin.Context, key string) time.Time {
 		return time.Time{}
 	}
 	return parsed
+}
+
+func queryErrorEventFilter(c *gin.Context) auth.ErrorEventFilter {
+	status := queryInt(c, "status")
+	return auth.ErrorEventFilter{
+		ErrorCode: c.Query("error_code"),
+		RequestID: c.Query("request_id"),
+		Status:    status,
+		From:      queryTime(c, "from"),
+		To:        queryTime(c, "to"),
+	}
+}
+
+func queryAuditLogFilter(c *gin.Context) auth.AuditLogFilter {
+	return auth.AuditLogFilter{
+		ActorUserID:  c.Query("actor_user_id"),
+		Action:       c.Query("action"),
+		ResourceType: c.Query("resource_type"),
+		ResourceID:   c.Query("resource_id"),
+		RequestID:    c.Query("request_id"),
+		From:         queryTime(c, "from"),
+		To:           queryTime(c, "to"),
+	}
 }

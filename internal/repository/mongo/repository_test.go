@@ -206,7 +206,7 @@ func TestAuditLogRepositoryBuildsFilter(t *testing.T) {
 	db := &fakeDB{findManyValue: []auditLogDocument{{ID: "a1", ActorUserID: "u1", CreatedAt: time.Unix(1, 0)}}}
 	repo := NewAuditLogRepository(db)
 
-	_, err := repo.List(context.Background(), auth.AuditLogFilter{ActorUserID: "u1", Action: "login"}, common.Pagination{})
+	_, err := repo.List(context.Background(), auth.AuditLogFilter{ActorUserID: "u1", Action: "login", ResourceType: "session", ResourceID: "s1"}, common.Pagination{})
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -214,7 +214,7 @@ func TestAuditLogRepositoryBuildsFilter(t *testing.T) {
 	if !ok {
 		t.Fatalf("filter type = %T", db.lastFilter)
 	}
-	if filter["actor_user_id"] != "u1" || filter["action"] != "login" {
+	if filter["actor_user_id"] != "u1" || filter["action"] != "login" || filter["resource_type"] != "session" || filter["resource_id"] != "s1" {
 		t.Fatalf("filter = %#v", filter)
 	}
 }
@@ -259,7 +259,7 @@ func TestErrorEventRepositoryAppendAndList(t *testing.T) {
 		t.Fatalf("insertCalls = %d collection = %q", db.insertCalls, db.lastCollection)
 	}
 
-	got, err := repo.List(context.Background(), common.Pagination{Limit: 200, Offset: 2})
+	got, err := repo.List(context.Background(), auth.ErrorEventFilter{ErrorCode: "INTERNAL_ERROR", RequestID: "req-1", Status: 500}, common.Pagination{Limit: 200, Offset: 2})
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -268,6 +268,13 @@ func TestErrorEventRepositoryAppendAndList(t *testing.T) {
 	}
 	if db.lastReadOptions.Limit != 100 || db.lastReadOptions.Offset != 2 {
 		t.Fatalf("read options = %+v", db.lastReadOptions)
+	}
+	filter, ok := db.lastFilter.(bson.M)
+	if !ok {
+		t.Fatalf("filter type = %T", db.lastFilter)
+	}
+	if filter["error_code"] != "INTERNAL_ERROR" || filter["request_id"] != "req-1" || filter["status"] != 500 {
+		t.Fatalf("filter = %#v", filter)
 	}
 }
 

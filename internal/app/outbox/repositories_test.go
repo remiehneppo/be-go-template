@@ -115,7 +115,7 @@ func (r *fakeErrorEventRepository) Append(ctx context.Context, event domainauth.
 	return nil
 }
 
-func (r *fakeErrorEventRepository) List(ctx context.Context, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
+func (r *fakeErrorEventRepository) List(ctx context.Context, filter domainauth.ErrorEventFilter, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
 	return r.events, nil
 }
 func mustMarshal(t *testing.T, value any) []byte {

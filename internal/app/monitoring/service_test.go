@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/remihneppo/be-go-template/internal/domain/auth"
+	"github.com/remihneppo/be-go-template/internal/domain/common"
 	"github.com/remihneppo/be-go-template/internal/domain/monitoring"
 )
 
@@ -74,6 +76,34 @@ func TestServiceAuthStatsUsesRepository(t *testing.T) {
 	}
 }
 
+func TestServiceRecentErrorsPassesFilter(t *testing.T) {
+	repo := &fakeErrorEventRepository{events: []auth.ErrorEvent{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR"}}}
+	service := NewService(Dependencies{ErrorEvents: repo})
+	filter := auth.ErrorEventFilter{ErrorCode: "INTERNAL_ERROR", RequestID: "req-1", Status: 500}
+
+	got, err := service.GetRecentErrors(context.Background(), filter, common.Pagination{Limit: 200, Offset: 4})
+	if err != nil {
+		t.Fatalf("GetRecentErrors() error = %v", err)
+	}
+	if len(got) != 1 || repo.filter != filter || repo.pagination.Limit != 100 || repo.pagination.Offset != 4 {
+		t.Fatalf("got = %+v repo = %+v", got, repo)
+	}
+}
+
+func TestServiceRecentAuditLogsPassesFilter(t *testing.T) {
+	repo := &fakeAuditLogRepository{events: []auth.AuditLog{{ID: "a1", Action: "auth.login"}}}
+	service := NewService(Dependencies{AuditLogs: repo})
+	filter := auth.AuditLogFilter{ActorUserID: "admin-1", Action: "auth.login", ResourceType: "session", ResourceID: "s1"}
+
+	got, err := service.GetRecentAuditLogs(context.Background(), filter, common.Pagination{Limit: 10})
+	if err != nil {
+		t.Fatalf("GetRecentAuditLogs() error = %v", err)
+	}
+	if len(got) != 1 || repo.filter != filter || repo.pagination.Limit != 10 {
+		t.Fatalf("got = %+v repo = %+v", got, repo)
+	}
+}
+
 type fakeDependencyChecker struct {
 	status monitoring.DependencyStatus
 	ready  bool
@@ -93,4 +123,36 @@ func (r *fakeAuthStatsRepository) GetAuthStats(ctx context.Context, from time.Ti
 	r.from = from
 	r.to = to
 	return r.stats, nil
+}
+
+type fakeErrorEventRepository struct {
+	events     []auth.ErrorEvent
+	filter     auth.ErrorEventFilter
+	pagination common.Pagination
+}
+
+func (r *fakeErrorEventRepository) Append(ctx context.Context, event auth.ErrorEvent) error {
+	return nil
+}
+
+func (r *fakeErrorEventRepository) List(ctx context.Context, filter auth.ErrorEventFilter, pagination common.Pagination) ([]auth.ErrorEvent, error) {
+	r.filter = filter
+	r.pagination = pagination
+	return r.events, nil
+}
+
+type fakeAuditLogRepository struct {
+	events     []auth.AuditLog
+	filter     auth.AuditLogFilter
+	pagination common.Pagination
+}
+
+func (r *fakeAuditLogRepository) Append(ctx context.Context, event auth.AuditLog) error {
+	return nil
+}
+
+func (r *fakeAuditLogRepository) List(ctx context.Context, filter auth.AuditLogFilter, pagination common.Pagination) ([]auth.AuditLog, error) {
+	r.filter = filter
+	r.pagination = pagination
+	return r.events, nil
 }

@@ -93,8 +93,8 @@ func (r *ErrorEventRepository) Append(ctx context.Context, event domainauth.Erro
 	})
 }
 
-func (r *ErrorEventRepository) List(ctx context.Context, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
-	return r.inner.List(ctx, pagination)
+func (r *ErrorEventRepository) List(ctx context.Context, filter domainauth.ErrorEventFilter, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
+	return r.inner.List(ctx, filter, pagination)
 }
 
 func errorEventIdempotencyKey(event domainauth.ErrorEvent) string {

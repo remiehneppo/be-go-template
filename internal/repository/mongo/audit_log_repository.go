@@ -33,6 +33,12 @@ func (r *AuditLogRepository) List(ctx context.Context, filter auth.AuditLogFilte
 	if filter.Action != "" {
 		query["action"] = filter.Action
 	}
+	if filter.ResourceType != "" {
+		query["resource_type"] = filter.ResourceType
+	}
+	if filter.ResourceID != "" {
+		query["resource_id"] = filter.ResourceID
+	}
 	if filter.RequestID != "" {
 		query["request_id"] = filter.RequestID
 	}

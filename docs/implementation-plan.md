@@ -614,7 +614,7 @@ Checklist:
 - [ ] MongoDB/Redis status dùng degraded threshold từ config, timeout/error là unhealthy.
 - [ ] `RuntimeMetrics` gồm goroutines, memory allocation, heap, GC count, process uptime.
 - [ ] `AuthStats` gồm login success/failure count, active sessions, revoked sessions, refresh count, logout count.
-- [ ] Monitoring service dùng repository/query abstraction để lấy auth stats và audit logs.
+- [x] Monitoring service dùng repository/query abstraction để lấy auth stats và audit logs.
 - [ ] Monitoring service có thể cache short TTL cho endpoint stats để tránh query nặng.
 - [ ] Dùng Prometheus client library chính thức cho metrics, không tự tạo metrics format từ đầu.
 - [ ] Expose `GET /metrics` theo Prometheus text exposition format.
@@ -770,7 +770,7 @@ Checklist:
 - [ ] Ghi error response format và error code table.
 - [ ] Ghi monitoring endpoints phục vụ admin panel.
 - [ ] Ghi RBAC/admin role policy.
-- [ ] Ghi pagination/filter convention.
+- [x] Ghi pagination/filter convention.
 - [ ] Ghi auth rate limit policy.
 - [ ] Ghi Prometheus `/metrics` setup và ví dụ scrape config.
 - [ ] Ghi Mongo transaction requirement nếu muốn atomic multi-document writes.
@@ -851,7 +851,7 @@ Checklist:
 - [ ] Refresh token rotation là atomic và detect reuse.
 - [ ] Reuse refresh token cũ revoke toàn bộ token family theo policy.
 - [ ] `/metrics` expose Prometheus metrics khi bật config.
-- [ ] Pagination/filter thống nhất cho login history, audit logs, recent errors.
+- [x] Pagination/filter thống nhất cho login history, audit logs, recent errors.
 - [ ] Mongo-specific query types không leak ra domain/service/handler.
 - [ ] `FindMany` cache chỉ hoạt động với explicit normalized `CacheKey` và `CacheableFilter`.
 - [ ] Session rotation invalidates all related old session/refresh/device-list cache keys.

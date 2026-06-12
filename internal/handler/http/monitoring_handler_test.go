@@ -58,8 +58,8 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 		{name: "dependencies", method: http.MethodGet, path: "/v1/admin/monitoring/dependencies", want: `"redis down"`},
 		{name: "runtime", method: http.MethodGet, path: "/v1/admin/monitoring/runtime", want: `"goroutines":4`},
 		{name: "auth stats", method: http.MethodGet, path: "/v1/admin/monitoring/auth-stats?from=1970-01-01T00:01:40Z&to=1970-01-01T00:03:20Z", want: `"login_success_count":3`},
-		{name: "errors", method: http.MethodGet, path: "/v1/admin/monitoring/errors?limit=7&offset=2&cursor=abc", want: `req-1`},
-		{name: "audit logs", method: http.MethodGet, path: "/v1/admin/monitoring/audit-logs?limit=5&offset=1", want: `auth.login`},
+		{name: "errors", method: http.MethodGet, path: "/v1/admin/monitoring/errors?limit=7&offset=2&cursor=abc&error_code=INTERNAL_ERROR&request_id=req-1&status=500", want: `req-1`},
+		{name: "audit logs", method: http.MethodGet, path: "/v1/admin/monitoring/audit-logs?limit=5&offset=1&actor_user_id=admin-1&action=auth.login&resource_type=session&resource_id=s1", want: `auth.login`},
 	}
 
 	for _, tc := range tests {
@@ -87,6 +87,12 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 	if service.auditPagination.Limit != 5 || service.auditPagination.Offset != 1 {
 		t.Fatalf("audit pagination = %+v", service.auditPagination)
 	}
+	if service.errorsFilter.ErrorCode != "INTERNAL_ERROR" || service.errorsFilter.RequestID != "req-1" || service.errorsFilter.Status != 500 {
+		t.Fatalf("errors filter = %+v", service.errorsFilter)
+	}
+	if service.auditFilter.ActorUserID != "admin-1" || service.auditFilter.Action != "auth.login" || service.auditFilter.ResourceType != "session" || service.auditFilter.ResourceID != "s1" {
+		t.Fatalf("audit filter = %+v", service.auditFilter)
+	}
 }
 
 type monitoringServiceStub struct {
@@ -98,6 +104,8 @@ type monitoringServiceStub struct {
 	audits           []auth.AuditLog
 	authFrom         time.Time
 	authTo           time.Time
+	errorsFilter     auth.ErrorEventFilter
+	auditFilter      auth.AuditLogFilter
 	errorsPagination common.Pagination
 	auditPagination  common.Pagination
 }
@@ -120,12 +128,14 @@ func (s *monitoringServiceStub) GetAuthStats(ctx context.Context, from time.Time
 	return s.authStats, nil
 }
 
-func (s *monitoringServiceStub) GetRecentErrors(ctx context.Context, pagination common.Pagination) ([]auth.ErrorEvent, error) {
+func (s *monitoringServiceStub) GetRecentErrors(ctx context.Context, filter auth.ErrorEventFilter, pagination common.Pagination) ([]auth.ErrorEvent, error) {
+	s.errorsFilter = filter
 	s.errorsPagination = pagination
 	return s.errors, nil
 }
 
-func (s *monitoringServiceStub) GetRecentAuditLogs(ctx context.Context, pagination common.Pagination) ([]auth.AuditLog, error) {
+func (s *monitoringServiceStub) GetRecentAuditLogs(ctx context.Context, filter auth.AuditLogFilter, pagination common.Pagination) ([]auth.AuditLog, error) {
+	s.auditFilter = filter
 	s.auditPagination = pagination
 	return s.audits, nil
 }

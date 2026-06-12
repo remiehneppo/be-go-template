@@ -10,7 +10,7 @@ import (
 
 type ErrorEventRepository interface {
 	Append(ctx context.Context, event auth.ErrorEvent) error
-	List(ctx context.Context, pagination common.Pagination) ([]auth.ErrorEvent, error)
+	List(ctx context.Context, filter auth.ErrorEventFilter, pagination common.Pagination) ([]auth.ErrorEvent, error)
 }
 
 type AuthStatsRepository interface {

@@ -72,6 +72,32 @@ Login failures are tracked as consecutive failed attempts on the user document.
 
 `GET /v1/users/me` returns an `ETag` header based on the safe response payload. A matching `If-None-Match` returns `304 Not Modified`.
 
+## Monitoring list filters
+
+`GET /v1/admin/monitoring/errors` accepts:
+
+- `limit`
+- `offset`
+- `cursor`
+- `error_code`
+- `request_id`
+- `status`
+- `from`
+- `to`
+
+`GET /v1/admin/monitoring/audit-logs` accepts:
+
+- `limit`
+- `offset`
+- `cursor`
+- `actor_user_id`
+- `action`
+- `resource_type`
+- `resource_id`
+- `request_id`
+- `from`
+- `to`
+
 ## Logging contract
 
 - Enable terminal logs with `LOG_TO_TERMINAL=true`.

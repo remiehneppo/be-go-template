@@ -464,11 +464,11 @@ func (s *fakeMonitoringService) GetAuthStats(ctx context.Context, from time.Time
 	return &monitoring.AuthStats{From: from, To: to}, nil
 }
 
-func (s *fakeMonitoringService) GetRecentErrors(ctx context.Context, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
+func (s *fakeMonitoringService) GetRecentErrors(ctx context.Context, filter domainauth.ErrorEventFilter, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
 	return nil, nil
 }
 
-func (s *fakeMonitoringService) GetRecentAuditLogs(ctx context.Context, pagination common.Pagination) ([]domainauth.AuditLog, error) {
+func (s *fakeMonitoringService) GetRecentAuditLogs(ctx context.Context, filter domainauth.AuditLogFilter, pagination common.Pagination) ([]domainauth.AuditLog, error) {
 	return nil, nil
 }
 

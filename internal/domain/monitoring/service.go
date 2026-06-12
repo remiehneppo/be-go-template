@@ -13,6 +13,6 @@ type Service interface {
 	GetRuntimeMetrics(ctx context.Context) (*RuntimeMetrics, error)
 	GetDependencyStatus(ctx context.Context) (*DependencyStatus, error)
 	GetAuthStats(ctx context.Context, from time.Time, to time.Time) (*AuthStats, error)
-	GetRecentErrors(ctx context.Context, pagination common.Pagination) ([]auth.ErrorEvent, error)
-	GetRecentAuditLogs(ctx context.Context, pagination common.Pagination) ([]auth.AuditLog, error)
+	GetRecentErrors(ctx context.Context, filter auth.ErrorEventFilter, pagination common.Pagination) ([]auth.ErrorEvent, error)
+	GetRecentAuditLogs(ctx context.Context, filter auth.AuditLogFilter, pagination common.Pagination) ([]auth.AuditLog, error)
 }

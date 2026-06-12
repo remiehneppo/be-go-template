@@ -24,10 +24,30 @@ func (r *ErrorEventRepository) Append(ctx context.Context, event auth.ErrorEvent
 	return r.db.InsertOne(ctx, errorEventsCollection, errorEventDocumentFromDomain(event), database.WriteOptions{})
 }
 
-func (r *ErrorEventRepository) List(ctx context.Context, pagination common.Pagination) ([]auth.ErrorEvent, error) {
+func (r *ErrorEventRepository) List(ctx context.Context, filter auth.ErrorEventFilter, pagination common.Pagination) ([]auth.ErrorEvent, error) {
 	pagination = pagination.Normalized(20, 100)
+	query := bson.M{}
+	if filter.ErrorCode != "" {
+		query["error_code"] = filter.ErrorCode
+	}
+	if filter.RequestID != "" {
+		query["request_id"] = filter.RequestID
+	}
+	if filter.Status != 0 {
+		query["status"] = filter.Status
+	}
+	if !filter.From.IsZero() || !filter.To.IsZero() {
+		createdAt := bson.M{}
+		if !filter.From.IsZero() {
+			createdAt["$gte"] = filter.From
+		}
+		if !filter.To.IsZero() {
+			createdAt["$lte"] = filter.To
+		}
+		query["created_at"] = createdAt
+	}
 	var docs []errorEventDocument
-	if err := r.db.FindMany(ctx, errorEventsCollection, bson.M{}, &docs, database.ReadOptions{
+	if err := r.db.FindMany(ctx, errorEventsCollection, query, &docs, database.ReadOptions{
 		Limit:  int64(pagination.Limit),
 		Offset: int64(pagination.Offset),
 		Sort:   bson.M{"created_at": -1},

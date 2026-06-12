@@ -118,18 +118,18 @@ func (s *Service) GetAuthStats(ctx context.Context, from time.Time, to time.Time
 	return &domainmonitoring.AuthStats{From: from, To: to}, nil
 }
 
-func (s *Service) GetRecentErrors(ctx context.Context, pagination common.Pagination) ([]auth.ErrorEvent, error) {
+func (s *Service) GetRecentErrors(ctx context.Context, filter auth.ErrorEventFilter, pagination common.Pagination) ([]auth.ErrorEvent, error) {
 	if s.errorEvents == nil {
 		return []auth.ErrorEvent{}, nil
 	}
-	return s.errorEvents.List(ctx, pagination.Normalized(20, 100))
+	return s.errorEvents.List(ctx, filter, pagination.Normalized(20, 100))
 }
 
-func (s *Service) GetRecentAuditLogs(ctx context.Context, pagination common.Pagination) ([]auth.AuditLog, error) {
+func (s *Service) GetRecentAuditLogs(ctx context.Context, filter auth.AuditLogFilter, pagination common.Pagination) ([]auth.AuditLog, error) {
 	if s.auditLogs == nil {
 		return []auth.AuditLog{}, nil
 	}
-	return s.auditLogs.List(ctx, auth.AuditLogFilter{}, pagination.Normalized(20, 100))
+	return s.auditLogs.List(ctx, filter, pagination.Normalized(20, 100))
 }
 
 var _ domainmonitoring.Service = (*Service)(nil)
