@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Config struct {
@@ -93,6 +95,7 @@ type RateLimitConfig struct {
 type AuthConfig struct {
 	LockoutMaxFailures int
 	LockoutDuration    time.Duration
+	BcryptCost         int
 }
 
 type MonitoringConfig struct {
@@ -188,6 +191,7 @@ func Load() (Config, error) {
 		Auth: AuthConfig{
 			LockoutMaxFailures: int(getInt64("AUTH_LOCKOUT_MAX_FAILURES", 5)),
 			LockoutDuration:    getDuration("AUTH_LOCKOUT_DURATION", 15*time.Minute),
+			BcryptCost:         int(getInt64("BCRYPT_COST", int64(bcrypt.DefaultCost))),
 		},
 		Monitoring: MonitoringConfig{
 			Enabled:                getBool("MONITORING_ENABLED", true),
@@ -325,6 +329,9 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.Auth.LockoutMaxFailures > 0 && cfg.Auth.LockoutDuration <= 0 {
 		return fmt.Errorf("AUTH_LOCKOUT_DURATION must be positive when lockout is enabled")
+	}
+	if cfg.Auth.BcryptCost < bcrypt.MinCost || cfg.Auth.BcryptCost > bcrypt.MaxCost {
+		return fmt.Errorf("BCRYPT_COST must be between %d and %d", bcrypt.MinCost, bcrypt.MaxCost)
 	}
 	if len(cfg.Monitoring.AdminRoles) == 0 {
 		return fmt.Errorf("MONITORING_ADMIN_ROLES must not be empty")

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	appauth "github.com/remihneppo/be-go-template/internal/app/auth"
 	appseed "github.com/remihneppo/be-go-template/internal/app/seed"
 	"github.com/remihneppo/be-go-template/internal/bootstrap"
 	"github.com/remihneppo/be-go-template/internal/config"
@@ -56,7 +57,10 @@ func run() error {
 		return fmt.Errorf("ensure indexes: %w", err)
 	}
 	userRepo := mongo.NewUserRepository(database.NewMongo(client, cfg.Mongo.Database))
-	result, err := appseed.NewAdminSeeder(appseed.AdminSeederDependencies{Users: userRepo}).SeedAdmin(ctx, input)
+	result, err := appseed.NewAdminSeeder(appseed.AdminSeederDependencies{
+		Users:     userRepo,
+		Passwords: appauth.BcryptHasher{Cost: cfg.Auth.BcryptCost},
+	}).SeedAdmin(ctx, input)
 	if err != nil {
 		return err
 	}

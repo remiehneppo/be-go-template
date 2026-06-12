@@ -157,6 +157,7 @@ func run() error {
 		AuditLogs:          auditLogRepo,
 		RevokedTokens:      revokedTokenRepo,
 		Tokens:             tokenService,
+		Passwords:          appauth.BcryptHasher{Cost: cfg.Auth.BcryptCost},
 		Metrics:            authMetrics,
 		RefreshTTL:         cfg.JWT.RefreshTTL,
 		LockoutMaxFailures: cfg.Auth.LockoutMaxFailures,

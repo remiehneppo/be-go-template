@@ -3,6 +3,8 @@ package config
 import (
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestLoadDefaults(t *testing.T) {
@@ -54,6 +56,9 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.Auth.LockoutMaxFailures != 5 || cfg.Auth.LockoutDuration <= 0 {
 		t.Fatalf("Auth = %+v", cfg.Auth)
+	}
+	if cfg.Auth.BcryptCost != bcrypt.DefaultCost {
+		t.Fatalf("Auth.BcryptCost = %d", cfg.Auth.BcryptCost)
 	}
 	if !cfg.Errors.IncludeStack {
 		t.Fatal("Errors.IncludeStack = false")
@@ -146,6 +151,30 @@ func TestValidateRejectsInvalidHTTPTimeouts(t *testing.T) {
 	cfg.HTTP.IdleTimeout = 0
 	if err := cfg.Validate(); err == nil || err.Error() != "HTTP_IDLE_TIMEOUT must be positive" {
 		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestLoadSupportsBcryptCost(t *testing.T) {
+	t.Setenv("BCRYPT_COST", "4")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Auth.BcryptCost != bcrypt.MinCost {
+		t.Fatalf("Auth.BcryptCost = %d", cfg.Auth.BcryptCost)
+	}
+}
+
+func TestValidateRejectsInvalidBcryptCost(t *testing.T) {
+	t.Setenv("BCRYPT_COST", "3")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if got, want := err.Error(), "BCRYPT_COST must be between 4 and 31"; got != want {
+		t.Fatalf("Load() error = %q, want %q", got, want)
 	}
 }
 

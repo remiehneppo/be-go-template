@@ -361,7 +361,7 @@ Checklist:
 
 - [ ] `POST /v1/auth/register`.
 - [ ] Validate email, password, name.
-- [ ] Hash password bằng bcrypt.
+- [x] Hash password bằng bcrypt.
 - [ ] Trả access token, refresh token, user summary, session/device info.
 - [ ] Không trả refresh token hash, access token jti nội bộ, hoặc thông tin device của user khác.
 - [ ] `POST /v1/auth/login`.
@@ -496,7 +496,7 @@ Checklist:
 
 Checklist:
 
-- [ ] `.env.example` gồm `APP_ENV`, `HTTP_ADDR`, `MONGO_URI`, `MONGO_DATABASE`, `REDIS_ADDR`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET_CURRENT`, `JWT_ACCESS_SECRET_PREVIOUS`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `BCRYPT_COST`.
+- [x] `.env.example` gồm `APP_ENV`, `HTTP_ADDR`, `MONGO_URI`, `MONGO_DATABASE`, `REDIS_ADDR`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET_CURRENT`, `JWT_ACCESS_SECRET_PREVIOUS`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `BCRYPT_COST`.
 - [ ] Thêm Mongo config: `MONGO_MAX_POOL_SIZE`, `MONGO_MIN_POOL_SIZE`, `MONGO_CONNECT_TIMEOUT`, `MONGO_READ_PREFERENCE`.
 - [x] Thêm Redis TLS config: `REDIS_TLS_ENABLED`, `REDIS_TLS_CA_CERT`, `REDIS_TLS_SERVER_NAME`.
 - [x] Thêm HTTP safety config: `HTTP_READ_TIMEOUT`, `HTTP_WRITE_TIMEOUT`, `HTTP_IDLE_TIMEOUT`, `HTTP_BODY_LIMIT_BYTES`, `ROUTE_TIMEOUT_DEFAULT`.
@@ -647,7 +647,7 @@ Checklist:
 
 Checklist:
 
-- [ ] Password hash bằng bcrypt.
+- [x] Password hash bằng bcrypt.
 - [ ] Refresh token sinh bằng crypto random.
 - [ ] Refresh token chỉ lưu hash.
 - [ ] Access JWT có `sub`, `sid`, `jti`, `iat`, `exp`.
