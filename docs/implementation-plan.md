@@ -237,7 +237,7 @@ Checklist:
 - [ ] Hỗ trợ level `debug`, `info`, `warn`, `error`.
 - [ ] Hỗ trợ structured fields: `request_id`, `user_id`, `session_id`, `ip`, `method`, `path`, `status`, `latency_ms`, `error_code`.
 - [ ] Hỗ trợ `With(fields...) Logger` để truyền context qua layer.
-- [ ] Hỗ trợ `WithContext(ctx, logger)` và `FromContext(ctx)` để carry `request_id`, `user_id`, `session_id` qua service/repository.
+- [x] Hỗ trợ `WithContext(ctx, logger)` và `FromContext(ctx)` để carry `request_id`, `user_id`, `session_id` qua service/repository.
 - [ ] Ghi log ra terminal.
 - [ ] Ghi log ra file.
 - [ ] File log có cấu hình path, max size, max age, max backups, compress rotation.
@@ -254,8 +254,8 @@ Checklist:
 - [ ] Tạo package `internal/platform/ctxkeys` để định nghĩa toàn bộ context key tập trung.
 - [ ] Dùng unexported/custom key type, không dùng raw string key trực tiếp trong middleware/service.
 - [ ] Key tối thiểu: `request_id`, `user_id`, `session_id`, `token_id`, `trace_id`, `span_id`, `logger`.
-- [ ] Middleware request id set `request_id` và logger vào context.
-- [ ] Auth middleware bổ sung `user_id`, `session_id`, `token_id` vào context.
+- [x] Middleware request id set `request_id` và logger vào context.
+- [x] Auth middleware bổ sung `user_id`, `session_id`, `token_id` vào context.
 - [ ] Middleware tracing-readiness đọc `X-Trace-ID` nếu có, validate format, nếu không có thì có thể dùng request id làm trace id tạm.
 - [ ] Logger lấy các field chuẩn từ context, không để từng layer tự đặt key riêng.
 
@@ -598,7 +598,7 @@ Checklist:
 - [ ] Không log request body mặc định.
 - [ ] Nếu bật debug body logging, phải redact password/token/secret/email nếu config yêu cầu.
 - [ ] Log file rotation được cấu hình.
-- [ ] Middleware inject logger vào context với `request_id`, và bổ sung `user_id/session_id` sau auth middleware.
+- [x] Middleware inject logger vào context với `request_id`, và bổ sung `user_id/session_id` sau auth middleware.
 - [ ] Service/repository lấy logger bằng `logger.FromContext(ctx)` khi cần log.
 - [ ] Test đảm bảo request id đi xuyên middleware -> service log -> response.
 

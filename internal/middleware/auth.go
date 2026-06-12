@@ -12,6 +12,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/platform/ctxkeys"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
+	"github.com/remihneppo/be-go-template/internal/platform/logger"
 )
 
 func Authenticate(tokens domainauth.TokenService, sessions domainauth.SessionRepository) gin.HandlerFunc {
@@ -46,6 +47,13 @@ func Authenticate(tokens domainauth.TokenService, sessions domainauth.SessionRep
 			}
 		}
 		setAuthContext(c, claims)
+		ctx := logger.WithContext(c.Request.Context(), logger.FromContext(c.Request.Context()).With(
+			logger.String("user_id", claims.UserID),
+			logger.String("session_id", claims.SessionID),
+			logger.String("token_id", claims.TokenID),
+			logger.Any("roles", claims.Roles),
+		))
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }
