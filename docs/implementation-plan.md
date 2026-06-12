@@ -185,7 +185,7 @@ Checklist:
 - [ ] Database abstraction dùng write lock/invalidation để tránh stale read sau write.
 - [ ] Nếu write lock fail và `WriteOptions.StrictLock=true`, write fail với `DEPENDENCY_ERROR`; nếu `StrictLock=false`, ghi MongoDB rồi invalidate best-effort.
 - [x] `FindMany` chỉ cache khi filter implement `CacheableFilter` và caller truyền `CacheKey` deterministic.
-- [ ] Nếu `FindMany` có `CacheKey` nhưng filter không implement `CacheableFilter`, skip cache và log warning ở production; có thể fail/panic trong dev/test theo config.
+- [x] Nếu `FindMany` có `CacheKey` nhưng filter không implement `CacheableFilter`, skip cache và log warning ở production; có thể fail/panic trong dev/test theo config.
 - [x] Unit test cached database với mock base database và mock cache.
 
 ### 3.3. Repository interfaces
@@ -453,8 +453,8 @@ Checklist:
   - [ ] Nếu lock fail theo fallback policy hoặc vẫn miss sau lock, đọc MongoDB.
   - [ ] Set cache với TTL.
   - [ ] Release lock.
-- [ ] `FindMany` không cache mặc định.
-- [ ] `FindMany` chỉ được cache khi caller truyền `CacheKey` tường minh và filter implement `CacheableFilter` với normalized/deterministic representation.
+- [x] `FindMany` không cache mặc định.
+- [x] `FindMany` chỉ được cache khi caller truyền `CacheKey` tường minh và filter implement `CacheableFilter` với normalized/deterministic representation.
 - [ ] Không tự sinh cache key từ raw filter phức tạp.
 - [ ] Write path:
   - [ ] Nếu có `LockKey`, acquire write lock.
@@ -774,7 +774,7 @@ Checklist:
 - [x] Ghi auth rate limit policy.
 - [ ] Ghi Prometheus `/metrics` setup và ví dụ scrape config.
 - [x] Ghi Mongo transaction requirement nếu muốn atomic multi-document writes.
-- [ ] Ghi quy ước `FindMany` cache explicit-only và trách nhiệm `InvalidateKeys`.
+- [x] Ghi quy ước `FindMany` cache explicit-only và trách nhiệm `InvalidateKeys`.
 - [x] Ghi DeviceID trust model.
 - [ ] Ghi JWT `kid` rotation process.
 - [x] Ghi outbox behavior và at-least-once semantics.
@@ -853,7 +853,7 @@ Checklist:
 - [ ] `/metrics` expose Prometheus metrics khi bật config.
 - [x] Pagination/filter thống nhất cho login history, audit logs, recent errors.
 - [ ] Mongo-specific query types không leak ra domain/service/handler.
-- [ ] `FindMany` cache chỉ hoạt động với explicit normalized `CacheKey` và `CacheableFilter`.
+- [x] `FindMany` cache chỉ hoạt động với explicit normalized `CacheKey` và `CacheableFilter`.
 - [ ] Session rotation invalidates all related old session/refresh/device-list cache keys.
 - [x] Audit/error/history events không mất vĩnh viễn khi write tạm fail; outbox retry at-least-once.
 - [ ] DeviceID chỉ là UX hint, được validate, và không dùng làm security lookup.
@@ -863,7 +863,7 @@ Checklist:
 - [ ] `GET /v1/users/me` và device list hỗ trợ ETag/304.
 - [ ] Validation errors có field-level stable reason codes.
 - [ ] Database abstraction dùng typed read/write options, lock fallback/strict behavior rõ ràng và test được.
-- [ ] `FindMany` cache được enforce bằng `CacheableFilter`, không chỉ là convention.
+- [x] `FindMany` cache được enforce bằng `CacheableFilter`, không chỉ là convention.
 - [x] Outbox có unique `IdempotencyKey` và worker idempotent để tránh duplicate audit/history.
 - [ ] Token family reuse detection phân biệt active-stale hash, logout, expired session và race theo policy.
 - [ ] `cmd/seed` seed được admin đầu tiên mà không qua public register.

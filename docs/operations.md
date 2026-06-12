@@ -46,6 +46,7 @@ Defaults:
 - `FindOne` may use read-through cache when a deterministic `ReadOptions.CacheKey` is provided.
 - `FindMany` does not cache by default.
 - `FindMany` may cache only when the caller provides an explicit deterministic cache key and the filter implements the cacheable-filter contract.
+- If a `FindMany` call supplies `CacheKey` but the filter is not cacheable, non-production environments fail fast and production logs a warning then skips cache.
 - Repositories should pass invalidation keys through database write options when they know affected cache entries.
 - Repository code must not call Redis directly for query caching.
 

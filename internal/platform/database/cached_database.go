@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
@@ -14,17 +15,24 @@ import (
 const defaultWriteLockTTL = 5 * time.Second
 
 type CachedDatabase struct {
-	base    Database
-	cache   cache.Cache
-	log     logger.Logger
-	metrics *platformmetrics.DatabaseMetrics
+	base                      Database
+	cache                     cache.Cache
+	log                       logger.Logger
+	metrics                   *platformmetrics.DatabaseMetrics
+	strictFindManyCacheFilter bool
 }
 
-func NewCached(base Database, cacheStore cache.Cache, log logger.Logger, metrics *platformmetrics.DatabaseMetrics) *CachedDatabase {
+func NewCached(base Database, cacheStore cache.Cache, log logger.Logger, metrics *platformmetrics.DatabaseMetrics, strictFindManyCacheFilter bool) *CachedDatabase {
 	if log == nil {
 		log = logger.NewNoop()
 	}
-	return &CachedDatabase{base: base, cache: cacheStore, log: log, metrics: metrics}
+	return &CachedDatabase{
+		base:                      base,
+		cache:                     cacheStore,
+		log:                       log,
+		metrics:                   metrics,
+		strictFindManyCacheFilter: strictFindManyCacheFilter,
+	}
 }
 
 func (d *CachedDatabase) FindOne(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
@@ -49,6 +57,12 @@ func (d *CachedDatabase) FindMany(ctx context.Context, collection string, filter
 		return d.callAndLogDependency("CachedDatabase.FindMany", d.base.FindMany(ctx, collection, filter, dest, opts), logger.String("collection", collection))
 	}
 	if _, ok := filter.(CacheableFilter); !ok {
+		err := fmt.Errorf("findmany cache requires CacheableFilter")
+		if d.strictFindManyCacheFilter {
+			d.recordCacheEvent("find_many", "strict_rejected")
+			d.log.Warn("FindMany cache rejected because filter is not CacheableFilter", logger.String("cache_key", opts.CacheKey), logger.Any("error", err))
+			return err
+		}
 		d.log.Warn("FindMany cache skipped because filter is not CacheableFilter", logger.String("cache_key", opts.CacheKey))
 		d.recordCacheEvent("find_many", "skipped")
 		return d.callAndLogDependency("CachedDatabase.FindMany", d.base.FindMany(ctx, collection, filter, dest, opts), logger.String("collection", collection), logger.String("cache_key", opts.CacheKey))

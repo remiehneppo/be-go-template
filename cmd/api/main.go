@@ -113,7 +113,7 @@ func run() error {
 	}()
 
 	baseDB := database.NewMongo(mongoClient, cfg.Mongo.Database)
-	db := database.NewCached(baseDB, redisCache, log, dbMetrics)
+	db := database.NewCached(baseDB, redisCache, log, dbMetrics, cfg.App.Env != "production")
 	userRepo := mongorepo.NewUserRepository(db)
 	sessionRepo := mongorepo.NewSessionRepository(db)
 	directLoginHistoryRepo := mongorepo.NewLoginHistoryRepository(db)
