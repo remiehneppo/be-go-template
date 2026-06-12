@@ -28,8 +28,9 @@ func (f cacheableFilter) CacheKeyParts() []string {
 func TestCachedDatabaseFindOneCacheHitSkipsBase(t *testing.T) {
 	base := &fakeDatabase{findOneValue: testDoc{ID: "base"}}
 	cacheStore := newFakeCache()
+	capture := newDBCaptureLogger()
 	cacheStore.values["doc:1"] = testDoc{ID: "cached", Name: "Cached"}
-	db := NewCached(base, cacheStore, logger.NewNoop())
+	db := NewCached(base, cacheStore, capture)
 
 	var got testDoc
 	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{
@@ -45,12 +46,16 @@ func TestCachedDatabaseFindOneCacheHitSkipsBase(t *testing.T) {
 	if base.findOneCalls != 0 {
 		t.Fatalf("base find calls = %d", base.findOneCalls)
 	}
+	if !capture.hasEntry("debug", "cache hit") || !capture.hasField("cache_key", "doc:1") {
+		t.Fatalf("logger entries = %+v", capture.entries)
+	}
 }
 
 func TestCachedDatabaseFindOneMissLoadsAndCaches(t *testing.T) {
 	base := &fakeDatabase{findOneValue: testDoc{ID: "base", Name: "Base"}}
 	cacheStore := newFakeCache()
-	db := NewCached(base, cacheStore, logger.NewNoop())
+	capture := newDBCaptureLogger()
+	db := NewCached(base, cacheStore, capture)
 
 	var got testDoc
 	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{
@@ -72,6 +77,9 @@ func TestCachedDatabaseFindOneMissLoadsAndCaches(t *testing.T) {
 	}
 	if _, ok := cacheStore.values["doc:1"]; !ok {
 		t.Fatal("cache was not populated")
+	}
+	if !capture.hasEntry("debug", "cache miss") || !capture.hasEntry("debug", "cache populated") {
+		t.Fatalf("logger entries = %+v", capture.entries)
 	}
 }
 
@@ -172,15 +180,40 @@ func TestCachedDatabaseNonStrictWriteLockFallsBack(t *testing.T) {
 	}
 }
 
+func TestCachedDatabaseReadLockNotAcquiredLogsFallback(t *testing.T) {
+	base := &fakeDatabase{findOneValue: testDoc{ID: "base"}}
+	cacheStore := newFakeCache()
+	cacheStore.lockErr = cache.ErrLockNotAcquired
+	capture := newDBCaptureLogger()
+	db := NewCached(base, cacheStore, capture)
+
+	var got testDoc
+	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{
+		CacheKey:   "doc:1",
+		CacheTTL:   time.Minute,
+		LockOnMiss: true,
+	})
+	if err != nil {
+		t.Fatalf("FindOne() error = %v", err)
+	}
+	if !capture.hasEntry("warn", "cache read lock not acquired, falling back to database") {
+		t.Fatalf("logger entries = %+v", capture.entries)
+	}
+}
+
 func TestCachedDatabaseFindOneMapsTimeoutToDependencyError(t *testing.T) {
 	base := &fakeDatabase{findOneErr: context.DeadlineExceeded}
-	db := NewCached(base, nil, logger.NewNoop())
+	capture := newDBCaptureLogger()
+	db := NewCached(base, nil, capture)
 
 	var got testDoc
 	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{})
 	appErr := apperrors.FromError(err)
 	if appErr == nil || appErr.Code != apperrors.CodeDependency {
 		t.Fatalf("FindOne() error = %v", err)
+	}
+	if !capture.hasEntry("warn", "database dependency error") || !capture.hasField("op", "CachedDatabase.FindOne") {
+		t.Fatalf("logger entries = %+v", capture.entries)
 	}
 }
 
@@ -332,4 +365,67 @@ func copyValue(dest any, src any) error {
 		return err
 	}
 	return json.Unmarshal(payload, dest)
+}
+
+type dbCaptureLogger struct {
+	entries *[]dbLogEntry
+	fields  []logger.Field
+}
+
+type dbLogEntry struct {
+	level  string
+	msg    string
+	fields []logger.Field
+}
+
+func newDBCaptureLogger() *dbCaptureLogger {
+	entries := []dbLogEntry{}
+	return &dbCaptureLogger{entries: &entries}
+}
+
+func (l *dbCaptureLogger) Debug(msg string, fields ...logger.Field) {
+	l.record("debug", msg, fields...)
+}
+
+func (l *dbCaptureLogger) Info(msg string, fields ...logger.Field) {
+	l.record("info", msg, fields...)
+}
+
+func (l *dbCaptureLogger) Warn(msg string, fields ...logger.Field) {
+	l.record("warn", msg, fields...)
+}
+
+func (l *dbCaptureLogger) Error(msg string, fields ...logger.Field) {
+	l.record("error", msg, fields...)
+}
+
+func (l *dbCaptureLogger) With(fields ...logger.Field) logger.Logger {
+	next := *l
+	next.fields = append(append([]logger.Field{}, l.fields...), fields...)
+	return &next
+}
+
+func (l *dbCaptureLogger) record(level, msg string, fields ...logger.Field) {
+	entryFields := append(append([]logger.Field{}, l.fields...), fields...)
+	*l.entries = append(*l.entries, dbLogEntry{level: level, msg: msg, fields: entryFields})
+}
+
+func (l *dbCaptureLogger) hasEntry(level, msg string) bool {
+	for _, entry := range *l.entries {
+		if entry.level == level && entry.msg == msg {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *dbCaptureLogger) hasField(key string, want any) bool {
+	for _, entry := range *l.entries {
+		for _, field := range entry.fields {
+			if field.Key == key && field.Value == want {
+				return true
+			}
+		}
+	}
+	return false
 }

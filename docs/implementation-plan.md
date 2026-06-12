@@ -594,7 +594,7 @@ Checklist:
 - [ ] App log có console-friendly format ở local nếu config chọn.
 - [x] Error log ghi stack/cause nội bộ cho panic và 5xx.
 - [x] Auth service log event quan trọng: login success/failure, refresh success/failure, logout, token reuse suspected.
-- [ ] Database/cache wrapper log cache hit/miss, lock acquire timeout, Mongo/Redis dependency error ở level phù hợp.
+- [x] Database/cache wrapper log cache hit/miss, lock acquire timeout, Mongo/Redis dependency error ở level phù hợp.
 - [ ] Không log request body mặc định.
 - [ ] Nếu bật debug body logging, phải redact password/token/secret/email nếu config yêu cầu.
 - [ ] Log file rotation được cấu hình.
