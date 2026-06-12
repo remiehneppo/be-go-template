@@ -225,6 +225,23 @@ X-Device-Name: <human-readable-device-name>
 - Prometheus metrics are exposed at `METRICS_PATH`.
 - Admin monitoring endpoints expose runtime, dependency, auth, audit, and recent error views.
 
+Prometheus metrics use the `be_go_template` namespace by default and include:
+
+- HTTP: `http_requests_total`, `http_request_duration_seconds`
+- Database/cache: `database_cache_events_total`, `database_cache_lock_seconds`, `database_dependency_errors_total`
+- Auth: `auth_login_total`, `auth_refresh_total`, `auth_logout_total`, `auth_session_events_total`, `auth_active_sessions`
+
+Example scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: be-go-template-api
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - be-go-template:8080
+```
+
 See [docs/operations.md](docs/operations.md) for dependency degradation behavior and operational contracts.
 
 ## Project docs

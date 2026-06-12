@@ -14,6 +14,28 @@ Readiness uses `READY_TIMEOUT`. Dependency latency is classified with `MONGO_DEG
 
 Redis readiness is required when `READY_REQUIRES_REDIS=true`. Local defaults keep Redis optional for readiness; production defaults require it.
 
+## Prometheus metrics
+
+The API exposes Prometheus text format at `METRICS_PATH` when metrics are enabled.
+
+- Default namespace: `be_go_template`
+- Core metric families:
+  - HTTP request counters/duration
+  - cache event counters and lock duration
+  - database dependency error counters
+  - auth counters and active session gauge
+
+Example scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: be-go-template-api
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - be-go-template:8080
+```
+
 ## Dependency degradation matrix
 
 | Dependency state | Expected behavior |

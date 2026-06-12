@@ -297,7 +297,7 @@ func TestRouterMetricsEndpointUsesPrometheusFormat(t *testing.T) {
 		t.Fatalf("metrics status = %d body = %s", metricsRec.Code, metricsRec.Body.String())
 	}
 	body := metricsRec.Body.String()
-	if !strings.Contains(body, "testapp_http_requests_total") || !strings.Contains(body, `route="/healthz"`) {
+	if !strings.Contains(body, "testapp_http_requests_total") || !strings.Contains(body, "testapp_http_request_duration_seconds") || !strings.Contains(body, `route="/healthz"`) {
 		t.Fatalf("metrics body = %s", body)
 	}
 }

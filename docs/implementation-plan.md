@@ -736,7 +736,7 @@ Checklist:
 - [ ] User role cannot access `/v1/admin/*`.
 - [ ] Admin role can access `/v1/admin/*`.
 - [ ] Auth rate limit returns 429 when exceeded.
-- [ ] `/metrics` returns Prometheus exposition format when enabled.
+- [x] `/metrics` returns Prometheus exposition format when enabled.
 - [x] `GET /v1/users/me` and device list return 304 for matching ETag.
 - [ ] Validation errors return field-level details with stable reason codes.
 
@@ -750,7 +750,7 @@ Checklist:
 - [ ] Request writes access log to terminal/file path.
 - [ ] 5xx test path writes error log and error event with request id.
 - [ ] Monitoring auth stats reflect login/logout activity.
-- [ ] Prometheus metrics include HTTP request counters/duration after traffic.
+- [x] Prometheus metrics include HTTP request counters/duration after traffic.
 - [ ] Transaction-capable environment handles register/login multi-write consistently.
 - [x] Non-transaction local environment logs audit/history failure, enqueues outbox event, and does not fail auth.
 - [ ] Redis restart simulation still rejects Mongo-persisted revoked access token.
@@ -772,7 +772,7 @@ Checklist:
 - [ ] Ghi RBAC/admin role policy.
 - [x] Ghi pagination/filter convention.
 - [x] Ghi auth rate limit policy.
-- [ ] Ghi Prometheus `/metrics` setup và ví dụ scrape config.
+- [x] Ghi Prometheus `/metrics` setup và ví dụ scrape config.
 - [x] Ghi Mongo transaction requirement nếu muốn atomic multi-document writes.
 - [x] Ghi quy ước `FindMany` cache explicit-only và trách nhiệm `InvalidateKeys`.
 - [x] Ghi DeviceID trust model.
@@ -850,7 +850,7 @@ Checklist:
 - [ ] Auth endpoints có Redis-backed rate limit.
 - [ ] Refresh token rotation là atomic và detect reuse.
 - [ ] Reuse refresh token cũ revoke toàn bộ token family theo policy.
-- [ ] `/metrics` expose Prometheus metrics khi bật config.
+- [x] `/metrics` expose Prometheus metrics khi bật config.
 - [x] Pagination/filter thống nhất cho login history, audit logs, recent errors.
 - [ ] Mongo-specific query types không leak ra domain/service/handler.
 - [x] `FindMany` cache chỉ hoạt động với explicit normalized `CacheKey` và `CacheableFilter`.
