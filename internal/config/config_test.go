@@ -105,6 +105,23 @@ func TestRateLimitFallbackDefaultsToBlockInProduction(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsWildcardCorsInProduction(t *testing.T) {
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://example.com,https://*.example.com")
+
+	cfg, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if got, want := err.Error(), "CORS_ALLOWED_ORIGINS must not contain wildcard in production"; got != want {
+		t.Fatalf("Load() error = %q, want %q", got, want)
+	}
+
+	if cfg.App.Env != "" {
+		t.Fatalf("Config should be zero value on load failure, got %+v", cfg)
+	}
+}
+
 func TestLoadSupportsOutboxConfig(t *testing.T) {
 	t.Setenv("OUTBOX_ENABLED", "false")
 	t.Setenv("OUTBOX_DRAIN_INTERVAL", "2s")

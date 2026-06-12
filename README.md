@@ -85,7 +85,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `MONGO_DEGRADED_THRESHOLD` | `500ms` |
 | `REDIS_DEGRADED_THRESHOLD` | `200ms` |
 
-Production startup requires explicit `CORS_ALLOWED_ORIGINS`.
+Production startup requires explicit non-wildcard `CORS_ALLOWED_ORIGINS`.
 
 JWT key format:
 

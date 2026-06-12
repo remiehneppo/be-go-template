@@ -210,6 +210,13 @@ func (cfg Config) Validate() error {
 	if cfg.App.Env == "production" && len(cfg.HTTP.CORSAllowOrigins) == 0 {
 		return fmt.Errorf("CORS_ALLOWED_ORIGINS is required in production")
 	}
+	if cfg.App.Env == "production" {
+		for _, origin := range cfg.HTTP.CORSAllowOrigins {
+			if strings.Contains(origin, "*") {
+				return fmt.Errorf("CORS_ALLOWED_ORIGINS must not contain wildcard in production")
+			}
+		}
+	}
 	if cfg.HTTP.BodyLimitBytes <= 0 {
 		return fmt.Errorf("HTTP_BODY_LIMIT_BYTES must be positive")
 	}

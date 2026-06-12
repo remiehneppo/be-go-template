@@ -511,8 +511,8 @@ Checklist:
 - [ ] JWT key format hỗ trợ `<key-id>/<base64-secret>` để tránh conflict ký tự trong secret.
 - [ ] JWT previous key có `NotAfter`; previous key chỉ dùng validate, không dùng ký token mới, và hết hiệu lực sau grace window cấu hình.
 - [ ] Parse duration từ env.
-- [ ] Validate config lúc startup.
-- [ ] Production fail startup nếu `CORS_ALLOWED_ORIGINS` rỗng hoặc wildcard.
+- [x] Validate config lúc startup.
+- [x] Production fail startup nếu `CORS_ALLOWED_ORIGINS` rỗng hoặc wildcard.
 - [ ] Local default chỉ allow `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:3000`, `http://127.0.0.1:5173`.
 - [ ] Không log secret.
 
@@ -660,8 +660,8 @@ Checklist:
 - [x] Blacklist validation Redis miss thì fallback Mongo để chịu được Redis restart.
 - [ ] Không log password/token.
 - [ ] Validate input bằng validator.
-- [ ] CORS để cấu hình được, không hardcode wildcard cho production.
-- [ ] Production startup fail nếu CORS origin không explicit.
+- [x] CORS để cấu hình được, không hardcode wildcard cho production.
+- [x] Production startup fail nếu CORS origin không explicit.
 - [x] Request body size limit mặc định 1MB cho auth/admin endpoints, có thể cấu hình.
 - [x] HTTP/server timeout và per-route timeout được cấu hình để tránh request treo vô hạn.
 - [ ] Refresh token binding: session lưu IP/UserAgent/DeviceID để audit; DeviceID không dùng làm security lookup.
@@ -821,7 +821,7 @@ Checklist:
 - [ ] Secret không được bake vào Docker image hoặc log startup.
 - [x] Graceful shutdown dừng HTTP server, Mongo/Redis client, Prometheus/metrics routines, outbox worker, logger flush.
 - [x] Request body size limit và response/per-route timeout được test.
-- [ ] CORS production không cho wildcard và startup fail nếu config thiếu.
+- [x] CORS production không cho wildcard và startup fail nếu config thiếu.
 - [ ] Mongo pool/read preference config được validate.
 - [ ] Redis TLS config được document và parse đúng.
 
@@ -870,4 +870,4 @@ Checklist:
 - [ ] `cmd/migrate` quản lý index/backfill/schema evolution có version tracking.
 - [ ] Graceful degradation matrix được implement/config rõ cho Redis/Mongo/outbox/rate limit.
 - [ ] `/healthz` và `/readyz` có behavior khác nhau, timeout rõ ràng.
-- [ ] CORS, body size limit, HTTP timeout, Mongo pool, Redis TLS đều có config và validation.
+- [x] CORS, body size limit, HTTP timeout, Mongo pool, Redis TLS đều có config và validation.
