@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -27,10 +28,54 @@ func ErrorHandler(log logger.Logger, reporters ...ErrorEventReporter) gin.Handle
 		}
 		err := c.Errors.Last().Err
 		appErr := apperrors.FromError(err)
-		logger.FromContext(c.Request.Context()).Error("request failed", logger.Any("error", err))
+		log := logger.FromContext(c.Request.Context())
+		fields := errorLogFields(c, appErr, err)
+		if isClientError(appErr.HTTPStatus) {
+			log.Warn("request failed", fields...)
+		} else {
+			log.Error("request failed", fields...)
+		}
 		reportErrorEvent(c, reporter, appErr)
 		writeError(c, appErr)
 	}
+}
+
+func errorLogFields(c *gin.Context, appErr *apperrors.AppError, err error) []logger.Field {
+	status := appErr.HTTPStatus
+	if status == 0 {
+		status = apperrors.StatusForCode(appErr.Code)
+	}
+	fields := []logger.Field{
+		logger.String("request_id", requestID(c)),
+		logger.String("user_id", contextString(c, ctxkeys.UserID)),
+		logger.String("session_id", contextString(c, ctxkeys.SessionID)),
+		logger.String("method", c.Request.Method),
+		logger.String("path", c.Request.URL.Path),
+		logger.Int("status", status),
+		logger.String("error_code", string(appErr.Code)),
+		logger.Any("error", err),
+		logger.Any("cause", appErr.Cause),
+		logger.Any("retryable", appErr.Retryable),
+	}
+	if latency := requestLatency(c); latency >= 0 {
+		fields = append(fields, logger.Int("latency_ms", latency))
+	}
+	if appErr.Stack != nil && len(appErr.Stack) > 0 {
+		fields = append(fields, logger.String("stack", string(appErr.Stack)))
+	}
+	return fields
+}
+
+func isClientError(status int) bool {
+	return status > 0 && status < http.StatusInternalServerError
+}
+
+func requestLatency(c *gin.Context) int {
+	startedAt := contextTime(c, ctxkeys.RequestStartedAt)
+	if startedAt.IsZero() {
+		return -1
+	}
+	return int(time.Since(startedAt).Milliseconds())
 }
 
 func reportErrorEvent(c *gin.Context, reporter ErrorEventReporter, appErr *apperrors.AppError) {
@@ -70,4 +115,18 @@ func contextString(c *gin.Context, key ctxkeys.Key) string {
 		}
 	}
 	return ""
+}
+
+func contextTime(c *gin.Context, key ctxkeys.Key) time.Time {
+	if value, ok := c.Get(string(key)); ok {
+		if ts, ok := value.(time.Time); ok {
+			return ts
+		}
+	}
+	if c.Request != nil {
+		if ts, ok := c.Request.Context().Value(key).(time.Time); ok {
+			return ts
+		}
+	}
+	return time.Time{}
 }

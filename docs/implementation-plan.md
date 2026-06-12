@@ -566,17 +566,17 @@ Checklist:
 - [x] Repository map Mongo duplicate key sang `ErrConflict`.
 - [x] Repository map Mongo no documents sang `ErrNotFound`.
 - [x] Cache/database map dependency timeout sang `DEPENDENCY_ERROR`.
-- [ ] Handler map domain error sang HTTP status.
-- [ ] Response lỗi thống nhất: `code`, `message`, `request_id`, `details` nếu là validation error an toàn.
+- [x] Handler map domain error sang HTTP status.
+- [x] Response lỗi thống nhất: `code`, `message`, `request_id`, `details` nếu là validation error an toàn.
 - [ ] Validation error details chuẩn hóa dạng array `{field, reason, meta}`; `reason` là code ổn định cho frontend i18n.
 - [ ] Response success thống nhất: `data`.
-- [ ] Không trả internal error detail ra client.
-- [ ] Middleware recovery bắt panic, log stack trace, trả `INTERNAL_ERROR`.
-- [ ] Middleware error handler log tất cả lỗi 5xx ở level error.
-- [ ] Middleware error handler log lỗi 4xx quan trọng ở level warn.
-- [ ] Log internal error với context: request id, user id, path, method, status, latency, error code, cause.
+- [x] Không trả internal error detail ra client.
+- [x] Middleware recovery bắt panic, log stack trace, trả `INTERNAL_ERROR`.
+- [x] Middleware error handler log tất cả lỗi 5xx ở level error.
+- [x] Middleware error handler log lỗi 4xx quan trọng ở level warn.
+- [x] Log internal error với context: request id, user id, path, method, status, latency, error code, cause.
 - [ ] Ghi error event phục vụ monitoring cho 5xx và các lỗi security quan trọng.
-- [ ] Unit test error mapper và response format.
+- [x] Unit test error mapper và response format.
 
 ## 10. Logging và tracing
 
@@ -592,7 +592,7 @@ Checklist:
 - [x] Access log có method, path, query, status, latency, ip, user agent, request id, user id nếu có.
 - [ ] App log dùng structured JSON ở production.
 - [ ] App log có console-friendly format ở local nếu config chọn.
-- [ ] Error log ghi stack/cause nội bộ cho panic và 5xx.
+- [x] Error log ghi stack/cause nội bộ cho panic và 5xx.
 - [ ] Auth service log event quan trọng: login success/failure, refresh success/failure, logout, token reuse suspected.
 - [ ] Database/cache wrapper log cache hit/miss, lock acquire timeout, Mongo/Redis dependency error ở level phù hợp.
 - [ ] Không log request body mặc định.

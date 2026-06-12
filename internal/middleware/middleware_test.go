@@ -187,6 +187,75 @@ func TestErrorHandlerAppendsErrorEvent(t *testing.T) {
 	}
 }
 
+func TestErrorHandlerLogsWarnForClientErrorsAndErrorForServerErrors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	capture := &errorCaptureLogger{}
+	router := gin.New()
+	router.Use(RequestID(capture))
+	router.Use(ErrorHandler(capture, &fakeErrorReporter{}))
+	router.GET("/client", func(c *gin.Context) {
+		c.Set(string(ctxkeys.UserID), "u1")
+		c.Set(string(ctxkeys.SessionID), "s1")
+		ignoreError(c.Error(apperrors.New(apperrors.CodeConflict, "Conflict", http.StatusConflict)))
+	})
+	router.GET("/server", func(c *gin.Context) {
+		c.Set(string(ctxkeys.UserID), "u1")
+		c.Set(string(ctxkeys.SessionID), "s1")
+		appErr := apperrors.New(apperrors.CodeInternal, "Internal server error", http.StatusInternalServerError)
+		appErr.Cause = testErr("db down")
+		ignoreError(c.Error(appErr))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/client", nil)
+	req.Header.Set("X-Request-ID", "req-1")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if capture.lastWarnMessage != "request failed" || capture.lastErrorMessage != "" {
+		t.Fatalf("capture = %+v", capture)
+	}
+	if !capture.hasField("request_id", "req-1") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", "s1") || !capture.hasField("method", http.MethodGet) || !capture.hasField("path", "/client") || !capture.hasField("status", http.StatusConflict) || !capture.hasField("error_code", string(apperrors.CodeConflict)) || !capture.hasKey("latency_ms") {
+		t.Fatalf("warn fields = %+v", capture.warnFields)
+	}
+
+	capture.reset()
+	req = httptest.NewRequest(http.MethodGet, "/server", nil)
+	req.Header.Set("X-Request-ID", "req-2")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if capture.lastErrorMessage != "request failed" || capture.lastWarnMessage != "" {
+		t.Fatalf("capture = %+v", capture)
+	}
+	if !capture.hasField("request_id", "req-2") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", "s1") || !capture.hasField("status", http.StatusInternalServerError) || !capture.hasField("error_code", string(apperrors.CodeInternal)) || !capture.hasField("cause", testErr("db down")) || !capture.hasKey("latency_ms") {
+		t.Fatalf("error fields = %+v", capture.errorFields)
+	}
+}
+
+func TestRecoveryLogsStackAndReturnsInternalError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	capture := &errorCaptureLogger{}
+	router := gin.New()
+	router.Use(RequestID(capture))
+	router.Use(Recovery(capture))
+	router.GET("/panic", func(c *gin.Context) {
+		panic("boom")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	req.Header.Set("X-Request-ID", "req-3")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if capture.lastErrorMessage != "panic recovered" {
+		t.Fatalf("capture = %+v", capture)
+	}
+	if !capture.hasField("request_id", "req-3") || !capture.hasField("error_code", string(apperrors.CodeInternal)) || !capture.hasKey("stack") {
+		t.Fatalf("panic fields = %+v", capture.errorFields)
+	}
+}
+
 type fakeErrorReporter struct {
 	events []auth.ErrorEvent
 }
@@ -198,6 +267,63 @@ func (r *fakeErrorReporter) Append(ctx context.Context, event auth.ErrorEvent) e
 
 func ignoreError(err error) {
 	_ = err
+}
+
+type testErr string
+
+func (e testErr) Error() string {
+	return string(e)
+}
+
+type errorCaptureLogger struct {
+	fields           []logger.Field
+	warnFields       []logger.Field
+	errorFields      []logger.Field
+	lastWarnMessage  string
+	lastErrorMessage string
+}
+
+func (l *errorCaptureLogger) Debug(string, ...logger.Field) {}
+func (l *errorCaptureLogger) Info(string, ...logger.Field)  {}
+
+func (l *errorCaptureLogger) Warn(msg string, fields ...logger.Field) {
+	l.lastWarnMessage = msg
+	l.warnFields = append(l.warnFields, fields...)
+}
+
+func (l *errorCaptureLogger) Error(msg string, fields ...logger.Field) {
+	l.lastErrorMessage = msg
+	l.errorFields = append(l.errorFields, fields...)
+}
+
+func (l *errorCaptureLogger) With(fields ...logger.Field) logger.Logger {
+	l.fields = append(l.fields, fields...)
+	return l
+}
+
+func (l *errorCaptureLogger) hasField(key string, want any) bool {
+	for _, field := range append(append([]logger.Field{}, l.fields...), append(l.warnFields, l.errorFields...)...) {
+		if field.Key == key && equalTraceFieldValue(field.Value, want) {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *errorCaptureLogger) hasKey(key string) bool {
+	for _, field := range append(append([]logger.Field{}, l.fields...), append(l.warnFields, l.errorFields...)...) {
+		if field.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *errorCaptureLogger) reset() {
+	l.warnFields = nil
+	l.errorFields = nil
+	l.lastWarnMessage = ""
+	l.lastErrorMessage = ""
 }
 
 type traceCaptureLogger struct {

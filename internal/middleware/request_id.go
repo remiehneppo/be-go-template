@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/remihneppo/be-go-template/internal/platform/ctxkeys"
@@ -18,6 +19,7 @@ const spanIDHeader = "X-Span-ID"
 
 func RequestID(log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		startedAt := time.Now().UTC()
 		requestID := sanitizeID(c.GetHeader(requestIDHeader))
 		if requestID == "" {
 			requestID = newID()
@@ -29,6 +31,7 @@ func RequestID(log logger.Logger) gin.HandlerFunc {
 		spanID := sanitizeID(c.GetHeader(spanIDHeader))
 
 		ctx := context.WithValue(c.Request.Context(), ctxkeys.RequestID, requestID)
+		ctx = context.WithValue(ctx, ctxkeys.RequestStartedAt, startedAt)
 		ctx = context.WithValue(ctx, ctxkeys.TraceID, traceID)
 		ctx = context.WithValue(ctx, ctxkeys.SpanID, spanID)
 		fields := []logger.Field{
@@ -42,6 +45,7 @@ func RequestID(log logger.Logger) gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Set(string(ctxkeys.RequestID), requestID)
+		c.Set(string(ctxkeys.RequestStartedAt), startedAt)
 		c.Set(string(ctxkeys.TraceID), traceID)
 		if spanID != "" {
 			c.Set(string(ctxkeys.SpanID), spanID)
