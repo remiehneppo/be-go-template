@@ -547,7 +547,7 @@ Checklist:
 - [x] Flush/sync logger khi shutdown.
 - [x] Health endpoint `/healthz` kiểm tra process sống.
 - [x] Ready endpoint `/readyz` ping MongoDB và Redis với timeout.
-- [ ] Tạo `cmd/seed` CLI để seed admin user đầu tiên và test data local.
+- [x] Tạo `cmd/seed` CLI để seed admin user đầu tiên và test data local.
 - [x] Tạo `cmd/migrate` CLI cho Mongo schema evolution/backfill/index changes.
 - [x] Migration có version tracking collection, log version applied/skipped/failed.
 
@@ -754,7 +754,7 @@ Checklist:
 - [ ] Transaction-capable environment handles register/login multi-write consistently.
 - [x] Non-transaction local environment logs audit/history failure, enqueues outbox event, and does not fail auth.
 - [ ] Redis restart simulation still rejects Mongo-persisted revoked access token.
-- [ ] `cmd/seed` can create the first admin idempotently.
+- [x] `cmd/seed` can create the first admin idempotently.
 - [ ] `cmd/migrate` applies a migration once and records version.
 
 ## 15. Documentation checklist

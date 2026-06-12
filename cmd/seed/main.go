@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -40,39 +41,77 @@ func run() error {
 	if strings.TrimSpace(input.Password) == "" {
 		return fmt.Errorf("ADMIN_PASSWORD is required")
 	}
+	return runSeed(context.Background(), cfg, input, os.Stdout, buildAdminSeeder)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Mongo.ConnectTimeout)
+type adminSeeder interface {
+	SeedAdmin(ctx context.Context, input appseed.AdminInput) (*appseed.AdminResult, error)
+}
+
+type adminSeederHandle struct {
+	Seeder adminSeeder
+	Close  func() error
+}
+
+type adminSeederBuilder func(ctx context.Context, cfg config.Config) (*adminSeederHandle, error)
+
+func runSeed(ctx context.Context, cfg config.Config, input appseed.AdminInput, out io.Writer, build adminSeederBuilder) error {
+	ctx, cancel := context.WithTimeout(ctx, cfg.Mongo.ConnectTimeout)
 	defer cancel()
-	client, err := connectMongo(ctx, cfg)
+
+	handle, err := build(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := client.Disconnect(context.Background()); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: disconnect mongo: %v\n", err)
-		}
-	}()
-	mongoDB := client.Database(cfg.Mongo.Database)
-	if err := bootstrap.EnsureIndexes(ctx, mongoDB); err != nil {
-		return fmt.Errorf("ensure indexes: %w", err)
+	if handle == nil || handle.Seeder == nil {
+		return fmt.Errorf("admin seeder is required")
 	}
-	userRepo := mongo.NewUserRepository(database.NewMongo(client, cfg.Mongo.Database))
-	result, err := appseed.NewAdminSeeder(appseed.AdminSeederDependencies{
-		Users:     userRepo,
-		Passwords: appauth.BcryptHasher{Cost: cfg.Auth.BcryptCost},
-	}).SeedAdmin(ctx, input)
+	if handle.Close != nil {
+		defer func() {
+			if err := handle.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: disconnect mongo: %v\n", err)
+			}
+		}()
+	}
+
+	result, err := handle.Seeder.SeedAdmin(ctx, input)
 	if err != nil {
 		return err
 	}
 	switch {
 	case result.Created:
-		fmt.Printf("admin user created: %s\n", result.Email)
+		fmt.Fprintf(out, "admin user created: %s\n", result.Email)
 	case result.Updated:
-		fmt.Printf("admin role granted: %s\n", result.Email)
+		fmt.Fprintf(out, "admin role granted: %s\n", result.Email)
 	default:
-		fmt.Printf("admin user already present: %s\n", result.Email)
+		fmt.Fprintf(out, "admin user already present: %s\n", result.Email)
 	}
 	return nil
+}
+
+func buildAdminSeeder(ctx context.Context, cfg config.Config) (*adminSeederHandle, error) {
+	client, err := connectMongo(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	cleanup := func() error {
+		return client.Disconnect(context.Background())
+	}
+	mongoDB := client.Database(cfg.Mongo.Database)
+	if err := bootstrap.EnsureIndexes(ctx, mongoDB); err != nil {
+		if err := cleanup(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: disconnect mongo: %v\n", err)
+		}
+		return nil, fmt.Errorf("ensure indexes: %w", err)
+	}
+	userRepo := mongo.NewUserRepository(database.NewMongo(client, cfg.Mongo.Database))
+	return &adminSeederHandle{
+		Seeder: appseed.NewAdminSeeder(appseed.AdminSeederDependencies{
+			Users:     userRepo,
+			Passwords: appauth.BcryptHasher{Cost: cfg.Auth.BcryptCost},
+		}),
+		Close: cleanup,
+	}, nil
 }
 
 func connectMongo(ctx context.Context, cfg config.Config) (*mongodriver.Client, error) {
