@@ -35,8 +35,14 @@ func TestAuthenticatePopulatesContext(t *testing.T) {
 		if c.GetString(string(ctxkeys.UserID)) != "u1" {
 			t.Fatalf("gin user id = %q", c.GetString(string(ctxkeys.UserID)))
 		}
+		if c.GetString(string(ctxkeys.TokenID)) != "jti1" {
+			t.Fatalf("gin token id = %q", c.GetString(string(ctxkeys.TokenID)))
+		}
 		if got, _ := c.Request.Context().Value(ctxkeys.SessionID).(string); got != "s1" {
 			t.Fatalf("context session id = %q", got)
+		}
+		if got, _ := c.Request.Context().Value(ctxkeys.TokenID).(string); got != "jti1" {
+			t.Fatalf("context token id = %q", got)
 		}
 		c.Status(http.StatusNoContent)
 	})

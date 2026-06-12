@@ -404,7 +404,7 @@ Checklist:
 - [x] Validate `jti`, `sub`, `session_id`.
 - [x] Kiểm tra `jti` có nằm trong Redis blacklist không.
 - [x] Kiểm tra session active qua repository/service hoặc database abstraction.
-- [ ] Inject `user_id`, `session_id`, `token_id` vào Gin context.
+- [x] Inject `user_id`, `session_id`, `token_id` vào Gin context.
 - [ ] Trả lỗi JSON thống nhất cho unauthenticated/forbidden.
 
 ### 5.4. Health/readiness endpoints
