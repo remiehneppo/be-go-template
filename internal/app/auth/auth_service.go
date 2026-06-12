@@ -28,6 +28,7 @@ type ServiceDependencies struct {
 	RevokedTokens          domainauth.RevokedTokenRepository
 	Tokens                 domainauth.TokenService
 	Passwords              PasswordHasher
+	Transactions           database.TransactionRunner
 	Metrics                *platformmetrics.AuthMetrics
 	RefreshTTL             time.Duration
 	LockoutMaxFailures     int
@@ -43,6 +44,7 @@ type Service struct {
 	revokedTokens          domainauth.RevokedTokenRepository
 	tokens                 domainauth.TokenService
 	passwords              PasswordHasher
+	transactions           database.TransactionRunner
 	metrics                *platformmetrics.AuthMetrics
 	refreshTTL             time.Duration
 	lockoutMaxFailures     int
@@ -76,6 +78,7 @@ func NewService(deps ServiceDependencies) *Service {
 		revokedTokens:          deps.RevokedTokens,
 		tokens:                 deps.Tokens,
 		passwords:              passwords,
+		transactions:           deps.Transactions,
 		metrics:                deps.Metrics,
 		refreshTTL:             refreshTTL,
 		lockoutMaxFailures:     deps.LockoutMaxFailures,
@@ -108,15 +111,19 @@ func (s *Service) Register(ctx context.Context, input domainauth.RegisterInput) 
 	}
 	usr := user.New(email, passwordHash, input.Name, now)
 	usr.ID = newID()
-	if err := s.users.Create(ctx, usr); err != nil {
+	var result *domainauth.AuthResult
+	if err := s.withTransaction(ctx, "AuthService.Register", func(txCtx context.Context) error {
+		if err := s.users.Create(txCtx, usr); err != nil {
+			return err
+		}
+		var innerErr error
+		result, innerErr = s.issueAuthResult(txCtx, usr, domainauth.RequestMeta{})
+		return innerErr
+	}); err != nil {
 		if errors.Is(err, database.ErrConflict) {
 			logAuthWarn(ctx, "auth register failed", logger.String("reason", "email_exists"), logger.String("user_id", usr.ID))
 			return nil, apperrors.New(apperrors.CodeConflict, "Email already exists", http.StatusConflict)
 		}
-		return nil, err
-	}
-	result, err := s.issueAuthResult(ctx, usr, domainauth.RequestMeta{})
-	if err != nil {
 		return nil, err
 	}
 	s.recordSessionCreated()
@@ -158,13 +165,25 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 		s.appendAuditLog(ctx, auditEvent("auth.login_failed", usr.ID, "user", usr.ID, meta, map[string]string{"email": email, "reason": reason}))
 		return nil, invalidCredentials()
 	}
-	result, err := s.issueAuthResult(ctx, *usr, meta)
-	if err != nil {
+	var result *domainauth.AuthResult
+	if err := s.withTransaction(ctx, "AuthService.Login", func(txCtx context.Context) error {
+		var innerErr error
+		result, innerErr = s.issueAuthResult(txCtx, *usr, meta)
+		if innerErr != nil {
+			return innerErr
+		}
+		now := s.now()
+		if err := s.users.ResetLoginFailures(txCtx, usr.ID, email, now); err != nil {
+			return err
+		}
+		if err := s.users.UpdateLastLogin(txCtx, usr.ID, now); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 	now := s.now()
-	ignoreError(s.users.ResetLoginFailures(ctx, usr.ID, email, now))
-	ignoreError(s.users.UpdateLastLogin(ctx, usr.ID, now))
 	s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: true, IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: resultDeviceID(meta.DeviceID), CreatedAt: now})
 	s.recordLogin(true)
 	s.recordSessionCreated()
@@ -366,6 +385,19 @@ func (s *Service) ListLoginHistory(ctx context.Context, userID string, paginatio
 func (s *Service) requireAuthCore(op string) error {
 	if s.users == nil || s.sessions == nil || s.tokens == nil || s.passwords == nil {
 		return notImplemented(op)
+	}
+	return nil
+}
+
+func (s *Service) withTransaction(ctx context.Context, op string, fn func(context.Context) error) error {
+	if fn == nil {
+		return nil
+	}
+	if s.transactions == nil {
+		return fn(ctx)
+	}
+	if err := s.transactions.RunInTransaction(ctx, fn); err != nil {
+		return err
 	}
 	return nil
 }

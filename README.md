@@ -62,6 +62,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `MONGO_MIN_POOL_SIZE` | `0` |
 | `MONGO_CONNECT_TIMEOUT` | `10s` |
 | `MONGO_READ_PREFERENCE` | `primary` |
+| `MONGO_TRANSACTIONS_ENABLED` | `false` |
 | `REDIS_ADDR` | `localhost:6379` |
 | `REDIS_PASSWORD` | empty |
 | `REDIS_DB` | `0` |

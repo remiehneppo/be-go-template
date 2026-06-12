@@ -14,6 +14,38 @@ import (
 
 const defaultWriteLockTTL = 5 * time.Second
 
+type transactionInvalidateBufferKey struct{}
+
+type transactionInvalidateBuffer struct {
+	keys map[string]struct{}
+}
+
+func (b *transactionInvalidateBuffer) add(keys []string) {
+	if len(keys) == 0 {
+		return
+	}
+	if b.keys == nil {
+		b.keys = make(map[string]struct{}, len(keys))
+	}
+	for _, key := range keys {
+		if key == "" {
+			continue
+		}
+		b.keys[key] = struct{}{}
+	}
+}
+
+func (b *transactionInvalidateBuffer) list() []string {
+	if b == nil || len(b.keys) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(b.keys))
+	for key := range b.keys {
+		out = append(out, key)
+	}
+	return out
+}
+
 type CachedDatabase struct {
 	base                      Database
 	cache                     cache.Cache
@@ -35,9 +67,40 @@ func NewCached(base Database, cacheStore cache.Cache, log logger.Logger, metrics
 	}
 }
 
+func (d *CachedDatabase) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	if fn == nil {
+		return nil
+	}
+	runner, ok := d.base.(TransactionRunner)
+	if !ok {
+		return dependencyError("CachedDatabase.RunInTransaction", fmt.Errorf("transactions not supported"))
+	}
+	if buffer := transactionInvalidateBufferFromContext(ctx); buffer != nil {
+		return fn(ctx)
+	}
+	buffer := &transactionInvalidateBuffer{}
+	txCtx := context.WithValue(ctx, transactionInvalidateBufferKey{}, buffer)
+	if err := runner.RunInTransaction(txCtx, fn); err != nil {
+		return err
+	}
+	if d.cache != nil {
+		if keys := buffer.list(); len(keys) > 0 {
+			if err := d.cache.Delete(ctx, keys...); err != nil {
+				d.recordCacheEvent("write", "invalidation_failed")
+				d.log.Warn("cache invalidation failed", logger.Any("error", err))
+			}
+		}
+	}
+	return nil
+}
+
 func (d *CachedDatabase) FindOne(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
 	if err := opts.Validate(); err != nil {
 		return err
+	}
+	if transactionInvalidateBufferFromContext(ctx) != nil {
+		d.recordCacheEvent("find_one", "transaction")
+		return d.callAndLogDependency("CachedDatabase.FindOne", d.base.FindOne(ctx, collection, filter, dest, opts), logger.String("collection", collection))
 	}
 	if opts.CacheKey == "" || d.cache == nil {
 		d.recordCacheEvent("find_one", "disabled")
@@ -51,6 +114,10 @@ func (d *CachedDatabase) FindOne(ctx context.Context, collection string, filter 
 func (d *CachedDatabase) FindMany(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
 	if err := opts.Validate(); err != nil {
 		return err
+	}
+	if transactionInvalidateBufferFromContext(ctx) != nil {
+		d.recordCacheEvent("find_many", "transaction")
+		return d.callAndLogDependency("CachedDatabase.FindMany", d.base.FindMany(ctx, collection, filter, dest, opts), logger.String("collection", collection))
 	}
 	if opts.CacheKey == "" || d.cache == nil {
 		d.recordCacheEvent("find_many", "disabled")
@@ -191,12 +258,19 @@ func (d *CachedDatabase) write(ctx context.Context, opts WriteOptions, write fun
 	if err := opts.Validate(); err != nil {
 		return err
 	}
-	run := func(ctx context.Context) error {
+	if transactionInvalidateBufferFromContext(ctx) != nil {
+		d.recordCacheEvent("write", "transaction")
 		if err := write(); err != nil {
 			return err
 		}
 		d.invalidate(ctx, opts.InvalidateKeys)
-		if len(opts.InvalidateKeys) > 0 {
+		return nil
+	}
+	run := func(ctx context.Context) error {
+		if err := write(); err != nil {
+			return err
+		}
+		if immediate := d.invalidate(ctx, opts.InvalidateKeys); immediate && len(opts.InvalidateKeys) > 0 {
 			d.recordCacheEvent("write", "invalidated")
 			d.log.Debug("cache invalidated", logger.Int("key_count", len(opts.InvalidateKeys)))
 		}
@@ -222,14 +296,24 @@ func (d *CachedDatabase) write(ctx context.Context, opts WriteOptions, write fun
 	return nil
 }
 
-func (d *CachedDatabase) invalidate(ctx context.Context, keys []string) {
-	if len(keys) == 0 || d.cache == nil {
-		return
+func (d *CachedDatabase) invalidate(ctx context.Context, keys []string) bool {
+	if len(keys) == 0 {
+		return true
+	}
+	if buffer := transactionInvalidateBufferFromContext(ctx); buffer != nil {
+		buffer.add(keys)
+		d.recordCacheEvent("write", "invalidated_buffered")
+		d.log.Debug("cache invalidation buffered", logger.Int("key_count", len(keys)))
+		return false
+	}
+	if d.cache == nil {
+		return true
 	}
 	if err := d.cache.Delete(ctx, keys...); err != nil {
 		d.recordCacheEvent("write", "invalidation_failed")
 		d.log.Warn("cache invalidation failed", logger.Any("error", err))
 	}
+	return true
 }
 
 func (d *CachedDatabase) callAndLogDependency(op string, err error, fields ...logger.Field) error {
@@ -273,4 +357,12 @@ func (d *CachedDatabase) recordDependencyError(operation string) {
 	if d.metrics != nil {
 		d.metrics.RecordDependencyError(operation)
 	}
+}
+
+func transactionInvalidateBufferFromContext(ctx context.Context) *transactionInvalidateBuffer {
+	if ctx == nil {
+		return nil
+	}
+	buffer, _ := ctx.Value(transactionInvalidateBufferKey{}).(*transactionInvalidateBuffer)
+	return buffer
 }

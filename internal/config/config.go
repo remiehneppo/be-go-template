@@ -66,12 +66,13 @@ type JWTConfig struct {
 }
 
 type MongoConfig struct {
-	URI            string
-	Database       string
-	MaxPoolSize    int64
-	MinPoolSize    int64
-	ConnectTimeout time.Duration
-	ReadPreference string
+	URI                 string
+	Database            string
+	MaxPoolSize         int64
+	MinPoolSize         int64
+	ConnectTimeout      time.Duration
+	ReadPreference      string
+	TransactionsEnabled bool
 }
 
 type RedisConfig struct {
@@ -166,12 +167,13 @@ func Load() (Config, error) {
 			RefreshTTL:        getDuration("JWT_REFRESH_TTL", 30*24*time.Hour),
 		},
 		Mongo: MongoConfig{
-			URI:            getString("MONGO_URI", "mongodb://localhost:27017"),
-			Database:       getString("MONGO_DATABASE", "be_go_template"),
-			MaxPoolSize:    getInt64("MONGO_MAX_POOL_SIZE", 100),
-			MinPoolSize:    getInt64("MONGO_MIN_POOL_SIZE", 0),
-			ConnectTimeout: getDuration("MONGO_CONNECT_TIMEOUT", 10*time.Second),
-			ReadPreference: getString("MONGO_READ_PREFERENCE", "primary"),
+			URI:                 getString("MONGO_URI", "mongodb://localhost:27017"),
+			Database:            getString("MONGO_DATABASE", "be_go_template"),
+			MaxPoolSize:         getInt64("MONGO_MAX_POOL_SIZE", 100),
+			MinPoolSize:         getInt64("MONGO_MIN_POOL_SIZE", 0),
+			ConnectTimeout:      getDuration("MONGO_CONNECT_TIMEOUT", 10*time.Second),
+			ReadPreference:      getString("MONGO_READ_PREFERENCE", "primary"),
+			TransactionsEnabled: getBool("MONGO_TRANSACTIONS_ENABLED", false),
 		},
 		Redis: RedisConfig{
 			Addr:          getString("REDIS_ADDR", "localhost:6379"),

@@ -120,6 +120,24 @@ func (d *MongoDatabase) Close(ctx context.Context) error {
 	return d.client.Disconnect(ctx)
 }
 
+func (d *MongoDatabase) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	if fn == nil {
+		return nil
+	}
+	session, err := d.client.StartSession()
+	if err != nil {
+		return dependencyError("MongoDatabase.RunInTransaction", err)
+	}
+	defer session.EndSession(context.Background())
+	_, err = session.WithTransaction(ctx, func(txCtx context.Context) (any, error) {
+		if err := fn(txCtx); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	})
+	return dependencyError("MongoDatabase.RunInTransaction", err)
+}
+
 func IsDuplicateKeyError(err error) bool {
 	if err == nil {
 		return false

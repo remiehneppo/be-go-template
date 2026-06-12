@@ -323,6 +323,7 @@ The template does not rely on MongoDB multi-document transactions for the core a
 - Direct writes are kept within a single repository boundary where possible.
 - Cross-collection side effects use outbox retry instead of transaction coupling.
 - If a deployment wants atomic multi-document writes, it must add transaction support explicitly at the infrastructure boundary.
+- Set `MONGO_TRANSACTIONS_ENABLED=true` to run register/login core writes inside a Mongo transaction on deployments that support it.
 
 Admin monitoring reads from the final `audit_logs` and `error_events` collections, not from the queue.
 

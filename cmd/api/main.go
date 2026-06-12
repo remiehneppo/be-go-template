@@ -158,6 +158,7 @@ func run() error {
 		RevokedTokens:          revokedTokenRepo,
 		Tokens:                 tokenService,
 		Passwords:              appauth.BcryptHasher{Cost: cfg.Auth.BcryptCost},
+		Transactions:           txRunner(db, cfg.Mongo.TransactionsEnabled),
 		Metrics:                authMetrics,
 		RefreshTTL:             cfg.JWT.RefreshTTL,
 		LockoutMaxFailures:     cfg.Auth.LockoutMaxFailures,
@@ -237,6 +238,17 @@ func run() error {
 	}
 	log.Info("api server stopped")
 	return nil
+}
+
+func txRunner(db database.Database, enabled bool) database.TransactionRunner {
+	if !enabled {
+		return nil
+	}
+	runner, ok := db.(database.TransactionRunner)
+	if !ok {
+		return nil
+	}
+	return runner
 }
 
 func connectMongo(ctx context.Context, cfg config.Config) (*mongo.Client, error) {

@@ -78,6 +78,41 @@ func TestServiceRegisterCreatesUserSessionAndTokens(t *testing.T) {
 	}
 }
 
+func TestServiceRegisterUsesTransactionRunnerForCoreWrites(t *testing.T) {
+	users := &fakeUserRepository{findErr: database.ErrNotFound}
+	sessions := &fakeSessionRepository{}
+	tokens := &fakeTokenService{
+		refreshPlain:    "refresh",
+		refreshHash:     "refresh-hash",
+		accessToken:     "access",
+		accessExpiresAt: time.Unix(100, 0),
+	}
+	txRunner := &fakeTransactionRunner{}
+	service := NewService(ServiceDependencies{
+		Users:        users,
+		Sessions:     sessions,
+		Tokens:       tokens,
+		Passwords:    fakePasswordHasher{hash: "hashed-password"},
+		RefreshTTL:   time.Hour,
+		Transactions: txRunner,
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	if _, err := service.Register(context.Background(), domainauth.RegisterInput{
+		Email:    "user@example.com",
+		Password: "password123",
+		Name:     "User",
+	}); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+	if txRunner.calls != 1 {
+		t.Fatalf("txRunner.calls = %d", txRunner.calls)
+	}
+	if !users.createInTx || !sessions.createInTx {
+		t.Fatalf("register core writes were not in transaction: users=%v sessions=%v", users.createInTx, sessions.createInTx)
+	}
+}
+
 func TestServiceRegisterMapsConflict(t *testing.T) {
 	users := &fakeUserRepository{findErr: database.ErrNotFound, createErr: database.ErrConflict}
 	service := NewService(ServiceDependencies{
@@ -154,6 +189,40 @@ func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	}
 	if !capture.hasEntry("info", "auth login succeeded") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", result.SessionID) {
 		t.Fatalf("logger entries = %+v", capture.entries)
+	}
+}
+
+func TestServiceLoginUsesTransactionRunnerForCoreWrites(t *testing.T) {
+	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", PasswordHash: "hash", Roles: []user.Role{user.RoleUser}, Status: user.StatusActive}}
+	sessions := &fakeSessionRepository{}
+	history := &fakeLoginHistoryRepository{}
+	tokens := &fakeTokenService{
+		refreshPlain:    "refresh",
+		refreshHash:     "refresh-hash",
+		accessToken:     "access",
+		accessExpiresAt: time.Unix(100, 0),
+		validatedClaims: &domainauth.AccessClaims{UserID: "u1", SessionID: "s1", TokenID: "jti1", ExpiresAt: time.Unix(200, 0)},
+	}
+	txRunner := &fakeTransactionRunner{}
+	service := NewService(ServiceDependencies{
+		Users:        users,
+		Sessions:     sessions,
+		LoginHistory: history,
+		Tokens:       tokens,
+		Passwords:    fakePasswordHasher{},
+		RefreshTTL:   time.Hour,
+		Transactions: txRunner,
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	if _, err := service.Login(context.Background(), domainauth.LoginInput{Email: "user@example.com", Password: "password123"}, domainauth.RequestMeta{}); err != nil {
+		t.Fatalf("Login() error = %v", err)
+	}
+	if txRunner.calls != 1 {
+		t.Fatalf("txRunner.calls = %d", txRunner.calls)
+	}
+	if !sessions.createInTx || !users.resetFailuresInTx || !users.updateLastLoginInTx {
+		t.Fatalf("login core writes were not in transaction: sessions=%v reset=%v update=%v", sessions.createInTx, users.resetFailuresInTx, users.updateLastLoginInTx)
 	}
 }
 
@@ -558,6 +627,7 @@ func TestServiceLogoutAllRevokesSessions(t *testing.T) {
 type fakeSessionRepository struct {
 	active           []domainauth.Session
 	created          domainauth.Session
+	createInTx       bool
 	byRefreshHash    *domainauth.Session
 	activeByID       *domainauth.Session
 	activeByIDErr    error
@@ -573,6 +643,7 @@ type fakeSessionRepository struct {
 
 func (r *fakeSessionRepository) Create(ctx context.Context, session domainauth.Session) error {
 	r.created = session
+	r.createInTx = transactionContextActive(ctx)
 	return nil
 }
 
@@ -636,18 +707,22 @@ func (r *fakeLoginHistoryRepository) ListByUserID(ctx context.Context, userID st
 }
 
 type fakeUserRepository struct {
-	found              *user.User
-	findErr            error
-	created            user.User
-	createErr          error
-	lastLoginUserID    string
-	resetFailureUserID string
-	failedAttempts     int
-	lockedUntil        *time.Time
+	found               *user.User
+	findErr             error
+	created             user.User
+	createErr           error
+	lastLoginUserID     string
+	createInTx          bool
+	updateLastLoginInTx bool
+	resetFailuresInTx   bool
+	resetFailureUserID  string
+	failedAttempts      int
+	lockedUntil         *time.Time
 }
 
 func (r *fakeUserRepository) Create(ctx context.Context, usr user.User) error {
 	r.created = usr
+	r.createInTx = transactionContextActive(ctx)
 	return r.createErr
 }
 
@@ -671,6 +746,7 @@ func (r *fakeUserRepository) EnsureRole(ctx context.Context, userID string, role
 
 func (r *fakeUserRepository) UpdateLastLogin(ctx context.Context, userID string, at time.Time) error {
 	r.lastLoginUserID = userID
+	r.updateLastLoginInTx = transactionContextActive(ctx)
 	return nil
 }
 
@@ -682,7 +758,24 @@ func (r *fakeUserRepository) RecordLoginFailure(ctx context.Context, userID stri
 
 func (r *fakeUserRepository) ResetLoginFailures(ctx context.Context, userID string, email string, updatedAt time.Time) error {
 	r.resetFailureUserID = userID
+	r.resetFailuresInTx = transactionContextActive(ctx)
 	return nil
+}
+
+type fakeTransactionRunner struct {
+	calls int
+}
+
+func (r *fakeTransactionRunner) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	r.calls++
+	return fn(context.WithValue(ctx, transactionContextKey{}, true))
+}
+
+type transactionContextKey struct{}
+
+func transactionContextActive(ctx context.Context) bool {
+	active, _ := ctx.Value(transactionContextKey{}).(bool)
+	return active
 }
 
 type fakeTokenService struct {

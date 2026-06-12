@@ -285,6 +285,45 @@ func TestCachedDatabaseStrictWriteLockTimeoutMapsDependencyError(t *testing.T) {
 	}
 }
 
+func TestCachedDatabaseRunInTransactionBuffersInvalidationsUntilCommit(t *testing.T) {
+	base := &fakeDatabase{}
+	cacheStore := newFakeCache()
+	cacheStore.values["user:id:1"] = testDoc{ID: "1"}
+	db := NewCached(base, cacheStore, logger.NewNoop(), nil, false)
+
+	err := db.RunInTransaction(context.Background(), func(txCtx context.Context) error {
+		if err := db.UpdateOne(txCtx, "docs", map[string]string{"id": "1"}, map[string]string{"$set": "x"}, WriteOptions{
+			InvalidateKeys: []string{"user:id:1", "session:id:s1"},
+			LockKey:        "user:id:1",
+			StrictLock:     true,
+		}); err != nil {
+			return err
+		}
+		if base.updateCalls != 1 {
+			t.Fatalf("update calls inside tx = %d", base.updateCalls)
+		}
+		if cacheStore.lockCalls != 0 {
+			t.Fatalf("lock calls inside tx = %d", cacheStore.lockCalls)
+		}
+		if len(cacheStore.deleted) != 0 {
+			t.Fatalf("deletions inside tx = %v", cacheStore.deleted)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("RunInTransaction() error = %v", err)
+	}
+	if len(cacheStore.deleted) != 2 {
+		t.Fatalf("deletions after commit = %v", cacheStore.deleted)
+	}
+	if _, ok := cacheStore.values["user:id:1"]; ok {
+		t.Fatal("cache key was not invalidated after commit")
+	}
+	if base.txCalls != 1 {
+		t.Fatalf("tx calls = %d", base.txCalls)
+	}
+}
+
 type fakeDatabase struct {
 	findOneValue  any
 	findManyValue any
@@ -297,6 +336,7 @@ type fakeDatabase struct {
 	updateCalls      int
 	updateManyCalls  int
 	deleteCalls      int
+	txCalls          int
 	lastFindManyOpts ReadOptions
 }
 
@@ -347,6 +387,11 @@ func (d *fakeDatabase) Ping(ctx context.Context) error {
 
 func (d *fakeDatabase) Close(ctx context.Context) error {
 	return nil
+}
+
+func (d *fakeDatabase) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	d.txCalls++
+	return fn(ctx)
 }
 
 type fakeCache struct {

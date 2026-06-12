@@ -91,6 +91,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Readiness.MongoDegradedThreshold != 500*time.Millisecond || cfg.Readiness.RedisDegradedThreshold != 200*time.Millisecond {
 		t.Fatalf("Readiness thresholds = %+v", cfg.Readiness)
 	}
+	if cfg.Mongo.TransactionsEnabled {
+		t.Fatal("Mongo.TransactionsEnabled = true")
+	}
 }
 
 func TestValidateRequiresLogOutput(t *testing.T) {
@@ -344,6 +347,18 @@ func TestValidateRejectsInvalidMongoReadPreference(t *testing.T) {
 	}
 	if got, want := err.Error(), "MONGO_READ_PREFERENCE must be one of primary, primaryPreferred, secondary, secondaryPreferred, nearest"; got != want {
 		t.Fatalf("Load() error = %q, want %q", got, want)
+	}
+}
+
+func TestLoadSupportsMongoTransactionsConfig(t *testing.T) {
+	t.Setenv("MONGO_TRANSACTIONS_ENABLED", "true")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.Mongo.TransactionsEnabled {
+		t.Fatal("Mongo.TransactionsEnabled = false")
 	}
 }
 
