@@ -302,7 +302,7 @@ func (s *Service) Logout(ctx context.Context, accessToken string, sessionID stri
 		logAuthWarn(ctx, "auth logout failed", logger.String("reason", "invalid_access_token"))
 		return apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized)
 	}
-	ttl := time.Until(claims.ExpiresAt)
+	ttl := claims.ExpiresAt.Sub(s.now())
 	if s.revokedTokens != nil && claims.TokenID != "" {
 		if err := s.revokedTokens.Append(ctx, domainauth.RevokedToken{
 			TokenID:   claims.TokenID,

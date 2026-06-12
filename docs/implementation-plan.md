@@ -379,13 +379,13 @@ Checklist:
 
 Checklist:
 
-- [ ] `POST /v1/auth/logout`.
-- [ ] Lấy access token hiện tại.
-- [ ] Blacklist access token đến hết TTL còn lại.
-- [ ] Revoke session hiện tại.
-- [ ] `POST /v1/auth/logout-all`.
-- [ ] Revoke mọi session của user hiện tại.
-- [ ] Blacklist access token hiện tại.
+- [x] `POST /v1/auth/logout`.
+- [x] Lấy access token hiện tại.
+- [x] Blacklist access token đến hết TTL còn lại.
+- [x] Revoke session hiện tại.
+- [x] `POST /v1/auth/logout-all`.
+- [x] Revoke mọi session của user hiện tại.
+- [x] Blacklist access token hiện tại.
 - [ ] `GET /v1/auth/devices`.
 - [ ] Trả danh sách session active của user.
 - [ ] Hỗ trợ `ETag`/`If-None-Match`; trả `304 Not Modified` nếu device list không đổi.

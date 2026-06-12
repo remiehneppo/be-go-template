@@ -201,7 +201,7 @@ Refresh rotation is atomic at the session row level.
 - If rotation fails because the hash no longer matches, the server reads the active session again.
 - If the session is still active, the request is treated as a reuse/race condition and the full token family is revoked.
 - If the session is already inactive or missing, the request is treated as a normal invalid refresh token and the family is not revoked again.
-- Logout invalidates the current session and blacklists the current access token ID.
+- Logout invalidates the current session and blacklists the current access token ID for the token's remaining lifetime.
 - Logout-all invalidates all active sessions for the user and clears session/device-list caches through repository invalidation keys.
 
 ## User profile cache validation

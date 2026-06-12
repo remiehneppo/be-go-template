@@ -501,7 +501,8 @@ func TestServiceRefreshRejectsInvalidToken(t *testing.T) {
 }
 
 func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
-	expiresAt := time.Now().Add(time.Hour)
+	now := time.Unix(10, 0).UTC()
+	expiresAt := now.Add(37 * time.Minute)
 	tokens := &fakeTokenService{validatedClaims: &domainauth.AccessClaims{UserID: "u1", SessionID: "s1", TokenID: "jti1", ExpiresAt: expiresAt}}
 	sessions := &fakeSessionRepository{}
 	revoked := &fakeRevokedTokenRepository{}
@@ -515,7 +516,7 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 		Tokens:        tokens,
 		Passwords:     fakePasswordHasher{},
 	})
-	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+	service.now = func() time.Time { return now }
 
 	ctx := logger.WithContext(context.Background(), capture)
 	if err := service.Logout(ctx, "access-token", ""); err != nil {
@@ -523,6 +524,10 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	}
 	if tokens.blacklistedTokenID != "jti1" {
 		t.Fatalf("blacklistedTokenID = %q", tokens.blacklistedTokenID)
+	}
+	wantTTL := expiresAt.Sub(now)
+	if tokens.blacklistedTTL != wantTTL {
+		t.Fatalf("blacklistedTTL = %s want %s", tokens.blacklistedTTL, wantTTL)
 	}
 	if revoked.token.TokenID != "jti1" || revoked.token.UserID != "u1" || revoked.token.SessionID != "s1" {
 		t.Fatalf("revoked token = %+v", revoked.token)
@@ -786,6 +791,7 @@ type fakeTokenService struct {
 	lastAccessClaims   domainauth.AccessClaims
 	validatedClaims    *domainauth.AccessClaims
 	blacklistedTokenID string
+	blacklistedTTL     time.Duration
 }
 
 func (s *fakeTokenService) GenerateAccessToken(ctx context.Context, claims domainauth.AccessClaims) (string, time.Time, error) {
@@ -813,6 +819,7 @@ func (s *fakeTokenService) HashRefreshToken(plain string) string {
 
 func (s *fakeTokenService) BlacklistAccessToken(ctx context.Context, tokenID string, ttl time.Duration) error {
 	s.blacklistedTokenID = tokenID
+	s.blacklistedTTL = ttl
 	return nil
 }
 
