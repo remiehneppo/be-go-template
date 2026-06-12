@@ -114,6 +114,14 @@ JWT key format:
 
 `JWT_ACCESS_CURRENT_KEY` signs new access tokens. `JWT_ACCESS_PREVIOUS_KEY` only validates older access tokens until `JWT_ACCESS_PREVIOUS_NOT_AFTER`.
 
+Rotation flow:
+
+1. Generate a new current key.
+2. Move the old current key into `JWT_ACCESS_PREVIOUS_KEY`.
+3. Set `JWT_ACCESS_PREVIOUS_NOT_AFTER` to the end of the overlap window.
+4. Deploy the new config.
+5. Remove the previous key after the overlap window ends.
+
 ## Commands
 
 Run tests and static checks:

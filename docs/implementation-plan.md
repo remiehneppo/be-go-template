@@ -776,7 +776,7 @@ Checklist:
 - [x] Ghi Mongo transaction requirement nếu muốn atomic multi-document writes.
 - [x] Ghi quy ước `FindMany` cache explicit-only và trách nhiệm `InvalidateKeys`.
 - [x] Ghi DeviceID trust model.
-- [ ] Ghi JWT `kid` rotation process.
+- [x] Ghi JWT `kid` rotation process.
 - [x] Ghi outbox behavior và at-least-once semantics.
 - [x] Ghi revoked token Redis + Mongo fallback.
 - [x] Ghi `HealthLevel` threshold config.

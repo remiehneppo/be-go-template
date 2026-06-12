@@ -124,6 +124,25 @@ Auth endpoints use Redis-backed rate limiting with per-endpoint keys:
 
 When the Redis limiter is unavailable, behavior follows `RATE_LIMIT_FALLBACK`.
 
+## JWT key rotation
+
+Access tokens carry a `kid` header and the validator accepts the configured current key plus one previous key during a bounded overlap window.
+
+Rotation process:
+
+1. Generate a new key pair and set it as `JWT_ACCESS_CURRENT_KEY`.
+2. Move the old current key into `JWT_ACCESS_PREVIOUS_KEY`.
+3. Set `JWT_ACCESS_PREVIOUS_NOT_AFTER` to the end of the overlap window.
+4. Deploy the new config.
+5. After the overlap window expires, remove the previous key from config.
+
+Rules:
+
+- `JWT_ACCESS_CURRENT_KEY` signs new tokens immediately after deploy.
+- `JWT_ACCESS_PREVIOUS_KEY` only validates tokens issued before rotation.
+- `JWT_ACCESS_PREVIOUS_NOT_AFTER` must be in the future while the previous key is configured.
+- Once `JWT_ACCESS_PREVIOUS_NOT_AFTER` passes, the previous key is rejected even if the secret is still present.
+
 ## Account lockout
 
 Login failures are tracked as consecutive failed attempts on the user document.
