@@ -251,8 +251,8 @@ Checklist:
 
 Checklist:
 
-- [ ] Tạo package `internal/platform/ctxkeys` để định nghĩa toàn bộ context key tập trung.
-- [ ] Dùng unexported/custom key type, không dùng raw string key trực tiếp trong middleware/service.
+- [x] Tạo package `internal/platform/ctxkeys` để định nghĩa toàn bộ context key tập trung.
+- [x] Dùng unexported/custom key type, không dùng raw string key trực tiếp trong middleware/service.
 - [x] Key tối thiểu: `request_id`, `user_id`, `session_id`, `token_id`, `trace_id`, `span_id`, `logger`.
 - [x] Middleware request id set `request_id` và logger vào context.
 - [x] Auth middleware bổ sung `user_id`, `session_id`, `token_id` vào context.
@@ -783,7 +783,7 @@ Checklist:
 - [x] Ghi ETag behavior cho poll-heavy endpoints.
 - [x] Ghi validation error schema.
 - [x] Ghi graceful degradation matrix cho Redis/Mongo/outbox/rate limit.
-- [ ] Ghi context propagation contract và danh sách key chuẩn.
+- [x] Ghi context propagation contract và danh sách key chuẩn.
 - [ ] Ghi seed admin user bằng `cmd/seed`.
 - [ ] Ghi migration/backfill/index strategy bằng `cmd/migrate`.
 - [x] Ghi JWT key format `<key-id>/<base64-secret>` và previous key `NotAfter`.

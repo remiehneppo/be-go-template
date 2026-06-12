@@ -146,6 +146,14 @@ Session records keep `ip`, `user_agent`, and `device_id` for audit and device hi
 - Trace id and span id are propagated through context when the client provides them.
 - Auth middleware adds user id, session id, and token id to context for downstream logging.
 
+## Context propagation
+
+The template uses `internal/platform/ctxkeys` for all request-scoped context values.
+
+- Keys are stable and centralized: `request_id`, `user_id`, `session_id`, `token_id`, `roles`, `trace_id`, `span_id`, `logger`, `request_started_at`.
+- Middleware should set context values through these keys instead of raw strings.
+- Services and repositories should read request-scoped metadata through the same keys to keep logging and tracing consistent.
+
 ## Migration contract
 
 `go run ./cmd/migrate` runs ordered migrations from `cmd/migrate`.
