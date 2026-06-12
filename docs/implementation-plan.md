@@ -513,7 +513,7 @@ Checklist:
 - [ ] Parse duration từ env.
 - [x] Validate config lúc startup.
 - [x] Production fail startup nếu `CORS_ALLOWED_ORIGINS` rỗng hoặc wildcard.
-- [ ] Local default chỉ allow `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:3000`, `http://127.0.0.1:5173`.
+- [x] Local default chỉ allow `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:3000`, `http://127.0.0.1:5173`.
 - [ ] Không log secret.
 
 ## 8. Bootstrap/runtime

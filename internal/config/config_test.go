@@ -26,8 +26,19 @@ func TestLoadDefaults(t *testing.T) {
 	if !cfg.HTTP.ETagEnabled {
 		t.Fatal("HTTP.ETagEnabled = false")
 	}
-	if len(cfg.HTTP.CORSAllowOrigins) != 2 {
+	wantOrigins := map[string]bool{
+		"http://localhost:3000": true,
+		"http://localhost:5173": true,
+		"http://127.0.0.1:3000": true,
+		"http://127.0.0.1:5173": true,
+	}
+	if len(cfg.HTTP.CORSAllowOrigins) != len(wantOrigins) {
 		t.Fatalf("CORSAllowOrigins len = %d", len(cfg.HTTP.CORSAllowOrigins))
+	}
+	for _, origin := range cfg.HTTP.CORSAllowOrigins {
+		if !wantOrigins[origin] {
+			t.Fatalf("unexpected CORS origin %q", origin)
+		}
 	}
 	if !cfg.RateLimit.AuthEnabled || cfg.RateLimit.Fallback != "allow" {
 		t.Fatalf("RateLimit = %+v", cfg.RateLimit)
