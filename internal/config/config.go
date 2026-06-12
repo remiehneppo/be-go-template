@@ -300,6 +300,20 @@ func (cfg Config) Validate() error {
 	if cfg.JWT.AccessCurrentKey == "" {
 		return fmt.Errorf("JWT_ACCESS_CURRENT_KEY must not be empty")
 	}
+	if err := validateJWTKey(cfg.JWT.AccessCurrentKey, "JWT_ACCESS_CURRENT_KEY"); err != nil {
+		return err
+	}
+	if strings.TrimSpace(cfg.JWT.AccessPreviousKey) != "" {
+		if err := validateJWTKey(cfg.JWT.AccessPreviousKey, "JWT_ACCESS_PREVIOUS_KEY"); err != nil {
+			return err
+		}
+		if cfg.JWT.PreviousNotAfter.IsZero() {
+			return fmt.Errorf("JWT_ACCESS_PREVIOUS_NOT_AFTER must be set when JWT_ACCESS_PREVIOUS_KEY is configured")
+		}
+		if !cfg.JWT.PreviousNotAfter.After(time.Now().UTC()) {
+			return fmt.Errorf("JWT_ACCESS_PREVIOUS_NOT_AFTER must be in the future when JWT_ACCESS_PREVIOUS_KEY is configured")
+		}
+	}
 	if cfg.JWT.AccessTTL <= 0 {
 		return fmt.Errorf("JWT_ACCESS_TTL must be positive")
 	}
@@ -367,6 +381,21 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.Readiness.RedisDegradedThreshold <= 0 {
 		return fmt.Errorf("REDIS_DEGRADED_THRESHOLD must be positive")
+	}
+	return nil
+}
+
+func validateJWTKey(value string, field string) error {
+	parts := strings.SplitN(strings.TrimSpace(value), "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return fmt.Errorf("%s must use <key-id>/<base64-secret> format", field)
+	}
+	secret, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return fmt.Errorf("%s must contain valid base64 secret", field)
+	}
+	if len(secret) < 16 {
+		return fmt.Errorf("%s secret must be at least 16 bytes", field)
 	}
 	return nil
 }

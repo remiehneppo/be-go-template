@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -175,6 +176,60 @@ func TestValidateRejectsInvalidBcryptCost(t *testing.T) {
 	}
 	if got, want := err.Error(), "BCRYPT_COST must be between 4 and 31"; got != want {
 		t.Fatalf("Load() error = %q, want %q", got, want)
+	}
+}
+
+func TestLoadRejectsInvalidJWTKeyFormat(t *testing.T) {
+	t.Setenv("JWT_ACCESS_CURRENT_KEY", "missing-separator")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if got, want := err.Error(), "JWT_ACCESS_CURRENT_KEY must use <key-id>/<base64-secret> format"; got != want {
+		t.Fatalf("Load() error = %q, want %q", got, want)
+	}
+}
+
+func TestLoadRejectsPreviousJWTKeyWithoutNotAfter(t *testing.T) {
+	t.Setenv("JWT_ACCESS_CURRENT_KEY", keyValue("current", "current-secret-value"))
+	t.Setenv("JWT_ACCESS_PREVIOUS_KEY", keyValue("previous", "previous-secret-value"))
+	t.Setenv("JWT_ACCESS_PREVIOUS_NOT_AFTER", "")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if got, want := err.Error(), "JWT_ACCESS_PREVIOUS_NOT_AFTER must be set when JWT_ACCESS_PREVIOUS_KEY is configured"; got != want {
+		t.Fatalf("Load() error = %q, want %q", got, want)
+	}
+}
+
+func TestLoadRejectsExpiredPreviousJWTKey(t *testing.T) {
+	t.Setenv("JWT_ACCESS_CURRENT_KEY", keyValue("current", "current-secret-value"))
+	t.Setenv("JWT_ACCESS_PREVIOUS_KEY", keyValue("previous", "previous-secret-value"))
+	t.Setenv("JWT_ACCESS_PREVIOUS_NOT_AFTER", time.Now().Add(-time.Minute).Format(time.RFC3339Nano))
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if got, want := err.Error(), "JWT_ACCESS_PREVIOUS_NOT_AFTER must be in the future when JWT_ACCESS_PREVIOUS_KEY is configured"; got != want {
+		t.Fatalf("Load() error = %q, want %q", got, want)
+	}
+}
+
+func TestLoadSupportsJWTKeyRotationConfig(t *testing.T) {
+	t.Setenv("JWT_ACCESS_CURRENT_KEY", keyValue("current", "current-secret-value"))
+	t.Setenv("JWT_ACCESS_PREVIOUS_KEY", keyValue("previous", "previous-secret-value"))
+	t.Setenv("JWT_ACCESS_PREVIOUS_NOT_AFTER", time.Now().Add(time.Hour).Format(time.RFC3339Nano))
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.JWT.AccessCurrentKey == "" || cfg.JWT.AccessPreviousKey == "" || cfg.JWT.PreviousNotAfter.IsZero() {
+		t.Fatalf("JWT config = %+v", cfg.JWT)
 	}
 }
 
@@ -358,4 +413,8 @@ func equalStrings(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func keyValue(id string, secret string) string {
+	return id + "/" + base64.RawURLEncoding.EncodeToString([]byte(secret))
 }

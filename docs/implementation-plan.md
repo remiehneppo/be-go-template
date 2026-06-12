@@ -507,9 +507,9 @@ Checklist:
 - [x] Thêm outbox config: `OUTBOX_ENABLED`, `OUTBOX_DRAIN_INTERVAL`, `OUTBOX_BATCH_SIZE`, `OUTBOX_MAX_RETRIES`.
 - [x] Thêm HTTP cache config: `ETAG_ENABLED`.
 - [ ] Config có default an toàn cho local.
-- [ ] Production yêu cầu JWT current secret không rỗng.
-- [ ] JWT key format hỗ trợ `<key-id>/<base64-secret>` để tránh conflict ký tự trong secret.
-- [ ] JWT previous key có `NotAfter`; previous key chỉ dùng validate, không dùng ký token mới, và hết hiệu lực sau grace window cấu hình.
+- [x] Production yêu cầu JWT current secret không rỗng.
+- [x] JWT key format hỗ trợ `<key-id>/<base64-secret>` để tránh conflict ký tự trong secret.
+- [x] JWT previous key có `NotAfter`; previous key chỉ dùng validate, không dùng ký token mới, và hết hiệu lực sau grace window cấu hình.
 - [ ] Parse duration từ env.
 - [x] Validate config lúc startup.
 - [x] Production fail startup nếu `CORS_ALLOWED_ORIGINS` rỗng hoặc wildcard.
@@ -786,7 +786,7 @@ Checklist:
 - [ ] Ghi context propagation contract và danh sách key chuẩn.
 - [ ] Ghi seed admin user bằng `cmd/seed`.
 - [ ] Ghi migration/backfill/index strategy bằng `cmd/migrate`.
-- [ ] Ghi JWT key format `<key-id>/<base64-secret>` và previous key `NotAfter`.
+- [x] Ghi JWT key format `<key-id>/<base64-secret>` và previous key `NotAfter`.
 - [ ] Ghi refresh token binding là audit/anomaly signal, không phải security lookup chính.
 - [ ] Ghi account lockout policy hoặc lý do intentionally scoped out.
 
