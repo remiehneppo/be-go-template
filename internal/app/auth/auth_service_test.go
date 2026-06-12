@@ -3,15 +3,19 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/common"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
+	platformmetrics "github.com/remihneppo/be-go-template/internal/platform/metrics"
 )
 
 func TestNewIDFallsBackWithoutPanic(t *testing.T) {
@@ -30,7 +34,13 @@ func TestNewIDFallsBackWithoutPanic(t *testing.T) {
 func TestServiceRegisterCreatesUserSessionAndTokens(t *testing.T) {
 	users := &fakeUserRepository{findErr: database.ErrNotFound}
 	sessions := &fakeSessionRepository{}
-	tokens := &fakeTokenService{refreshPlain: "refresh", refreshHash: "refresh-hash", accessToken: "access", accessExpiresAt: time.Unix(100, 0)}
+	tokens := &fakeTokenService{
+		refreshPlain:    "refresh",
+		refreshHash:     "refresh-hash",
+		accessToken:     "access",
+		accessExpiresAt: time.Unix(100, 0),
+		validatedClaims: &domainauth.AccessClaims{UserID: "u1", SessionID: "s1", TokenID: "jti1", ExpiresAt: time.Unix(200, 0)},
+	}
 	passwords := fakePasswordHasher{hash: "hashed-password"}
 	audit := &fakeAuditLogRepository{}
 	service := NewService(ServiceDependencies{
@@ -95,7 +105,13 @@ func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	sessions := &fakeSessionRepository{}
 	history := &fakeLoginHistoryRepository{}
 	audit := &fakeAuditLogRepository{}
-	tokens := &fakeTokenService{refreshPlain: "refresh", refreshHash: "refresh-hash", accessToken: "access", accessExpiresAt: time.Unix(100, 0)}
+	tokens := &fakeTokenService{
+		refreshPlain:    "refresh",
+		refreshHash:     "refresh-hash",
+		accessToken:     "access",
+		accessExpiresAt: time.Unix(100, 0),
+		validatedClaims: &domainauth.AccessClaims{UserID: "u1", SessionID: "s1", TokenID: "jti1", ExpiresAt: time.Unix(200, 0)},
+	}
 	capture := newAuthCaptureLogger()
 	service := NewService(ServiceDependencies{
 		Users:        users,
@@ -316,6 +332,57 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	}
 	if !capture.hasEntry("info", "auth logout succeeded") || !capture.hasField("session_id", "s1") || !capture.hasField("token_id", "jti1") {
 		t.Fatalf("logger entries = %+v", capture.entries)
+	}
+}
+
+func TestServiceRecordsAuthMetrics(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	metrics, err := platformmetrics.NewAuthMetrics(registry, "testapp")
+	if err != nil {
+		t.Fatalf("NewAuthMetrics() error = %v", err)
+	}
+	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", PasswordHash: "hash", Roles: []user.Role{user.RoleUser}, Status: user.StatusActive}}
+	sessions := &fakeSessionRepository{}
+	tokens := &fakeTokenService{
+		refreshPlain:    "refresh",
+		refreshHash:     "refresh-hash",
+		accessToken:     "access",
+		accessExpiresAt: time.Unix(100, 0),
+		validatedClaims: &domainauth.AccessClaims{UserID: "u1", SessionID: "s1", TokenID: "jti1", ExpiresAt: time.Unix(200, 0)},
+	}
+	service := NewService(ServiceDependencies{
+		Users:      users,
+		Sessions:   sessions,
+		Tokens:     tokens,
+		Passwords:  fakePasswordHasher{},
+		RefreshTTL: time.Hour,
+		Metrics:    metrics,
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	if _, err := service.Login(logger.WithContext(context.Background(), logger.NewNoop()), domainauth.LoginInput{Email: "user@example.com", Password: "password123"}, domainauth.RequestMeta{}); err != nil {
+		t.Fatalf("Login() error = %v", err)
+	}
+	if err := service.Logout(context.Background(), "access", ""); err != nil {
+		t.Fatalf("Logout() error = %v", err)
+	}
+
+	if err := testutil.GatherAndCompare(registry, strings.NewReader(`
+# HELP testapp_auth_login_total Total auth login attempts grouped by outcome.
+# TYPE testapp_auth_login_total counter
+testapp_auth_login_total{result="success"} 1
+# HELP testapp_auth_logout_total Total auth logout operations handled by the API.
+# TYPE testapp_auth_logout_total counter
+testapp_auth_logout_total{kind="logout"} 1
+# HELP testapp_auth_session_events_total Total auth session create and revoke events.
+# TYPE testapp_auth_session_events_total counter
+testapp_auth_session_events_total{kind="created"} 1
+testapp_auth_session_events_total{kind="revoked"} 1
+# HELP testapp_auth_active_sessions Current active auth sessions tracked by the API.
+# TYPE testapp_auth_active_sessions gauge
+testapp_auth_active_sessions 0
+`), "testapp_auth_login_total", "testapp_auth_logout_total", "testapp_auth_session_events_total", "testapp_auth_active_sessions"); err != nil {
+		t.Fatalf("GatherAndCompare() error = %v", err)
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 	"github.com/remihneppo/be-go-template/internal/platform/health"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
+	platformmetrics "github.com/remihneppo/be-go-template/internal/platform/metrics"
 	platformoutbox "github.com/remihneppo/be-go-template/internal/platform/outbox"
 	"github.com/remihneppo/be-go-template/internal/platform/ratelimit"
 	mongorepo "github.com/remihneppo/be-go-template/internal/repository/mongo"
@@ -64,6 +65,15 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	authMetrics, err := platformmetrics.NewAuthMetrics(nil, "")
+	if err != nil {
+		return fmt.Errorf("init auth metrics: %w", err)
+	}
+	dbMetrics, err := platformmetrics.NewDatabaseMetrics(nil, "")
+	if err != nil {
+		return fmt.Errorf("init database metrics: %w", err)
+	}
+
 	mongoClient, err := connectMongo(ctx, cfg)
 	if err != nil {
 		return err
@@ -96,7 +106,7 @@ func run() error {
 	}()
 
 	baseDB := database.NewMongo(mongoClient, cfg.Mongo.Database)
-	db := database.NewCached(baseDB, redisCache, log)
+	db := database.NewCached(baseDB, redisCache, log, dbMetrics)
 	userRepo := mongorepo.NewUserRepository(db)
 	sessionRepo := mongorepo.NewSessionRepository(db)
 	loginHistoryRepo := mongorepo.NewLoginHistoryRepository(db)
@@ -132,6 +142,7 @@ func run() error {
 		AuditLogs:          auditLogRepo,
 		RevokedTokens:      revokedTokenRepo,
 		Tokens:             tokenService,
+		Metrics:            authMetrics,
 		RefreshTTL:         cfg.JWT.RefreshTTL,
 		LockoutMaxFailures: cfg.Auth.LockoutMaxFailures,
 		LockoutDuration:    cfg.Auth.LockoutDuration,

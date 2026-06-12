@@ -616,11 +616,11 @@ Checklist:
 - [ ] `AuthStats` gồm login success/failure count, active sessions, revoked sessions, refresh count, logout count.
 - [x] Monitoring service dùng repository/query abstraction để lấy auth stats và audit logs.
 - [ ] Monitoring service có thể cache short TTL cho endpoint stats để tránh query nặng.
-- [ ] Dùng Prometheus client library chính thức cho metrics, không tự tạo metrics format từ đầu.
-- [ ] Expose `GET /metrics` theo Prometheus text exposition format.
-- [ ] HTTP middleware ghi metrics: request total, request duration, response status, method, route.
-- [ ] Cache/database layer ghi metrics: cache hit/miss, lock wait duration, Mongo/Redis dependency errors.
-- [ ] Auth service ghi metrics: login success/failure, refresh success/failure, logout, active sessions gauge nếu tính được.
+- [x] Dùng Prometheus client library chính thức cho metrics, không tự tạo metrics format từ đầu.
+- [x] Expose `GET /metrics` theo Prometheus text exposition format.
+- [x] HTTP middleware ghi metrics: request total, request duration, response status, method, route.
+- [x] Cache/database layer ghi metrics: cache hit/miss, lock wait duration, Mongo/Redis dependency errors.
+- [x] Auth service ghi metrics: login success/failure, refresh success/failure, logout, active sessions gauge nếu tính được.
 - [ ] Monitoring endpoints trả response thống nhất như API còn lại.
 - [ ] Monitoring endpoints không expose secret, connection string, token, stack trace raw cho non-admin.
 - [ ] Chuẩn bị interface để sau này admin panel gọi trực tiếp qua HTTP API.
@@ -700,7 +700,7 @@ Checklist:
 - [ ] Rate limiter allows under-limit requests and rejects over-limit requests.
 - [ ] Refresh token rotation atomic update rejects stale old hash.
 - [ ] Refresh token reuse revokes token family.
-- [ ] Prometheus collectors register without duplicate registration panic.
+- [x] Prometheus collectors register without duplicate registration panic.
 - [ ] Context keys không conflict giữa middleware/logger/service.
 - [ ] Database read/write options validate `ReadOptions`/`WriteOptions` và lock fallback đúng policy.
 - [ ] `FindMany` không cache nếu không có explicit `CacheKey`.

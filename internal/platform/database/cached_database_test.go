@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
+	platformmetrics "github.com/remihneppo/be-go-template/internal/platform/metrics"
 )
 
 type testDoc struct {
@@ -30,10 +34,15 @@ func TestCachedDatabaseFindOneCacheHitSkipsBase(t *testing.T) {
 	cacheStore := newFakeCache()
 	capture := newDBCaptureLogger()
 	cacheStore.values["doc:1"] = testDoc{ID: "cached", Name: "Cached"}
-	db := NewCached(base, cacheStore, capture)
+	registry := prometheus.NewRegistry()
+	metrics, err := platformmetrics.NewDatabaseMetrics(registry, "testapp")
+	if err != nil {
+		t.Fatalf("NewDatabaseMetrics() error = %v", err)
+	}
+	db := NewCached(base, cacheStore, capture, metrics)
 
 	var got testDoc
-	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{
+	err = db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{
 		CacheKey: "doc:1",
 		CacheTTL: time.Minute,
 	})
@@ -49,13 +58,20 @@ func TestCachedDatabaseFindOneCacheHitSkipsBase(t *testing.T) {
 	if !capture.hasEntry("debug", "cache hit") || !capture.hasField("cache_key", "doc:1") {
 		t.Fatalf("logger entries = %+v", capture.entries)
 	}
+	if err := testutil.GatherAndCompare(registry, strings.NewReader(`
+# HELP testapp_database_cache_events_total Total database cache events grouped by operation and result.
+# TYPE testapp_database_cache_events_total counter
+testapp_database_cache_events_total{operation="read",result="hit"} 1
+`), "testapp_database_cache_events_total"); err != nil {
+		t.Fatalf("GatherAndCompare() error = %v", err)
+	}
 }
 
 func TestCachedDatabaseFindOneMissLoadsAndCaches(t *testing.T) {
 	base := &fakeDatabase{findOneValue: testDoc{ID: "base", Name: "Base"}}
 	cacheStore := newFakeCache()
 	capture := newDBCaptureLogger()
-	db := NewCached(base, cacheStore, capture)
+	db := NewCached(base, cacheStore, capture, nil)
 
 	var got testDoc
 	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{
@@ -86,7 +102,7 @@ func TestCachedDatabaseFindOneMissLoadsAndCaches(t *testing.T) {
 func TestCachedDatabaseFindManyRequiresCacheableFilter(t *testing.T) {
 	base := &fakeDatabase{findManyValue: []testDoc{{ID: "1"}}}
 	cacheStore := newFakeCache()
-	db := NewCached(base, cacheStore, logger.NewNoop())
+	db := NewCached(base, cacheStore, logger.NewNoop(), nil)
 
 	var got []testDoc
 	err := db.FindMany(context.Background(), "docs", map[string]string{"name": "x"}, &got, ReadOptions{
@@ -113,7 +129,7 @@ func TestCachedDatabaseFindManyRequiresCacheableFilter(t *testing.T) {
 func TestCachedDatabaseFindManyCachesCacheableFilter(t *testing.T) {
 	base := &fakeDatabase{findManyValue: []testDoc{{ID: "1"}}}
 	cacheStore := newFakeCache()
-	db := NewCached(base, cacheStore, logger.NewNoop())
+	db := NewCached(base, cacheStore, logger.NewNoop(), nil)
 
 	var got []testDoc
 	err := db.FindMany(context.Background(), "docs", cacheableFilter{ID: "1"}, &got, ReadOptions{
@@ -131,7 +147,7 @@ func TestCachedDatabaseFindManyCachesCacheableFilter(t *testing.T) {
 func TestCachedDatabaseWriteInvalidatesKeys(t *testing.T) {
 	base := &fakeDatabase{}
 	cacheStore := newFakeCache()
-	db := NewCached(base, cacheStore, logger.NewNoop())
+	db := NewCached(base, cacheStore, logger.NewNoop(), nil)
 
 	err := db.UpdateOne(context.Background(), "docs", map[string]string{"id": "1"}, map[string]string{"$set": "x"}, WriteOptions{
 		InvalidateKeys: []string{"doc:1", "docs:list"},
@@ -151,7 +167,7 @@ func TestCachedDatabaseStrictWriteLockFailsBeforeWrite(t *testing.T) {
 	base := &fakeDatabase{}
 	cacheStore := newFakeCache()
 	cacheStore.lockErr = cache.ErrLockNotAcquired
-	db := NewCached(base, cacheStore, logger.NewNoop())
+	db := NewCached(base, cacheStore, logger.NewNoop(), nil)
 
 	err := db.UpdateOne(context.Background(), "docs", nil, nil, WriteOptions{
 		LockKey:    "doc:1",
@@ -169,7 +185,7 @@ func TestCachedDatabaseNonStrictWriteLockFallsBack(t *testing.T) {
 	base := &fakeDatabase{}
 	cacheStore := newFakeCache()
 	cacheStore.lockErr = cache.ErrLockNotAcquired
-	db := NewCached(base, cacheStore, logger.NewNoop())
+	db := NewCached(base, cacheStore, logger.NewNoop(), nil)
 
 	err := db.UpdateOne(context.Background(), "docs", nil, nil, WriteOptions{LockKey: "doc:1"})
 	if err != nil {
@@ -185,7 +201,7 @@ func TestCachedDatabaseReadLockNotAcquiredLogsFallback(t *testing.T) {
 	cacheStore := newFakeCache()
 	cacheStore.lockErr = cache.ErrLockNotAcquired
 	capture := newDBCaptureLogger()
-	db := NewCached(base, cacheStore, capture)
+	db := NewCached(base, cacheStore, capture, nil)
 
 	var got testDoc
 	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{
@@ -204,10 +220,15 @@ func TestCachedDatabaseReadLockNotAcquiredLogsFallback(t *testing.T) {
 func TestCachedDatabaseFindOneMapsTimeoutToDependencyError(t *testing.T) {
 	base := &fakeDatabase{findOneErr: context.DeadlineExceeded}
 	capture := newDBCaptureLogger()
-	db := NewCached(base, nil, capture)
+	registry := prometheus.NewRegistry()
+	metrics, err := platformmetrics.NewDatabaseMetrics(registry, "testapp")
+	if err != nil {
+		t.Fatalf("NewDatabaseMetrics() error = %v", err)
+	}
+	db := NewCached(base, nil, capture, metrics)
 
 	var got testDoc
-	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{})
+	err = db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{})
 	appErr := apperrors.FromError(err)
 	if appErr == nil || appErr.Code != apperrors.CodeDependency {
 		t.Fatalf("FindOne() error = %v", err)
@@ -215,13 +236,20 @@ func TestCachedDatabaseFindOneMapsTimeoutToDependencyError(t *testing.T) {
 	if !capture.hasEntry("warn", "database dependency error") || !capture.hasField("op", "CachedDatabase.FindOne") {
 		t.Fatalf("logger entries = %+v", capture.entries)
 	}
+	if err := testutil.GatherAndCompare(registry, strings.NewReader(`
+# HELP testapp_database_dependency_errors_total Total dependency errors observed in the database abstraction.
+# TYPE testapp_database_dependency_errors_total counter
+testapp_database_dependency_errors_total{operation="CachedDatabase.FindOne"} 1
+`), "testapp_database_dependency_errors_total"); err != nil {
+		t.Fatalf("GatherAndCompare() error = %v", err)
+	}
 }
 
 func TestCachedDatabaseStrictWriteLockTimeoutMapsDependencyError(t *testing.T) {
 	base := &fakeDatabase{}
 	cacheStore := newFakeCache()
 	cacheStore.lockErr = context.DeadlineExceeded
-	db := NewCached(base, cacheStore, logger.NewNoop())
+	db := NewCached(base, cacheStore, logger.NewNoop(), nil)
 
 	err := db.UpdateOne(context.Background(), "docs", nil, nil, WriteOptions{
 		LockKey:    "doc:1",
