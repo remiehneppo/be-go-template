@@ -109,13 +109,14 @@ func run() error {
 	db := database.NewCached(baseDB, redisCache, log, dbMetrics)
 	userRepo := mongorepo.NewUserRepository(db)
 	sessionRepo := mongorepo.NewSessionRepository(db)
-	loginHistoryRepo := mongorepo.NewLoginHistoryRepository(db)
+	directLoginHistoryRepo := mongorepo.NewLoginHistoryRepository(db)
 	directAuditLogRepo := mongorepo.NewAuditLogRepository(db)
 	revokedTokenRepo := mongorepo.NewRevokedTokenRepository(db)
 	directErrorEventRepo := mongorepo.NewErrorEventRepository(db)
 	monitoringStatsRepo := mongorepo.NewMonitoringStatsRepository(db)
 	mongoOutbox := platformoutbox.NewMongoOutboxWithConfig(db, cfg.Outbox.DefaultMaxRetries, cfg.Outbox.RetryDelay)
-	outboxHandler := appoutbox.NewHandler(directAuditLogRepo, directErrorEventRepo)
+	loginHistoryRepo := appoutbox.NewLoginHistoryRepository(directLoginHistoryRepo, mongoOutbox)
+	outboxHandler := appoutbox.NewHandler(directAuditLogRepo, loginHistoryRepo, directErrorEventRepo)
 	if cfg.Outbox.Enabled {
 		outboxWorker := platformoutbox.NewWorker(mongoOutbox, outboxHandler.Handle, cfg.Outbox.DrainInterval, cfg.Outbox.BatchSize)
 		go func() {

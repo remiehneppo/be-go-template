@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	TypeAuditLog   = "audit_log"
-	TypeErrorEvent = "error_event"
+	TypeAuditLog     = "audit_log"
+	TypeErrorEvent   = "error_event"
+	TypeLoginHistory = "login_history"
 )
 
 type AuditLogRepository struct {
@@ -118,3 +119,62 @@ func randomID() string {
 
 var _ domainauth.AuditLogRepository = (*AuditLogRepository)(nil)
 var _ domainmonitoring.ErrorEventRepository = (*ErrorEventRepository)(nil)
+
+type LoginHistoryRepository struct {
+	inner  domainauth.LoginHistoryRepository
+	outbox platformoutbox.Outbox
+	now    func() time.Time
+}
+
+func NewLoginHistoryRepository(inner domainauth.LoginHistoryRepository, outbox platformoutbox.Outbox) *LoginHistoryRepository {
+	return &LoginHistoryRepository{
+		inner:  inner,
+		outbox: outbox,
+		now:    func() time.Time { return time.Now().UTC() },
+	}
+}
+
+func (r *LoginHistoryRepository) Append(ctx context.Context, event domainauth.LoginHistory) error {
+	if r.inner == nil {
+		return fmt.Errorf("login history repository is required")
+	}
+	if event.ID == "" {
+		event.ID = randomID()
+	}
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = r.now()
+	}
+	if err := r.inner.Append(ctx, event); err == nil {
+		return nil
+	}
+	if r.outbox == nil {
+		return nil
+	}
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	return r.outbox.Enqueue(ctx, platformoutbox.Event{
+		ID:             randomID(),
+		IdempotencyKey: loginHistoryIdempotencyKey(event),
+		Type:           TypeLoginHistory,
+		Payload:        payload,
+	})
+}
+
+func (r *LoginHistoryRepository) ListByUserID(ctx context.Context, userID string, pagination common.Pagination) ([]domainauth.LoginHistory, error) {
+	return r.inner.ListByUserID(ctx, userID, pagination)
+}
+
+func loginHistoryIdempotencyKey(event domainauth.LoginHistory) string {
+	return fmt.Sprintf("login_history:%s:%s:%s:%s:%s:%s",
+		event.UserID,
+		event.Email,
+		strconv.FormatBool(event.Success),
+		event.FailureReason,
+		event.DeviceID,
+		event.CreatedAt.UTC().Format(time.RFC3339Nano),
+	)
+}
+
+var _ domainauth.LoginHistoryRepository = (*LoginHistoryRepository)(nil)

@@ -121,7 +121,7 @@ Applied versions are recorded in `schema_migrations` with a unique `version` ind
 
 ## Outbox contract
 
-Audit logs and HTTP error events are enqueued into `outbox_events` first. The API process starts a background worker that drains pending events and writes them into `audit_logs` or `error_events`.
+Audit logs, login history fallbacks, and HTTP error events are enqueued into `outbox_events` when the direct write path fails or when the async path is enabled. The API process starts a background worker that drains pending events and writes them into `audit_logs`, `login_history`, or `error_events`.
 
 Outbox events use:
 

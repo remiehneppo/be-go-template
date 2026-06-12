@@ -287,7 +287,7 @@ Checklist:
 - [ ] Worker xử lý idempotent theo `IdempotencyKey`/event target, không chỉ theo Mongo `_id`.
 - [x] Implement `MongoOutbox` ghi event vào collection `outbox_events`.
 - [x] Implement background worker drain outbox theo interval và retry với backoff.
-- [ ] Outbox event hỗ trợ tối thiểu audit log, error event, login history async fallback.
+- [x] Outbox event hỗ trợ tối thiểu audit log, error event, login history async fallback.
 - [ ] Tạo `RevokedTokenRepository` lưu `jti`, `user_id`, `session_id`, `expires_at`, `revoked_at`.
 - [ ] `RevokedTokenRepository` có TTL index theo `expires_at`.
 - [ ] Token blacklist check Redis trước, nếu miss thì fallback Mongo `revoked_tokens`.
@@ -350,7 +350,7 @@ Checklist:
 - [ ] Không lưu token/password/secret trong metadata.
 - [ ] Tạo `ErrorEvent` view/model cho monitoring gồm `RequestID`, `ErrorCode`, `Message`, `Cause`, `Stack`, `Path`, `Method`, `Status`, `UserID`, `CreatedAt`.
 - [ ] Error event có thể lấy từ log file parser hoặc repository tùy implementation phase đầu tiên; mặc định phase đầu lưu event quan trọng vào Mongo qua audit/error repository.
-- [ ] Nếu audit/error/history write trực tiếp fail, enqueue vào outbox để retry thay vì mất event vĩnh viễn.
+- [x] Nếu audit/error/history write trực tiếp fail, enqueue vào outbox để retry thay vì mất event vĩnh viễn.
 - [ ] Mongo index cho `request_id`, `action`, `actor_user_id`, `created_at`, `error_code`.
 
 ## 5. Auth API
@@ -468,7 +468,7 @@ Checklist:
 - [ ] Sau rotation thành công, cache key `session:refresh:{new_hash}` chỉ được populate từ lần đọc tiếp theo hoặc set có kiểm soát.
 - [ ] Register/login có nhiều write thì dùng Mongo transaction nếu deployment hỗ trợ replica set.
 - [ ] Nếu transaction không available, audit/history write trực tiếp là best-effort và không làm fail auth chính.
-- [ ] Nếu audit/history/error write trực tiếp fail, enqueue outbox event để retry at-least-once.
+- [x] Nếu audit/history/error write trực tiếp fail, enqueue outbox event để retry at-least-once.
 - [ ] Outbox worker idempotent theo `IdempotencyKey`/business target để tránh duplicate side effects.
 - [ ] Database abstraction không expose Mongo client/collection ra repository.
 - [ ] Nếu repository dùng `bson.M`, giới hạn trong package `internal/repository/mongo`, không leak vào domain/service/handler.
@@ -752,7 +752,7 @@ Checklist:
 - [ ] Monitoring auth stats reflect login/logout activity.
 - [ ] Prometheus metrics include HTTP request counters/duration after traffic.
 - [ ] Transaction-capable environment handles register/login multi-write consistently.
-- [ ] Non-transaction local environment logs audit/history failure, enqueues outbox event, and does not fail auth.
+- [x] Non-transaction local environment logs audit/history failure, enqueues outbox event, and does not fail auth.
 - [ ] Redis restart simulation still rejects Mongo-persisted revoked access token.
 - [ ] `cmd/seed` can create the first admin idempotently.
 - [ ] `cmd/migrate` applies a migration once and records version.
@@ -855,7 +855,7 @@ Checklist:
 - [ ] Mongo-specific query types không leak ra domain/service/handler.
 - [ ] `FindMany` cache chỉ hoạt động với explicit normalized `CacheKey` và `CacheableFilter`.
 - [ ] Session rotation invalidates all related old session/refresh/device-list cache keys.
-- [ ] Audit/error/history events không mất vĩnh viễn khi write tạm fail; outbox retry at-least-once.
+- [x] Audit/error/history events không mất vĩnh viễn khi write tạm fail; outbox retry at-least-once.
 - [ ] DeviceID chỉ là UX hint, được validate, và không dùng làm security lookup.
 - [ ] JWT `kid` rotation hỗ trợ current/previous key và previous key `NotAfter`.
 - [ ] Logout security chịu được Redis restart nhờ Mongo `revoked_tokens` fallback.

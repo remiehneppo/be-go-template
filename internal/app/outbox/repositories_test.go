@@ -3,6 +3,7 @@ package outbox
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -51,21 +52,45 @@ func TestErrorEventRepositoryEnqueuesEvent(t *testing.T) {
 	}
 }
 
+func TestLoginHistoryRepositoryFallsBackToOutboxOnWriteFailure(t *testing.T) {
+	out := &fakeOutbox{}
+	repo := NewLoginHistoryRepository(&failingLoginHistoryRepository{}, out)
+	repo.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	if err := repo.Append(context.Background(), domainauth.LoginHistory{UserID: "u1", Email: "a@example.com", Success: true}); err != nil {
+		t.Fatalf("Append() error = %v", err)
+	}
+	if len(out.events) != 1 {
+		t.Fatalf("events len = %d", len(out.events))
+	}
+	if out.events[0].Type != TypeLoginHistory || out.events[0].IdempotencyKey == "" {
+		t.Fatalf("event = %+v", out.events[0])
+	}
+}
+
 func TestHandlerRoutesEvents(t *testing.T) {
 	auditRepo := &fakeAuditLogRepository{}
+	loginRepo := &fakeLoginHistoryRepository{}
 	errorRepo := &fakeErrorEventRepository{}
-	handler := NewHandler(auditRepo, errorRepo)
+	handler := NewHandler(auditRepo, loginRepo, errorRepo)
 	auditPayload := mustMarshal(t, domainauth.AuditLog{ID: "a1", Action: "auth.login"})
 	errorPayload := mustMarshal(t, domainauth.ErrorEvent{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR"})
+	loginPayload := mustMarshal(t, domainauth.LoginHistory{ID: "l1", Email: "a@example.com", Success: true})
 
 	if err := handler.Handle(context.Background(), platformoutbox.Event{Type: TypeAuditLog, Payload: auditPayload}); err != nil {
 		t.Fatalf("Handle(audit) error = %v", err)
+	}
+	if err := handler.Handle(context.Background(), platformoutbox.Event{Type: TypeLoginHistory, Payload: loginPayload}); err != nil {
+		t.Fatalf("Handle(login) error = %v", err)
 	}
 	if err := handler.Handle(context.Background(), platformoutbox.Event{Type: TypeErrorEvent, Payload: errorPayload}); err != nil {
 		t.Fatalf("Handle(error) error = %v", err)
 	}
 	if len(auditRepo.events) != 1 || auditRepo.events[0].Action != "auth.login" {
 		t.Fatalf("audit events = %+v", auditRepo.events)
+	}
+	if len(loginRepo.events) != 1 || loginRepo.events[0].Email != "a@example.com" {
+		t.Fatalf("login events = %+v", loginRepo.events)
 	}
 	if len(errorRepo.events) != 1 || errorRepo.events[0].RequestID != "req-1" {
 		t.Fatalf("error events = %+v", errorRepo.events)
@@ -117,6 +142,29 @@ func (r *fakeErrorEventRepository) Append(ctx context.Context, event domainauth.
 
 func (r *fakeErrorEventRepository) List(ctx context.Context, filter domainauth.ErrorEventFilter, pagination common.Pagination) ([]domainauth.ErrorEvent, error) {
 	return r.events, nil
+}
+
+type fakeLoginHistoryRepository struct {
+	events []domainauth.LoginHistory
+}
+
+func (r *fakeLoginHistoryRepository) Append(ctx context.Context, event domainauth.LoginHistory) error {
+	r.events = append(r.events, event)
+	return nil
+}
+
+func (r *fakeLoginHistoryRepository) ListByUserID(ctx context.Context, userID string, pagination common.Pagination) ([]domainauth.LoginHistory, error) {
+	return r.events, nil
+}
+
+type failingLoginHistoryRepository struct{}
+
+func (r *failingLoginHistoryRepository) Append(ctx context.Context, event domainauth.LoginHistory) error {
+	return errors.New("boom")
+}
+
+func (r *failingLoginHistoryRepository) ListByUserID(ctx context.Context, userID string, pagination common.Pagination) ([]domainauth.LoginHistory, error) {
+	return nil, nil
 }
 func mustMarshal(t *testing.T, value any) []byte {
 	t.Helper()

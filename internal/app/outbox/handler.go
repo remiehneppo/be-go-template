@@ -11,12 +11,13 @@ import (
 )
 
 type Handler struct {
-	auditLogs   domainauth.AuditLogRepository
-	errorEvents domainmonitoring.ErrorEventRepository
+	auditLogs    domainauth.AuditLogRepository
+	loginHistory domainauth.LoginHistoryRepository
+	errorEvents  domainmonitoring.ErrorEventRepository
 }
 
-func NewHandler(auditLogs domainauth.AuditLogRepository, errorEvents domainmonitoring.ErrorEventRepository) *Handler {
-	return &Handler{auditLogs: auditLogs, errorEvents: errorEvents}
+func NewHandler(auditLogs domainauth.AuditLogRepository, loginHistory domainauth.LoginHistoryRepository, errorEvents domainmonitoring.ErrorEventRepository) *Handler {
+	return &Handler{auditLogs: auditLogs, loginHistory: loginHistory, errorEvents: errorEvents}
 }
 
 func (h *Handler) Handle(ctx context.Context, event platformoutbox.Event) error {
@@ -39,6 +40,15 @@ func (h *Handler) Handle(ctx context.Context, event platformoutbox.Event) error 
 			return err
 		}
 		return h.errorEvents.Append(ctx, payload)
+	case TypeLoginHistory:
+		if h.loginHistory == nil {
+			return fmt.Errorf("login history repository is required")
+		}
+		var payload domainauth.LoginHistory
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return err
+		}
+		return h.loginHistory.Append(ctx, payload)
 	default:
 		return fmt.Errorf("unsupported outbox event type %q", event.Type)
 	}
