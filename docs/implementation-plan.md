@@ -845,14 +845,14 @@ Checklist:
 - [ ] Mọi response lỗi có error code và request id.
 - [ ] Panic được recovery, log stack/cause, và trả response an toàn.
 - [x] Monitoring endpoints cung cấp system status, dependency status, runtime metrics, auth stats, recent errors, audit logs.
-- [ ] Monitoring implementation đi qua service/repository/interface, không phụ thuộc trực tiếp driver cụ thể ở handler.
+- [x] Monitoring implementation đi qua service/repository/interface, không phụ thuộc trực tiếp driver cụ thể ở handler.
 - [x] `/v1/admin/*` chỉ admin role truy cập được.
 - [x] Auth endpoints có Redis-backed rate limit.
 - [x] Refresh token rotation là atomic và detect reuse.
 - [x] Reuse refresh token cũ revoke toàn bộ token family theo policy.
 - [x] `/metrics` expose Prometheus metrics khi bật config.
 - [x] Pagination/filter thống nhất cho login history, audit logs, recent errors.
-- [ ] Mongo-specific query types không leak ra domain/service/handler.
+- [x] Mongo-specific query types không leak ra domain/service/handler.
 - [x] `FindMany` cache chỉ hoạt động với explicit normalized `CacheKey` và `CacheableFilter`.
 - [x] Session rotation invalidates all related old session/refresh/device-list cache keys.
 - [x] Audit/error/history events không mất vĩnh viễn khi write tạm fail; outbox retry at-least-once.
