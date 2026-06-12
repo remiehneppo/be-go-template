@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestLoadDefaults(t *testing.T) {
 	t.Setenv("APP_NAME", "")
@@ -28,6 +31,9 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.Auth.LockoutMaxFailures != 5 || cfg.Auth.LockoutDuration <= 0 {
 		t.Fatalf("Auth = %+v", cfg.Auth)
+	}
+	if !cfg.Outbox.Enabled || cfg.Outbox.DrainInterval <= 0 || cfg.Outbox.BatchSize != 10 || cfg.Outbox.DefaultMaxRetries != 10 || cfg.Outbox.RetryDelay <= 0 {
+		t.Fatalf("Outbox = %+v", cfg.Outbox)
 	}
 	if cfg.Log.MaxSizeMB != 100 || cfg.Log.MaxBackups != 10 || cfg.Log.MaxAgeDays != 30 || !cfg.Log.Compress {
 		t.Fatalf("Log rotation defaults = %+v", cfg.Log)
@@ -93,5 +99,24 @@ func TestRateLimitFallbackDefaultsToBlockInProduction(t *testing.T) {
 	}
 	if !cfg.Readiness.RequiresRedis {
 		t.Fatal("Readiness.RequiresRedis = false")
+	}
+}
+
+func TestLoadSupportsOutboxConfig(t *testing.T) {
+	t.Setenv("OUTBOX_ENABLED", "false")
+	t.Setenv("OUTBOX_DRAIN_INTERVAL", "2s")
+	t.Setenv("OUTBOX_BATCH_SIZE", "25")
+	t.Setenv("OUTBOX_MAX_RETRIES", "7")
+	t.Setenv("OUTBOX_RETRY_DELAY", "3m")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Outbox.Enabled {
+		t.Fatal("Outbox.Enabled = true")
+	}
+	if cfg.Outbox.DrainInterval != 2*time.Second || cfg.Outbox.BatchSize != 25 || cfg.Outbox.DefaultMaxRetries != 7 || cfg.Outbox.RetryDelay != 3*time.Minute {
+		t.Fatalf("Outbox = %+v", cfg.Outbox)
 	}
 }

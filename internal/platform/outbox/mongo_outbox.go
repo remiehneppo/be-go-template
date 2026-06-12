@@ -11,14 +11,28 @@ import (
 const collectionName = "outbox_events"
 
 type MongoOutbox struct {
-	db  database.Database
-	now func() time.Time
+	db             database.Database
+	now            func() time.Time
+	defaultRetries int
+	retryDelay     time.Duration
 }
 
 func NewMongoOutbox(db database.Database) *MongoOutbox {
+	return NewMongoOutboxWithConfig(db, 10, time.Minute)
+}
+
+func NewMongoOutboxWithConfig(db database.Database, defaultRetries int, retryDelay time.Duration) *MongoOutbox {
+	if defaultRetries <= 0 {
+		defaultRetries = 10
+	}
+	if retryDelay <= 0 {
+		retryDelay = time.Minute
+	}
 	return &MongoOutbox{
-		db:  db,
-		now: func() time.Time { return time.Now().UTC() },
+		db:             db,
+		now:            func() time.Time { return time.Now().UTC() },
+		defaultRetries: defaultRetries,
+		retryDelay:     retryDelay,
 	}
 }
 
@@ -28,7 +42,7 @@ func (o *MongoOutbox) Enqueue(ctx context.Context, event Event) error {
 		event.Status = StatusPending
 	}
 	if event.MaxRetries <= 0 {
-		event.MaxRetries = 10
+		event.MaxRetries = o.defaultRetries
 	}
 	if event.ProcessAfter.IsZero() {
 		event.ProcessAfter = now
@@ -97,7 +111,7 @@ func (o *MongoOutbox) MarkFailed(ctx context.Context, id string, reason string) 
 		"$set": bson.M{
 			"status":        StatusFailed,
 			"last_error":    reason,
-			"process_after": now.Add(time.Minute),
+			"process_after": now.Add(o.retryDelay),
 			"updated_at":    now,
 		},
 		"$inc": bson.M{"retry_count": 1},

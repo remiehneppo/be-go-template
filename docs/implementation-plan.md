@@ -285,8 +285,8 @@ Checklist:
 - [ ] Caller sinh `ID`; với event có business dedup phải sinh `IdempotencyKey` deterministic, ví dụ `login:{user_id}:{request_id}` hoặc `audit:{request_id}:{action}`.
 - [ ] Mongo unique index trên `idempotency_key` để retry ở layer trên không tạo duplicate event.
 - [ ] Worker xử lý idempotent theo `IdempotencyKey`/event target, không chỉ theo Mongo `_id`.
-- [ ] Implement `MongoOutbox` ghi event vào collection `outbox_events`.
-- [ ] Implement background worker drain outbox theo interval và retry với backoff.
+- [x] Implement `MongoOutbox` ghi event vào collection `outbox_events`.
+- [x] Implement background worker drain outbox theo interval và retry với backoff.
 - [ ] Outbox event hỗ trợ tối thiểu audit log, error event, login history async fallback.
 - [ ] Tạo `RevokedTokenRepository` lưu `jti`, `user_id`, `session_id`, `expires_at`, `revoked_at`.
 - [ ] `RevokedTokenRepository` có TTL index theo `expires_at`.
@@ -504,7 +504,7 @@ Checklist:
 - [x] Thêm logging config: `LOG_LEVEL`, `LOG_FORMAT`, `LOG_TO_CONSOLE`, `LOG_TO_FILE`, `LOG_FILE_PATH`, `LOG_MAX_SIZE_MB`, `LOG_MAX_BACKUPS`, `LOG_MAX_AGE_DAYS`, `LOG_COMPRESS`.
 - [ ] Thêm monitoring config: `MONITORING_ENABLED`, `MONITORING_ADMIN_ROLES`, `METRICS_COLLECT_INTERVAL`, `PROMETHEUS_ENABLED`, `PROMETHEUS_PATH`, `MONGO_DEGRADED_THRESHOLD_MS`, `REDIS_DEGRADED_THRESHOLD_MS`.
 - [ ] Thêm rate limit config: `AUTH_RATE_LIMIT_ENABLED`, `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE`, `AUTH_RATE_LIMIT_REFRESH_PER_MINUTE`, `AUTH_RATE_LIMIT_REGISTER_PER_MINUTE`, `RATE_LIMIT_FALLBACK`.
-- [ ] Thêm outbox config: `OUTBOX_ENABLED`, `OUTBOX_DRAIN_INTERVAL`, `OUTBOX_BATCH_SIZE`, `OUTBOX_MAX_RETRIES`.
+- [x] Thêm outbox config: `OUTBOX_ENABLED`, `OUTBOX_DRAIN_INTERVAL`, `OUTBOX_BATCH_SIZE`, `OUTBOX_MAX_RETRIES`.
 - [ ] Thêm HTTP cache config: `ETAG_ENABLED`.
 - [ ] Config có default an toàn cho local.
 - [ ] Production yêu cầu JWT current secret không rỗng.
@@ -526,7 +526,7 @@ Checklist:
 - [ ] Logger ghi ra file theo config.
 - [ ] Tạo request id generator.
 - [ ] Init Prometheus registry/collectors.
-- [ ] Init outbox worker nếu enabled.
+- [x] Init outbox worker nếu enabled.
 - [ ] Connect MongoDB.
 - [ ] Connect Redis.
 - [ ] Tạo cache adapter.
@@ -543,7 +543,7 @@ Checklist:
 - [ ] Wire handlers/router.
 - [ ] Start HTTP server.
 - [ ] Graceful shutdown server, Mongo, Redis.
-- [ ] Stop outbox worker gracefully.
+- [x] Stop outbox worker gracefully.
 - [ ] Flush/sync logger khi shutdown.
 - [ ] Health endpoint `/healthz` kiểm tra process sống.
 - [ ] Ready endpoint `/readyz` ping MongoDB và Redis với timeout.

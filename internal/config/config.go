@@ -18,6 +18,7 @@ type Config struct {
 	Redis     RedisConfig
 	RateLimit RateLimitConfig
 	Auth      AuthConfig
+	Outbox    OutboxConfig
 	Metrics   MetricsConfig
 	Readiness ReadinessConfig
 }
@@ -86,6 +87,14 @@ type RateLimitConfig struct {
 type AuthConfig struct {
 	LockoutMaxFailures int
 	LockoutDuration    time.Duration
+}
+
+type OutboxConfig struct {
+	Enabled           bool
+	DrainInterval     time.Duration
+	BatchSize         int
+	DefaultMaxRetries int
+	RetryDelay        time.Duration
 }
 
 type MetricsConfig struct {
@@ -159,6 +168,13 @@ func Load() (Config, error) {
 		Auth: AuthConfig{
 			LockoutMaxFailures: int(getInt64("AUTH_LOCKOUT_MAX_FAILURES", 5)),
 			LockoutDuration:    getDuration("AUTH_LOCKOUT_DURATION", 15*time.Minute),
+		},
+		Outbox: OutboxConfig{
+			Enabled:           getBool("OUTBOX_ENABLED", true),
+			DrainInterval:     getDuration("OUTBOX_DRAIN_INTERVAL", 5*time.Second),
+			BatchSize:         int(getInt64("OUTBOX_BATCH_SIZE", 10)),
+			DefaultMaxRetries: int(getInt64("OUTBOX_MAX_RETRIES", 10)),
+			RetryDelay:        getDuration("OUTBOX_RETRY_DELAY", time.Minute),
 		},
 		Metrics: MetricsConfig{
 			Enabled: getBool("METRICS_ENABLED", true),
@@ -251,6 +267,18 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.Auth.LockoutMaxFailures > 0 && cfg.Auth.LockoutDuration <= 0 {
 		return fmt.Errorf("AUTH_LOCKOUT_DURATION must be positive when lockout is enabled")
+	}
+	if cfg.Outbox.DrainInterval <= 0 {
+		return fmt.Errorf("OUTBOX_DRAIN_INTERVAL must be positive")
+	}
+	if cfg.Outbox.BatchSize <= 0 {
+		return fmt.Errorf("OUTBOX_BATCH_SIZE must be positive")
+	}
+	if cfg.Outbox.DefaultMaxRetries <= 0 {
+		return fmt.Errorf("OUTBOX_MAX_RETRIES must be positive")
+	}
+	if cfg.Outbox.RetryDelay <= 0 {
+		return fmt.Errorf("OUTBOX_RETRY_DELAY must be positive")
 	}
 	switch cfg.RateLimit.Fallback {
 	case "allow", "block":

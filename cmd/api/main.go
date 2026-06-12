@@ -114,14 +114,18 @@ func run() error {
 	revokedTokenRepo := mongorepo.NewRevokedTokenRepository(db)
 	directErrorEventRepo := mongorepo.NewErrorEventRepository(db)
 	monitoringStatsRepo := mongorepo.NewMonitoringStatsRepository(db)
-	mongoOutbox := platformoutbox.NewMongoOutbox(db)
+	mongoOutbox := platformoutbox.NewMongoOutboxWithConfig(db, cfg.Outbox.DefaultMaxRetries, cfg.Outbox.RetryDelay)
 	outboxHandler := appoutbox.NewHandler(directAuditLogRepo, directErrorEventRepo)
-	outboxWorker := platformoutbox.NewWorker(mongoOutbox, outboxHandler.Handle, 5*time.Second, 10)
-	go func() {
-		if err := outboxWorker.Run(ctx); err != nil && ctx.Err() == nil {
-			log.Error("outbox worker stopped", logger.Any("error", err))
-		}
-	}()
+	if cfg.Outbox.Enabled {
+		outboxWorker := platformoutbox.NewWorker(mongoOutbox, outboxHandler.Handle, cfg.Outbox.DrainInterval, cfg.Outbox.BatchSize)
+		go func() {
+			if err := outboxWorker.Run(ctx); err != nil && ctx.Err() == nil {
+				log.Error("outbox worker stopped", logger.Any("error", err))
+			}
+		}()
+	} else {
+		log.Warn("outbox worker disabled")
+	}
 	auditLogRepo := appoutbox.NewAuditLogRepository(directAuditLogRepo, mongoOutbox)
 	errorEventRepo := appoutbox.NewErrorEventRepository(directErrorEventRepo, mongoOutbox)
 

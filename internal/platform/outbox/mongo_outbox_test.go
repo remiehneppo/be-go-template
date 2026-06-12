@@ -70,7 +70,7 @@ func TestMongoOutboxClaimBatchMarksProcessing(t *testing.T) {
 func TestMongoOutboxMarkFailedSchedulesRetry(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	db := &fakeDatabase{}
-	out := NewMongoOutbox(db)
+	out := NewMongoOutboxWithConfig(db, 10, 3*time.Minute)
 	out.now = func() time.Time { return now }
 
 	if err := out.MarkFailed(context.Background(), "e1", "boom"); err != nil {
@@ -82,6 +82,24 @@ func TestMongoOutboxMarkFailedSchedulesRetry(t *testing.T) {
 	}
 	if update["$inc"] == nil || update["$set"] == nil {
 		t.Fatalf("update = %#v", db.lastUpdate)
+	}
+	set := update["$set"].(bson.M)
+	if got := set["process_after"].(time.Time); !got.Equal(now.Add(3 * time.Minute)) {
+		t.Fatalf("process_after = %v", got)
+	}
+}
+
+func TestMongoOutboxUsesConfiguredDefaults(t *testing.T) {
+	db := &fakeDatabase{}
+	out := NewMongoOutboxWithConfig(db, 7, 2*time.Minute)
+	out.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	if err := out.Enqueue(context.Background(), Event{ID: "e1", Type: "audit"}); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	doc := db.inserted.(eventDocument)
+	if doc.MaxRetries != 7 {
+		t.Fatalf("MaxRetries = %d", doc.MaxRetries)
 	}
 }
 

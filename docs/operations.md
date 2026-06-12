@@ -130,6 +130,14 @@ Outbox events use:
 - `process_after` for retry scheduling
 - `retry_count` and `max_retries` for bounded retry
 
+Outbox runtime is configurable with:
+
+- `OUTBOX_ENABLED`
+- `OUTBOX_DRAIN_INTERVAL`
+- `OUTBOX_BATCH_SIZE`
+- `OUTBOX_MAX_RETRIES`
+- `OUTBOX_RETRY_DELAY`
+
 Admin monitoring reads from the final `audit_logs` and `error_events` collections, not from the queue.
 
 ## Admin seed contract
