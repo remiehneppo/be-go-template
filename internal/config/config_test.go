@@ -250,6 +250,28 @@ func TestRateLimitFallbackDefaultsToBlockInProduction(t *testing.T) {
 	}
 }
 
+func TestLoadSupportsRateLimitConfig(t *testing.T) {
+	t.Setenv("AUTH_RATE_LIMIT_ENABLED", "false")
+	t.Setenv("AUTH_RATE_LIMIT_LOGIN_PER_MINUTE", "11")
+	t.Setenv("AUTH_RATE_LIMIT_REFRESH_PER_MINUTE", "31")
+	t.Setenv("AUTH_RATE_LIMIT_REGISTER_PER_MINUTE", "6")
+	t.Setenv("RATE_LIMIT_FALLBACK", "block")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.RateLimit.AuthEnabled {
+		t.Fatal("RateLimit.AuthEnabled = true")
+	}
+	if cfg.RateLimit.LoginPerMinute != 11 || cfg.RateLimit.RefreshPerMinute != 31 || cfg.RateLimit.RegisterPerMinute != 6 {
+		t.Fatalf("RateLimit = %+v", cfg.RateLimit)
+	}
+	if cfg.RateLimit.Fallback != "block" {
+		t.Fatalf("RateLimit.Fallback = %q", cfg.RateLimit.Fallback)
+	}
+}
+
 func TestLoadSupportsRedisTLSConfig(t *testing.T) {
 	t.Setenv("REDIS_TLS_ENABLED", "true")
 	t.Setenv("REDIS_TLS_CA_CERT", "/tmp/redis-ca.pem")
