@@ -865,7 +865,7 @@ Checklist:
 - [ ] Database abstraction dùng typed read/write options, lock fallback/strict behavior rõ ràng và test được.
 - [x] `FindMany` cache được enforce bằng `CacheableFilter`, không chỉ là convention.
 - [x] Outbox có unique `IdempotencyKey` và worker idempotent để tránh duplicate audit/history.
-- [ ] Token family reuse detection phân biệt active-stale hash, logout, expired session và race theo policy.
+- [x] Token family reuse detection phân biệt active-stale hash, logout, expired session và race theo policy.
 - [x] `cmd/seed` seed được admin đầu tiên mà không qua public register.
 - [x] `cmd/migrate` quản lý index/backfill/schema evolution có version tracking.
 - [ ] Graceful degradation matrix được implement/config rõ cho Redis/Mongo/outbox/rate limit.

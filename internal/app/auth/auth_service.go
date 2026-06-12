@@ -229,6 +229,20 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 	newRefreshExpiresAt := s.now().Add(s.refreshTTL)
 	if err := s.sessions.RotateRefreshToken(ctx, session.ID, oldHash, newRefreshHash, newRefreshExpiresAt); err != nil {
 		if errors.Is(err, database.ErrNotFound) && session.TokenFamilyID != "" {
+			activeSession, activeErr := s.sessions.FindActiveByID(ctx, session.ID)
+			if activeErr != nil {
+				if errors.Is(activeErr, database.ErrNotFound) {
+					s.recordRefresh(false)
+					logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "invalid_refresh_token"), logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("token_family_id", session.TokenFamilyID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
+					return nil, invalidRefreshToken()
+				}
+				return nil, activeErr
+			}
+			if activeSession == nil {
+				s.recordRefresh(false)
+				logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "invalid_refresh_token"), logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("token_family_id", session.TokenFamilyID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
+				return nil, invalidRefreshToken()
+			}
 			ignoreError(s.sessions.RevokeByTokenFamilyID(ctx, session.TokenFamilyID, "refresh_reuse_suspected", s.now()))
 			s.recordRefresh(false)
 			s.recordRefreshReuseSuspected()

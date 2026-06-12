@@ -256,6 +256,13 @@ func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
 			RefreshTokenExpiresAt: expiresAt,
 			TokenFamilyID:         "family1",
 		},
+		activeByID: &domainauth.Session{
+			ID:                    "s1",
+			UserID:                "u1",
+			RefreshTokenHash:      "new-hash",
+			RefreshTokenExpiresAt: expiresAt,
+			TokenFamilyID:         "family1",
+		},
 		rotateErr: database.ErrNotFound,
 	}
 	audit := &fakeAuditLogRepository{}
@@ -281,6 +288,47 @@ func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
 		t.Fatalf("audit = %+v", audit.events)
 	}
 	if !capture.hasEntry("warn", "auth refresh reuse suspected") || !capture.hasField("token_family_id", "family1") {
+		t.Fatalf("logger entries = %+v", capture.entries)
+	}
+}
+
+func TestServiceRefreshDoesNotRevokeFamilyWhenSessionAlreadyInactive(t *testing.T) {
+	expiresAt := time.Unix(1000, 0).UTC()
+	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", Roles: []user.Role{user.RoleUser}, Status: user.StatusActive}}
+	sessions := &fakeSessionRepository{
+		byRefreshHash: &domainauth.Session{
+			ID:                    "s1",
+			UserID:                "u1",
+			RefreshTokenHash:      "old-hash",
+			RefreshTokenExpiresAt: expiresAt,
+			TokenFamilyID:         "family1",
+		},
+		rotateErr:     database.ErrNotFound,
+		activeByIDErr: database.ErrNotFound,
+	}
+	audit := &fakeAuditLogRepository{}
+	capture := newAuthCaptureLogger()
+	service := NewService(ServiceDependencies{
+		Users:      users,
+		Sessions:   sessions,
+		AuditLogs:  audit,
+		Tokens:     &fakeTokenService{refreshPlain: "new-refresh", refreshHash: "new-hash"},
+		Passwords:  fakePasswordHasher{},
+		RefreshTTL: time.Hour,
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	ctx := logger.WithContext(context.Background(), capture)
+	if _, err := service.Refresh(ctx, "old-refresh", domainauth.RequestMeta{}); err == nil {
+		t.Fatal("Refresh() error = nil")
+	}
+	if sessions.revokedFamilyID != "" {
+		t.Fatalf("family revocation = %q", sessions.revokedFamilyID)
+	}
+	if len(audit.events) != 0 {
+		t.Fatalf("audit = %+v", audit.events)
+	}
+	if !capture.hasEntry("warn", "auth refresh failed") || !capture.hasField("reason", "invalid_refresh_token") {
 		t.Fatalf("logger entries = %+v", capture.entries)
 	}
 }
@@ -511,6 +559,8 @@ type fakeSessionRepository struct {
 	active           []domainauth.Session
 	created          domainauth.Session
 	byRefreshHash    *domainauth.Session
+	activeByID       *domainauth.Session
+	activeByIDErr    error
 	rotatedSessionID string
 	rotatedOldHash   string
 	rotatedNewHash   string
@@ -527,7 +577,13 @@ func (r *fakeSessionRepository) Create(ctx context.Context, session domainauth.S
 }
 
 func (r *fakeSessionRepository) FindActiveByID(ctx context.Context, sessionID string) (*domainauth.Session, error) {
-	return nil, nil
+	if r.activeByIDErr != nil {
+		return nil, r.activeByIDErr
+	}
+	if r.activeByID != nil && r.activeByID.ID == sessionID {
+		return r.activeByID, nil
+	}
+	return nil, database.ErrNotFound
 }
 
 func (r *fakeSessionRepository) FindByRefreshTokenHash(ctx context.Context, hash string) (*domainauth.Session, error) {

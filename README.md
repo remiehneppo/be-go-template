@@ -122,6 +122,13 @@ Rotation flow:
 4. Deploy the new config.
 5. Remove the previous key after the overlap window ends.
 
+Refresh rotation re-reads the session after an atomic rotate failure:
+
+- still-active session -> revoke token family as reuse/race
+- already inactive or missing session -> return invalid refresh token without extra family revoke
+
+Logout revokes the current session and blacklists the access token ID; logout-all revokes all active sessions for the user.
+
 ## Commands
 
 Run tests and static checks:

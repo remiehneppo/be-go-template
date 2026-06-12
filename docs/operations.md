@@ -181,6 +181,17 @@ Session records keep `ip`, `user_agent`, and `device_id` for audit and device hi
 - `AUTH_REFRESH_IP_ANOMALY_ACTION=audit` logs and audits refreshes from a new IP.
 - `AUTH_REFRESH_IP_ANOMALY_ACTION=revoke` revokes the session family on refresh IP mismatch.
 
+## Refresh rotation and logout invalidation
+
+Refresh rotation is atomic at the session row level.
+
+- The server hashes the presented refresh token and rotates it against the stored session hash.
+- If rotation fails because the hash no longer matches, the server reads the active session again.
+- If the session is still active, the request is treated as a reuse/race condition and the full token family is revoked.
+- If the session is already inactive or missing, the request is treated as a normal invalid refresh token and the family is not revoked again.
+- Logout invalidates the current session and blacklists the current access token ID.
+- Logout-all invalidates all active sessions for the user and clears session/device-list caches through repository invalidation keys.
+
 ## User profile cache validation
 
 `GET /v1/users/me` returns an `ETag` header based on the safe response payload. A matching `If-None-Match` returns `304 Not Modified`.
