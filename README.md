@@ -173,6 +173,8 @@ ADMIN_NAME='Administrator' \
 docker compose --profile tools run --rm seed
 ```
 
+`go run ./cmd/seed` and the Compose seed command are idempotent. They create the first admin user or grant the admin role to an existing user without going through public registration.
+
 ## HTTP endpoints
 
 Public:
@@ -200,6 +202,8 @@ Admin:
 - `GET /v1/admin/monitoring/auth-stats?from=&to=`
 - `GET /v1/admin/monitoring/errors?limit=&offset=&cursor=&error_code=&request_id=&status=&from=&to=`
 - `GET /v1/admin/monitoring/audit-logs?limit=&offset=&cursor=&actor_user_id=&action=&resource_type=&resource_id=&request_id=&from=&to=`
+
+All `/v1/admin/*` routes require a bearer token and one of the roles in `MONITORING_ADMIN_ROLES` (default `admin`).
 
 Protected endpoints require:
 

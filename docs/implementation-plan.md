@@ -768,8 +768,8 @@ Checklist:
 - [ ] Ghi policy refresh token rotation và logout invalidation.
 - [ ] Ghi logging config, log format, log file path, rotation policy.
 - [x] Ghi error response format và error code table.
-- [ ] Ghi monitoring endpoints phục vụ admin panel.
-- [ ] Ghi RBAC/admin role policy.
+- [x] Ghi monitoring endpoints phục vụ admin panel.
+- [x] Ghi RBAC/admin role policy.
 - [x] Ghi pagination/filter convention.
 - [x] Ghi auth rate limit policy.
 - [x] Ghi Prometheus `/metrics` setup và ví dụ scrape config.
@@ -784,7 +784,7 @@ Checklist:
 - [x] Ghi validation error schema.
 - [x] Ghi graceful degradation matrix cho Redis/Mongo/outbox/rate limit.
 - [x] Ghi context propagation contract và danh sách key chuẩn.
-- [ ] Ghi seed admin user bằng `cmd/seed`.
+- [x] Ghi seed admin user bằng `cmd/seed`.
 - [ ] Ghi migration/backfill/index strategy bằng `cmd/migrate`.
 - [x] Ghi JWT key format `<key-id>/<base64-secret>` và previous key `NotAfter`.
 - [x] Ghi refresh token binding là audit/anomaly signal, không phải security lookup chính.
@@ -844,9 +844,9 @@ Checklist:
 - [ ] Log được ghi ra file theo config.
 - [ ] Mọi response lỗi có error code và request id.
 - [ ] Panic được recovery, log stack/cause, và trả response an toàn.
-- [ ] Monitoring endpoints cung cấp system status, dependency status, runtime metrics, auth stats, recent errors, audit logs.
+- [x] Monitoring endpoints cung cấp system status, dependency status, runtime metrics, auth stats, recent errors, audit logs.
 - [ ] Monitoring implementation đi qua service/repository/interface, không phụ thuộc trực tiếp driver cụ thể ở handler.
-- [ ] `/v1/admin/*` chỉ admin role truy cập được.
+- [x] `/v1/admin/*` chỉ admin role truy cập được.
 - [ ] Auth endpoints có Redis-backed rate limit.
 - [ ] Refresh token rotation là atomic và detect reuse.
 - [ ] Reuse refresh token cũ revoke toàn bộ token family theo policy.
@@ -866,7 +866,7 @@ Checklist:
 - [x] `FindMany` cache được enforce bằng `CacheableFilter`, không chỉ là convention.
 - [x] Outbox có unique `IdempotencyKey` và worker idempotent để tránh duplicate audit/history.
 - [ ] Token family reuse detection phân biệt active-stale hash, logout, expired session và race theo policy.
-- [ ] `cmd/seed` seed được admin đầu tiên mà không qua public register.
+- [x] `cmd/seed` seed được admin đầu tiên mà không qua public register.
 - [ ] `cmd/migrate` quản lý index/backfill/schema evolution có version tracking.
 - [ ] Graceful degradation matrix được implement/config rõ cho Redis/Mongo/outbox/rate limit.
 - [x] `/healthz` và `/readyz` có behavior khác nhau, timeout rõ ràng.

@@ -211,6 +211,24 @@ Session records keep `ip`, `user_agent`, and `device_id` for audit and device hi
 - `from`
 - `to`
 
+## Admin monitoring access
+
+Admin monitoring endpoints are protected by both authentication and admin-role authorization.
+
+- All `/v1/admin/*` routes require a valid bearer access token.
+- Allowed roles come from `MONITORING_ADMIN_ROLES`; the default local/admin role is `admin`.
+- `AdminGuard` rejects users without one of the configured roles with `403 Forbidden`.
+- Monitoring endpoints are intended for the admin panel, not for general application clients.
+
+Endpoint groups:
+
+- `GET /v1/admin/monitoring/status` returns service status and deployment identity.
+- `GET /v1/admin/monitoring/dependencies` returns Mongo/Redis readiness health.
+- `GET /v1/admin/monitoring/runtime` returns runtime process metrics.
+- `GET /v1/admin/monitoring/auth-stats` returns login/logout/refresh counters within the requested time range.
+- `GET /v1/admin/monitoring/errors` returns recent error events with filter support.
+- `GET /v1/admin/monitoring/audit-logs` returns audit events with filter support.
+
 ## Logging contract
 
 - Enable console logs with `LOG_TO_CONSOLE=true`.
@@ -291,3 +309,5 @@ Required variables:
 Optional:
 
 - `ADMIN_NAME`
+
+Seed output is explicit about whether the admin user was created, updated, or already present. The command is intended for bootstrap and local development, not for public registration flows.
