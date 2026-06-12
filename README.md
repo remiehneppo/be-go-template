@@ -38,6 +38,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `APP_NAME` | `be-go-template` |
 | `APP_ENV` | `local` |
 | `HTTP_ADDR` | `:8080` |
+| `ETAG_ENABLED` | `true` |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:5173` |
 | `LOG_LEVEL` | `info` |
 | `LOG_FORMAT` | `json` |
@@ -89,6 +90,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 Production startup requires explicit non-wildcard `CORS_ALLOWED_ORIGINS`.
 `MONGO_READ_PREFERENCE` accepts `primary`, `primaryPreferred`, `secondary`, `secondaryPreferred`, or `nearest`.
 `REDIS_TLS_CA_CERT` points to a PEM CA bundle file when Redis TLS is enabled.
+`ETAG_ENABLED=false` disables `ETag` and `If-None-Match` handling on profile/device endpoints.
 
 JWT key format:
 

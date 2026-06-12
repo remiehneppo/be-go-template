@@ -6,11 +6,25 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"github.com/gin-gonic/gin"
 )
 
+var etagEnabled atomic.Bool
+
+func init() {
+	etagEnabled.Store(true)
+}
+
+func SetETagEnabled(enabled bool) {
+	etagEnabled.Store(enabled)
+}
+
 func WriteETagOrNotModified(c *gin.Context, payload any) bool {
+	if !etagEnabled.Load() {
+		return false
+	}
 	etag := StableETag(payload)
 	c.Header("ETag", etag)
 	if ifNoneMatch(c.GetHeader("If-None-Match"), etag) {

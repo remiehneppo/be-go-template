@@ -23,6 +23,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.HTTP.BodyLimitBytes != 1<<20 {
 		t.Fatalf("BodyLimitBytes = %d", cfg.HTTP.BodyLimitBytes)
 	}
+	if !cfg.HTTP.ETagEnabled {
+		t.Fatal("HTTP.ETagEnabled = false")
+	}
 	if len(cfg.HTTP.CORSAllowOrigins) != 2 {
 		t.Fatalf("CORSAllowOrigins len = %d", len(cfg.HTTP.CORSAllowOrigins))
 	}
@@ -183,6 +186,18 @@ func TestLoadSupportsOutboxConfig(t *testing.T) {
 	}
 	if cfg.Outbox.DrainInterval != 2*time.Second || cfg.Outbox.BatchSize != 25 || cfg.Outbox.DefaultMaxRetries != 7 || cfg.Outbox.RetryDelay != 3*time.Minute {
 		t.Fatalf("Outbox = %+v", cfg.Outbox)
+	}
+}
+
+func TestLoadSupportsETagConfig(t *testing.T) {
+	t.Setenv("ETAG_ENABLED", "false")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.HTTP.ETagEnabled {
+		t.Fatal("HTTP.ETagEnabled = true")
 	}
 }
 

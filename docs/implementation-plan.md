@@ -505,7 +505,7 @@ Checklist:
 - [ ] Thêm monitoring config: `MONITORING_ENABLED`, `MONITORING_ADMIN_ROLES`, `METRICS_COLLECT_INTERVAL`, `PROMETHEUS_ENABLED`, `PROMETHEUS_PATH`, `MONGO_DEGRADED_THRESHOLD_MS`, `REDIS_DEGRADED_THRESHOLD_MS`.
 - [ ] Thêm rate limit config: `AUTH_RATE_LIMIT_ENABLED`, `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE`, `AUTH_RATE_LIMIT_REFRESH_PER_MINUTE`, `AUTH_RATE_LIMIT_REGISTER_PER_MINUTE`, `RATE_LIMIT_FALLBACK`.
 - [x] Thêm outbox config: `OUTBOX_ENABLED`, `OUTBOX_DRAIN_INTERVAL`, `OUTBOX_BATCH_SIZE`, `OUTBOX_MAX_RETRIES`.
-- [ ] Thêm HTTP cache config: `ETAG_ENABLED`.
+- [x] Thêm HTTP cache config: `ETAG_ENABLED`.
 - [ ] Config có default an toàn cho local.
 - [ ] Production yêu cầu JWT current secret không rỗng.
 - [ ] JWT key format hỗ trợ `<key-id>/<base64-secret>` để tránh conflict ký tự trong secret.
@@ -640,8 +640,8 @@ Checklist:
 - [ ] Áp rate limit cho `POST /v1/auth/register` theo IP.
 - [ ] Áp rate limit cho `POST /v1/auth/refresh` theo IP + user/session nếu xác định được.
 - [ ] Rate limit trả `429 TOO_MANY_REQUESTS` với error code ổn định.
-- [ ] Tạo ETag helper dùng stable hash của response payload cho `GET /v1/users/me` và `GET /v1/auth/devices`.
-- [ ] Khi `If-None-Match` match ETag hiện tại, trả `304 Not Modified` không body.
+- [x] Tạo ETag helper dùng stable hash của response payload cho `GET /v1/users/me` và `GET /v1/auth/devices`.
+- [x] Khi `If-None-Match` match ETag hiện tại, trả `304 Not Modified` không body.
 
 ## 13. Security requirements
 
@@ -737,7 +737,7 @@ Checklist:
 - [ ] Admin role can access `/v1/admin/*`.
 - [ ] Auth rate limit returns 429 when exceeded.
 - [ ] `/metrics` returns Prometheus exposition format when enabled.
-- [ ] `GET /v1/users/me` and device list return 304 for matching ETag.
+- [x] `GET /v1/users/me` and device list return 304 for matching ETag.
 - [ ] Validation errors return field-level details with stable reason codes.
 
 ### 14.3. Integration tests
@@ -780,7 +780,7 @@ Checklist:
 - [ ] Ghi outbox behavior và at-least-once semantics.
 - [ ] Ghi revoked token Redis + Mongo fallback.
 - [ ] Ghi `HealthLevel` threshold config.
-- [ ] Ghi ETag behavior cho poll-heavy endpoints.
+- [x] Ghi ETag behavior cho poll-heavy endpoints.
 - [ ] Ghi validation error schema.
 - [ ] Ghi graceful degradation matrix cho Redis/Mongo/outbox/rate limit.
 - [ ] Ghi context propagation contract và danh sách key chuẩn.

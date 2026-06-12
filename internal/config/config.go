@@ -36,6 +36,7 @@ type HTTPConfig struct {
 	IdleTimeout      time.Duration
 	BodyLimitBytes   int64
 	RouteTimeout     time.Duration
+	ETagEnabled      bool
 	CORSAllowOrigins []string
 }
 
@@ -128,6 +129,7 @@ func Load() (Config, error) {
 			IdleTimeout:      getDuration("HTTP_IDLE_TIMEOUT", 60*time.Second),
 			BodyLimitBytes:   getInt64("HTTP_BODY_LIMIT_BYTES", 1<<20),
 			RouteTimeout:     getDuration("ROUTE_TIMEOUT_DEFAULT", 5*time.Second),
+			ETagEnabled:      getBool("ETAG_ENABLED", true),
 			CORSAllowOrigins: getCSV("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
 		},
 		Log: LogConfig{

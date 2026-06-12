@@ -44,6 +44,7 @@ func NewRouter(cfg config.Config, log logger.Logger) *gin.Engine {
 
 func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps RouterDependencies) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
+	SetETagEnabled(cfg.HTTP.ETagEnabled)
 	router := gin.New()
 	httpMetrics := deps.HTTPMetrics
 	if cfg.Metrics.Enabled && httpMetrics == nil {
