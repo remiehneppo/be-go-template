@@ -11,6 +11,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
+	"github.com/remihneppo/be-go-template/internal/platform/logger"
 )
 
 func TestNewIDFallsBackWithoutPanic(t *testing.T) {
@@ -95,6 +96,7 @@ func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	history := &fakeLoginHistoryRepository{}
 	audit := &fakeAuditLogRepository{}
 	tokens := &fakeTokenService{refreshPlain: "refresh", refreshHash: "refresh-hash", accessToken: "access", accessExpiresAt: time.Unix(100, 0)}
+	capture := newAuthCaptureLogger()
 	service := NewService(ServiceDependencies{
 		Users:        users,
 		Sessions:     sessions,
@@ -106,7 +108,8 @@ func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	})
 	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
 
-	result, err := service.Login(context.Background(), domainauth.LoginInput{Email: "user@example.com", Password: "password123"}, domainauth.RequestMeta{
+	ctx := logger.WithContext(context.Background(), capture)
+	result, err := service.Login(ctx, domainauth.LoginInput{Email: "user@example.com", Password: "password123"}, domainauth.RequestMeta{
 		IP:         "127.0.0.1",
 		UserAgent:  "test-agent",
 		DeviceID:   "550e8400-e29b-41d4-a716-446655440000",
@@ -133,11 +136,15 @@ func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	if users.resetFailureUserID != "u1" {
 		t.Fatalf("resetFailureUserID = %q", users.resetFailureUserID)
 	}
+	if !capture.hasEntry("info", "auth login succeeded") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", result.SessionID) {
+		t.Fatalf("logger entries = %+v", capture.entries)
+	}
 }
 
 func TestServiceLoginFailureWritesHistory(t *testing.T) {
 	users := &fakeUserRepository{found: &user.User{ID: "u1", Email: "user@example.com", PasswordHash: "hash", Status: user.StatusActive}}
 	history := &fakeLoginHistoryRepository{}
+	capture := newAuthCaptureLogger()
 	service := NewService(ServiceDependencies{
 		Users:        users,
 		Sessions:     &fakeSessionRepository{},
@@ -146,11 +153,15 @@ func TestServiceLoginFailureWritesHistory(t *testing.T) {
 		Passwords:    fakePasswordHasher{compareErr: errors.New("mismatch")},
 	})
 
-	if _, err := service.Login(context.Background(), domainauth.LoginInput{Email: "user@example.com", Password: "password123"}, domainauth.RequestMeta{}); err == nil {
+	ctx := logger.WithContext(context.Background(), capture)
+	if _, err := service.Login(ctx, domainauth.LoginInput{Email: "user@example.com", Password: "password123"}, domainauth.RequestMeta{}); err == nil {
 		t.Fatal("Login() error = nil")
 	}
 	if len(history.events) != 1 || history.events[0].Success || history.events[0].FailureReason != "invalid_credentials" {
 		t.Fatalf("history = %+v", history.events)
+	}
+	if !capture.hasEntry("warn", "auth login failed") || !capture.hasField("reason", "invalid_credentials") {
+		t.Fatalf("logger entries = %+v", capture.entries)
 	}
 }
 
@@ -232,6 +243,7 @@ func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
 		rotateErr: database.ErrNotFound,
 	}
 	audit := &fakeAuditLogRepository{}
+	capture := newAuthCaptureLogger()
 	service := NewService(ServiceDependencies{
 		Users:      users,
 		Sessions:   sessions,
@@ -242,7 +254,8 @@ func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
 	})
 	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
 
-	if _, err := service.Refresh(context.Background(), "old-refresh", domainauth.RequestMeta{}); err == nil {
+	ctx := logger.WithContext(context.Background(), capture)
+	if _, err := service.Refresh(ctx, "old-refresh", domainauth.RequestMeta{}); err == nil {
 		t.Fatal("Refresh() error = nil")
 	}
 	if sessions.revokedFamilyID != "family1" || sessions.revokedReason != "refresh_reuse_suspected" {
@@ -250,6 +263,9 @@ func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
 	}
 	if len(audit.events) != 1 || audit.events[0].Action != "auth.refresh_reuse_suspected" {
 		t.Fatalf("audit = %+v", audit.events)
+	}
+	if !capture.hasEntry("warn", "auth refresh reuse suspected") || !capture.hasField("token_family_id", "family1") {
+		t.Fatalf("logger entries = %+v", capture.entries)
 	}
 }
 
@@ -271,6 +287,7 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	sessions := &fakeSessionRepository{}
 	revoked := &fakeRevokedTokenRepository{}
 	audit := &fakeAuditLogRepository{}
+	capture := newAuthCaptureLogger()
 	service := NewService(ServiceDependencies{
 		Users:         &fakeUserRepository{},
 		Sessions:      sessions,
@@ -281,7 +298,8 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	})
 	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
 
-	if err := service.Logout(context.Background(), "access-token", ""); err != nil {
+	ctx := logger.WithContext(context.Background(), capture)
+	if err := service.Logout(ctx, "access-token", ""); err != nil {
 		t.Fatalf("Logout() error = %v", err)
 	}
 	if tokens.blacklistedTokenID != "jti1" {
@@ -295,6 +313,9 @@ func TestServiceLogoutBlacklistsTokenAndRevokesSession(t *testing.T) {
 	}
 	if len(audit.events) != 1 || audit.events[0].Action != "auth.logout" || audit.events[0].ResourceID != "s1" {
 		t.Fatalf("audit = %+v", audit.events)
+	}
+	if !capture.hasEntry("info", "auth logout succeeded") || !capture.hasField("session_id", "s1") || !capture.hasField("token_id", "jti1") {
+		t.Fatalf("logger entries = %+v", capture.entries)
 	}
 }
 
@@ -540,4 +561,67 @@ func (h fakePasswordHasher) Hash(password string) (string, error) {
 
 func (h fakePasswordHasher) Compare(hash string, password string) error {
 	return h.compareErr
+}
+
+type authCaptureLogger struct {
+	entries *[]authLogEntry
+	fields  []logger.Field
+}
+
+type authLogEntry struct {
+	level  string
+	msg    string
+	fields []logger.Field
+}
+
+func newAuthCaptureLogger() *authCaptureLogger {
+	entries := []authLogEntry{}
+	return &authCaptureLogger{entries: &entries}
+}
+
+func (l *authCaptureLogger) Debug(msg string, fields ...logger.Field) {
+	l.record("debug", msg, fields...)
+}
+
+func (l *authCaptureLogger) Info(msg string, fields ...logger.Field) {
+	l.record("info", msg, fields...)
+}
+
+func (l *authCaptureLogger) Warn(msg string, fields ...logger.Field) {
+	l.record("warn", msg, fields...)
+}
+
+func (l *authCaptureLogger) Error(msg string, fields ...logger.Field) {
+	l.record("error", msg, fields...)
+}
+
+func (l *authCaptureLogger) With(fields ...logger.Field) logger.Logger {
+	next := *l
+	next.fields = append(append([]logger.Field{}, l.fields...), fields...)
+	return &next
+}
+
+func (l *authCaptureLogger) record(level, msg string, fields ...logger.Field) {
+	entryFields := append(append([]logger.Field{}, l.fields...), fields...)
+	*l.entries = append(*l.entries, authLogEntry{level: level, msg: msg, fields: entryFields})
+}
+
+func (l *authCaptureLogger) hasEntry(level, msg string) bool {
+	for _, entry := range *l.entries {
+		if entry.level == level && entry.msg == msg {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *authCaptureLogger) hasField(key string, want any) bool {
+	for _, entry := range *l.entries {
+		for _, field := range entry.fields {
+			if field.Key == key && field.Value == want {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -593,13 +593,13 @@ Checklist:
 - [ ] App log dùng structured JSON ở production.
 - [ ] App log có console-friendly format ở local nếu config chọn.
 - [x] Error log ghi stack/cause nội bộ cho panic và 5xx.
-- [ ] Auth service log event quan trọng: login success/failure, refresh success/failure, logout, token reuse suspected.
+- [x] Auth service log event quan trọng: login success/failure, refresh success/failure, logout, token reuse suspected.
 - [ ] Database/cache wrapper log cache hit/miss, lock acquire timeout, Mongo/Redis dependency error ở level phù hợp.
 - [ ] Không log request body mặc định.
 - [ ] Nếu bật debug body logging, phải redact password/token/secret/email nếu config yêu cầu.
 - [ ] Log file rotation được cấu hình.
 - [x] Middleware inject logger vào context với `request_id`, và bổ sung `user_id/session_id` sau auth middleware.
-- [ ] Service/repository lấy logger bằng `logger.FromContext(ctx)` khi cần log.
+- [x] Service/repository lấy logger bằng `logger.FromContext(ctx)` khi cần log.
 - [ ] Test đảm bảo request id đi xuyên middleware -> service log -> response.
 
 ## 11. Monitoring service
