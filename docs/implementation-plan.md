@@ -565,7 +565,7 @@ Checklist:
 - [ ] Service trả domain/app error, không trả lỗi driver thô trực tiếp lên handler.
 - [x] Repository map Mongo duplicate key sang `ErrConflict`.
 - [x] Repository map Mongo no documents sang `ErrNotFound`.
-- [ ] Cache/database map dependency timeout sang `DEPENDENCY_ERROR`.
+- [x] Cache/database map dependency timeout sang `DEPENDENCY_ERROR`.
 - [ ] Handler map domain error sang HTTP status.
 - [ ] Response lỗi thống nhất: `code`, `message`, `request_id`, `details` nếu là validation error an toàn.
 - [ ] Validation error details chuẩn hóa dạng array `{field, reason, meta}`; `reason` là code ổn định cho frontend i18n.

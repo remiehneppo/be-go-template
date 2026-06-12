@@ -49,6 +49,21 @@ func Wrap(op string, err error, code Code, safeMessage string, status int) *AppE
 	}
 }
 
+func Dependency(op string, err error) *AppError {
+	if err == nil {
+		return nil
+	}
+	return &AppError{
+		Code:        CodeDependency,
+		Message:     err.Error(),
+		SafeMessage: "Dependency unavailable",
+		HTTPStatus:  http.StatusServiceUnavailable,
+		Cause:       err,
+		Op:          op,
+		Retryable:   true,
+	}
+}
+
 func Validation(message string, details []ValidationDetail) *AppError {
 	return &AppError{
 		Code:        CodeValidation,

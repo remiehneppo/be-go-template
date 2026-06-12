@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
+	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
 )
 
@@ -171,9 +172,42 @@ func TestCachedDatabaseNonStrictWriteLockFallsBack(t *testing.T) {
 	}
 }
 
+func TestCachedDatabaseFindOneMapsTimeoutToDependencyError(t *testing.T) {
+	base := &fakeDatabase{findOneErr: context.DeadlineExceeded}
+	db := NewCached(base, nil, logger.NewNoop())
+
+	var got testDoc
+	err := db.FindOne(context.Background(), "docs", map[string]string{"id": "1"}, &got, ReadOptions{})
+	appErr := apperrors.FromError(err)
+	if appErr == nil || appErr.Code != apperrors.CodeDependency {
+		t.Fatalf("FindOne() error = %v", err)
+	}
+}
+
+func TestCachedDatabaseStrictWriteLockTimeoutMapsDependencyError(t *testing.T) {
+	base := &fakeDatabase{}
+	cacheStore := newFakeCache()
+	cacheStore.lockErr = context.DeadlineExceeded
+	db := NewCached(base, cacheStore, logger.NewNoop())
+
+	err := db.UpdateOne(context.Background(), "docs", nil, nil, WriteOptions{
+		LockKey:    "doc:1",
+		StrictLock: true,
+	})
+	appErr := apperrors.FromError(err)
+	if appErr == nil || appErr.Code != apperrors.CodeDependency {
+		t.Fatalf("UpdateOne() error = %v", err)
+	}
+	if base.updateCalls != 0 {
+		t.Fatalf("update calls = %d", base.updateCalls)
+	}
+}
+
 type fakeDatabase struct {
 	findOneValue  any
 	findManyValue any
+	findOneErr    error
+	findManyErr   error
 
 	findOneCalls     int
 	findManyCalls    int
@@ -186,12 +220,18 @@ type fakeDatabase struct {
 
 func (d *fakeDatabase) FindOne(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
 	d.findOneCalls++
+	if d.findOneErr != nil {
+		return d.findOneErr
+	}
 	return copyValue(dest, d.findOneValue)
 }
 
 func (d *fakeDatabase) FindMany(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
 	d.findManyCalls++
 	d.lastFindManyOpts = opts
+	if d.findManyErr != nil {
+		return d.findManyErr
+	}
 	return copyValue(dest, d.findManyValue)
 }
 

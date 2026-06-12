@@ -29,10 +29,10 @@ func (d *CachedDatabase) FindOne(ctx context.Context, collection string, filter 
 		return err
 	}
 	if opts.CacheKey == "" || d.cache == nil {
-		return d.base.FindOne(ctx, collection, filter, dest, opts)
+		return dependencyError("CachedDatabase.FindOne", d.base.FindOne(ctx, collection, filter, dest, opts))
 	}
 	return d.readThrough(ctx, opts, dest, func() error {
-		return d.base.FindOne(ctx, collection, filter, dest, opts)
+		return dependencyError("CachedDatabase.FindOne", d.base.FindOne(ctx, collection, filter, dest, opts))
 	})
 }
 
@@ -41,47 +41,48 @@ func (d *CachedDatabase) FindMany(ctx context.Context, collection string, filter
 		return err
 	}
 	if opts.CacheKey == "" || d.cache == nil {
-		return d.base.FindMany(ctx, collection, filter, dest, opts)
+		return dependencyError("CachedDatabase.FindMany", d.base.FindMany(ctx, collection, filter, dest, opts))
 	}
 	if _, ok := filter.(CacheableFilter); !ok {
 		d.log.Warn("FindMany cache skipped because filter is not CacheableFilter", logger.String("cache_key", opts.CacheKey))
-		return d.base.FindMany(ctx, collection, filter, dest, opts)
+		return dependencyError("CachedDatabase.FindMany", d.base.FindMany(ctx, collection, filter, dest, opts))
 	}
 	return d.readThrough(ctx, opts, dest, func() error {
-		return d.base.FindMany(ctx, collection, filter, dest, opts)
+		return dependencyError("CachedDatabase.FindMany", d.base.FindMany(ctx, collection, filter, dest, opts))
 	})
 }
 
 func (d *CachedDatabase) InsertOne(ctx context.Context, collection string, document any, opts WriteOptions) error {
 	return d.write(ctx, opts, func() error {
-		return d.base.InsertOne(ctx, collection, document, opts)
+		return dependencyError("CachedDatabase.InsertOne", d.base.InsertOne(ctx, collection, document, opts))
 	})
 }
 
 func (d *CachedDatabase) UpdateOne(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
 	return d.write(ctx, opts, func() error {
-		return d.base.UpdateOne(ctx, collection, filter, update, opts)
+		return dependencyError("CachedDatabase.UpdateOne", d.base.UpdateOne(ctx, collection, filter, update, opts))
 	})
 }
 
 func (d *CachedDatabase) UpdateMany(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
 	return d.write(ctx, opts, func() error {
-		return d.base.UpdateMany(ctx, collection, filter, update, opts)
+		return dependencyError("CachedDatabase.UpdateMany", d.base.UpdateMany(ctx, collection, filter, update, opts))
 	})
 }
 
 func (d *CachedDatabase) DeleteOne(ctx context.Context, collection string, filter any, opts WriteOptions) error {
 	return d.write(ctx, opts, func() error {
-		return d.base.DeleteOne(ctx, collection, filter, opts)
+		return dependencyError("CachedDatabase.DeleteOne", d.base.DeleteOne(ctx, collection, filter, opts))
 	})
 }
 
 func (d *CachedDatabase) Count(ctx context.Context, collection string, filter any) (int64, error) {
-	return d.base.Count(ctx, collection, filter)
+	count, err := d.base.Count(ctx, collection, filter)
+	return count, dependencyError("CachedDatabase.Count", err)
 }
 
 func (d *CachedDatabase) Ping(ctx context.Context) error {
-	return d.base.Ping(ctx)
+	return dependencyError("CachedDatabase.Ping", d.base.Ping(ctx))
 }
 
 func (d *CachedDatabase) Close(ctx context.Context) error {
@@ -152,7 +153,7 @@ func (d *CachedDatabase) write(ctx context.Context, opts WriteOptions, write fun
 	}
 	if err := d.cache.WithLock(ctx, opts.LockKey, defaultWriteLockTTL, run); err != nil {
 		if opts.StrictLock {
-			return err
+			return dependencyError("CachedDatabase.write", err)
 		}
 		d.log.Warn("cache write lock failed, continuing without strict lock", logger.String("lock_key", opts.LockKey), logger.Any("error", err))
 		return run(ctx)

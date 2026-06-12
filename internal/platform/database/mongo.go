@@ -29,7 +29,7 @@ func (d *MongoDatabase) FindOne(ctx context.Context, collection string, filter a
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return ErrNotFound
 	}
-	return err
+	return dependencyError("MongoDatabase.FindOne", err)
 }
 
 func (d *MongoDatabase) FindMany(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
@@ -48,18 +48,18 @@ func (d *MongoDatabase) FindMany(ctx context.Context, collection string, filter 
 		return err
 	}
 	defer cursor.Close(ctx)
-	return cursor.All(ctx, dest)
+	return dependencyError("MongoDatabase.FindMany", cursor.All(ctx, dest))
 }
 
 func (d *MongoDatabase) InsertOne(ctx context.Context, collection string, document any, opts WriteOptions) error {
 	_, err := d.db.Collection(collection).InsertOne(ctx, document)
-	return err
+	return dependencyError("MongoDatabase.InsertOne", err)
 }
 
 func (d *MongoDatabase) UpdateOne(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
 	result, err := d.db.Collection(collection).UpdateOne(ctx, filter, update)
 	if err != nil {
-		return err
+		return dependencyError("MongoDatabase.UpdateOne", err)
 	}
 	if result.MatchedCount == 0 {
 		return ErrNotFound
@@ -70,7 +70,7 @@ func (d *MongoDatabase) UpdateOne(ctx context.Context, collection string, filter
 func (d *MongoDatabase) UpdateMany(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
 	result, err := d.db.Collection(collection).UpdateMany(ctx, filter, update)
 	if err != nil {
-		return err
+		return dependencyError("MongoDatabase.UpdateMany", err)
 	}
 	if result.MatchedCount == 0 {
 		return ErrNotFound
@@ -81,7 +81,7 @@ func (d *MongoDatabase) UpdateMany(ctx context.Context, collection string, filte
 func (d *MongoDatabase) DeleteOne(ctx context.Context, collection string, filter any, opts WriteOptions) error {
 	result, err := d.db.Collection(collection).DeleteOne(ctx, filter)
 	if err != nil {
-		return err
+		return dependencyError("MongoDatabase.DeleteOne", err)
 	}
 	if result.DeletedCount == 0 {
 		return ErrNotFound
@@ -90,11 +90,12 @@ func (d *MongoDatabase) DeleteOne(ctx context.Context, collection string, filter
 }
 
 func (d *MongoDatabase) Count(ctx context.Context, collection string, filter any) (int64, error) {
-	return d.db.Collection(collection).CountDocuments(ctx, filter)
+	count, err := d.db.Collection(collection).CountDocuments(ctx, filter)
+	return count, dependencyError("MongoDatabase.Count", err)
 }
 
 func (d *MongoDatabase) Ping(ctx context.Context) error {
-	return d.client.Ping(ctx, nil)
+	return dependencyError("MongoDatabase.Ping", d.client.Ping(ctx, nil))
 }
 
 func (d *MongoDatabase) Close(ctx context.Context) error {
@@ -110,6 +111,9 @@ func IsDuplicateKeyError(err error) bool {
 	}
 	var ce codedError
 	if errors.As(err, &ce) && ce.HasErrorCode(11000) {
+		return true
+	}
+	if errors.Is(err, ErrConflict) {
 		return true
 	}
 	if strings.Contains(strings.ToLower(err.Error()), "duplicate key") {

@@ -25,3 +25,21 @@ func TestFromErrorWrapsUnknownError(t *testing.T) {
 		t.Fatalf("SafeMessage = %q", got.SafeMessage)
 	}
 }
+
+func TestDependencyWrapsAsRetryableServiceUnavailable(t *testing.T) {
+	inner := errors.New("timeout")
+	got := Dependency("MongoDatabase.FindOne", inner)
+
+	if got.Code != CodeDependency {
+		t.Fatalf("Code = %s", got.Code)
+	}
+	if got.HTTPStatus != http.StatusServiceUnavailable {
+		t.Fatalf("HTTPStatus = %d", got.HTTPStatus)
+	}
+	if !got.Retryable {
+		t.Fatal("Retryable = false")
+	}
+	if got.Unwrap() != inner {
+		t.Fatalf("Cause = %v", got.Unwrap())
+	}
+}
