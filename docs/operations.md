@@ -208,6 +208,14 @@ Refresh rotation is atomic at the session row level.
 
 `GET /v1/users/me` returns an `ETag` header based on the safe response payload. A matching `If-None-Match` returns `304 Not Modified`.
 
+## Cache TTL defaults
+
+- User profile cache: 10 minutes.
+- Session active cache: 2 minutes.
+- Session refresh-hash cache: 1 minute.
+- Active session/device list cache: 1 minute.
+- Access token blacklist TTL always matches the token's remaining lifetime.
+
 ## Monitoring list filters
 
 `GET /v1/admin/monitoring/errors` accepts:

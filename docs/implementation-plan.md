@@ -472,12 +472,12 @@ Checklist:
 - [ ] Outbox worker idempotent theo `IdempotencyKey`/business target để tránh duplicate side effects.
 - [ ] Database abstraction không expose Mongo client/collection ra repository.
 - [ ] Nếu repository dùng `bson.M`, giới hạn trong package `internal/repository/mongo`, không leak vào domain/service/handler.
-- [ ] Log warning cho cache error.
-- [ ] TTL mặc định:
-  - [ ] User profile: 5-15 phút.
-  - [ ] Session active: 1-5 phút.
-  - [ ] Device list: 30-120 giây.
-  - [ ] Access token blacklist: đúng thời gian còn lại của token.
+- [x] Log warning cho cache error.
+- [x] TTL mặc định:
+  - [x] User profile: 5-15 phút.
+  - [x] Session active: 1-5 phút.
+  - [x] Device list: 30-120 giây.
+  - [x] Access token blacklist: đúng thời gian còn lại của token.
 
 ### 6.1. Graceful degradation matrix
 

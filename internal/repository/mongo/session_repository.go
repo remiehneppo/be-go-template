@@ -35,7 +35,7 @@ func (r *SessionRepository) FindActiveByID(ctx context.Context, sessionID string
 		"refresh_token_expires_at": bson.M{"$gt": time.Now().UTC()},
 	}, &doc, database.ReadOptions{
 		CacheKey:   sessionIDKey(sessionID),
-		CacheTTL:   2 * time.Minute,
+		CacheTTL:   sessionActiveCacheTTL,
 		LockOnMiss: true,
 	}); err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (r *SessionRepository) FindByRefreshTokenHash(ctx context.Context, hash str
 	var doc sessionDocument
 	if err := r.db.FindOne(ctx, sessionsCollection, bson.M{"refresh_token_hash": hash}, &doc, database.ReadOptions{
 		CacheKey:   sessionRefreshKey(hash),
-		CacheTTL:   time.Minute,
+		CacheTTL:   sessionRefreshCacheTTL,
 		LockOnMiss: true,
 	}); err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (r *SessionRepository) ListActiveByUserID(ctx context.Context, userID strin
 	var docs []sessionDocument
 	if err := r.db.FindMany(ctx, sessionsCollection, activeSessionsFilter{UserID: userID}, &docs, database.ReadOptions{
 		CacheKey:   userActiveSessionsKey(userID),
-		CacheTTL:   time.Minute,
+		CacheTTL:   activeSessionsCacheTTL,
 		LockOnMiss: true,
 		Sort:       bson.M{"last_seen_at": -1},
 	}); err != nil {

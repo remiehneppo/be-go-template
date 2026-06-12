@@ -31,7 +31,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*user.User, e
 	var doc userDocument
 	if err := r.db.FindOne(ctx, usersCollection, bson.M{"_id": id}, &doc, database.ReadOptions{
 		CacheKey:   userIDKey(id),
-		CacheTTL:   10 * time.Minute,
+		CacheTTL:   userProfileCacheTTL,
 		LockOnMiss: true,
 	}); err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.U
 	var doc userDocument
 	if err := r.db.FindOne(ctx, usersCollection, bson.M{"email": normalized}, &doc, database.ReadOptions{
 		CacheKey:   userEmailKey(normalized),
-		CacheTTL:   10 * time.Minute,
+		CacheTTL:   userProfileCacheTTL,
 		LockOnMiss: true,
 	}); err != nil {
 		return nil, err
