@@ -117,9 +117,12 @@ func run() error {
 	mongoOutbox := platformoutbox.NewMongoOutboxWithConfig(db, cfg.Outbox.DefaultMaxRetries, cfg.Outbox.RetryDelay)
 	loginHistoryRepo := appoutbox.NewLoginHistoryRepository(directLoginHistoryRepo, mongoOutbox)
 	outboxHandler := appoutbox.NewHandler(directAuditLogRepo, loginHistoryRepo, directErrorEventRepo)
+	var outboxDone chan struct{}
 	if cfg.Outbox.Enabled {
+		outboxDone = make(chan struct{})
 		outboxWorker := platformoutbox.NewWorker(mongoOutbox, outboxHandler.Handle, cfg.Outbox.DrainInterval, cfg.Outbox.BatchSize)
 		go func() {
+			defer close(outboxDone)
 			if err := outboxWorker.Run(ctx); err != nil && ctx.Err() == nil {
 				log.Error("outbox worker stopped", logger.Any("error", err))
 			}
@@ -210,6 +213,13 @@ func run() error {
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("shutdown http server: %w", err)
+	}
+	if outboxDone != nil {
+		select {
+		case <-outboxDone:
+		case <-time.After(5 * time.Second):
+			log.Warn("outbox worker shutdown timed out")
+		}
 	}
 	log.Info("api server stopped")
 	return nil

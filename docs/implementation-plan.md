@@ -542,9 +542,9 @@ Checklist:
 - [ ] Wire Prometheus middleware và `/metrics`.
 - [ ] Wire handlers/router.
 - [ ] Start HTTP server.
-- [ ] Graceful shutdown server, Mongo, Redis.
+- [x] Graceful shutdown server, Mongo, Redis.
 - [x] Stop outbox worker gracefully.
-- [ ] Flush/sync logger khi shutdown.
+- [x] Flush/sync logger khi shutdown.
 - [ ] Health endpoint `/healthz` kiểm tra process sống.
 - [ ] Ready endpoint `/readyz` ping MongoDB và Redis với timeout.
 - [ ] Tạo `cmd/seed` CLI để seed admin user đầu tiên và test data local.
@@ -819,7 +819,7 @@ Checklist:
 - [ ] Dependency được pin version trong `go.sum`.
 - [x] Docker image build bằng non-root user.
 - [ ] Secret không được bake vào Docker image hoặc log startup.
-- [ ] Graceful shutdown dừng HTTP server, Mongo/Redis client, Prometheus/metrics routines, outbox worker, logger flush.
+- [x] Graceful shutdown dừng HTTP server, Mongo/Redis client, Prometheus/metrics routines, outbox worker, logger flush.
 - [ ] Request body size limit và response/per-route timeout được test.
 - [ ] CORS production không cho wildcard và startup fail nếu config thiếu.
 - [ ] Mongo pool/read preference config được validate.
