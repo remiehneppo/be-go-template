@@ -18,11 +18,19 @@ func TestLoggerRedactsSensitiveFields(t *testing.T) {
 		mu:     &sync.Mutex{},
 	}
 
-	log.Info("login", String("refresh_token", "secret-token"), String("email", "user@example.com"))
+	log.Info("login",
+		String("refresh_token", "secret-token"),
+		String("password", "password123"),
+		String("authorization", "Bearer secret"),
+		String("secret_key", "super-secret"),
+		String("email", "user@example.com"),
+	)
 
 	output := buf.String()
-	if strings.Contains(output, "secret-token") {
-		t.Fatalf("log output leaked token: %s", output)
+	for _, leaked := range []string{"secret-token", "password123", "Bearer secret", "super-secret"} {
+		if strings.Contains(output, leaked) {
+			t.Fatalf("log output leaked secret %q: %s", leaked, output)
+		}
 	}
 	if !strings.Contains(output, "[REDACTED]") {
 		t.Fatalf("log output did not redact token: %s", output)

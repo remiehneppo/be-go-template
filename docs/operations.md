@@ -268,6 +268,7 @@ Endpoint groups:
 - Enable console logs with `LOG_TO_CONSOLE=true`.
 - Enable file logs with `LOG_TO_FILE=true`, `LOG_FILE_PATH`, and rotation knobs `LOG_MAX_SIZE_MB`, `LOG_MAX_BACKUPS`, `LOG_MAX_AGE_DAYS`, `LOG_COMPRESS`.
 - Do not log passwords, refresh tokens, access tokens, JWT secrets, Redis passwords, or Mongo credentials.
+- Do not log request bodies by default.
 - Request id is propagated through context and included in logs when available.
 - Trace id and span id are propagated through context when the client provides them.
 - Auth middleware adds user id, session id, and token id to context for downstream logging.

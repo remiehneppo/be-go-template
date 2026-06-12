@@ -514,7 +514,7 @@ Checklist:
 - [x] Validate config lúc startup.
 - [x] Production fail startup nếu `CORS_ALLOWED_ORIGINS` rỗng hoặc wildcard.
 - [x] Local default chỉ allow `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:3000`, `http://127.0.0.1:5173`.
-- [ ] Không log secret.
+- [x] Không log secret.
 
 ## 8. Bootstrap/runtime
 
@@ -582,25 +582,25 @@ Checklist:
 
 Checklist:
 
-- [ ] Mỗi request có `request_id`.
-- [ ] Context keys dùng tập trung từ `internal/platform/ctxkeys`, không tự định nghĩa rời rạc.
-- [ ] Nếu client gửi `X-Request-ID` hợp lệ thì reuse, nếu không server sinh mới.
-- [ ] Response luôn trả `X-Request-ID`.
+- [x] Mỗi request có `request_id`.
+- [x] Context keys dùng tập trung từ `internal/platform/ctxkeys`, không tự định nghĩa rời rạc.
+- [x] Nếu client gửi `X-Request-ID` hợp lệ thì reuse, nếu không server sinh mới.
+- [x] Response luôn trả `X-Request-ID`.
 - [x] Nếu client/load balancer gửi `X-Trace-ID`, validate và đưa vào context/log; response có thể trả lại `X-Trace-ID`.
 - [x] Log include `trace_id` và `span_id` nếu có trong context để sẵn sàng tích hợp OpenTelemetry sau này.
 - [x] Access log ghi khi request kết thúc.
 - [x] Access log có method, path, query, status, latency, ip, user agent, request id, user id nếu có.
-- [ ] App log dùng structured JSON ở production.
-- [ ] App log có console-friendly format ở local nếu config chọn.
+- [x] App log dùng structured JSON ở production.
+- [x] App log có console-friendly format ở local nếu config chọn.
 - [x] Error log ghi stack/cause nội bộ cho panic và 5xx.
 - [x] Auth service log event quan trọng: login success/failure, refresh success/failure, logout, token reuse suspected.
 - [x] Database/cache wrapper log cache hit/miss, lock acquire timeout, Mongo/Redis dependency error ở level phù hợp.
-- [ ] Không log request body mặc định.
+- [x] Không log request body mặc định.
 - [ ] Nếu bật debug body logging, phải redact password/token/secret/email nếu config yêu cầu.
-- [ ] Log file rotation được cấu hình.
+- [x] Log file rotation được cấu hình.
 - [x] Middleware inject logger vào context với `request_id`, và bổ sung `user_id/session_id` sau auth middleware.
 - [x] Service/repository lấy logger bằng `logger.FromContext(ctx)` khi cần log.
-- [ ] Test đảm bảo request id đi xuyên middleware -> service log -> response.
+- [x] Test đảm bảo request id đi xuyên middleware -> service log -> response.
 
 ## 11. Monitoring service
 
