@@ -25,6 +25,9 @@ func NewMongo(client *mongo.Client, databaseName string) *MongoDatabase {
 }
 
 func (d *MongoDatabase) FindOne(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
+	if err := opts.Validate(); err != nil {
+		return err
+	}
 	err := d.db.Collection(collection).FindOne(ctx, filter).Decode(dest)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return ErrNotFound
@@ -33,6 +36,9 @@ func (d *MongoDatabase) FindOne(ctx context.Context, collection string, filter a
 }
 
 func (d *MongoDatabase) FindMany(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
+	if err := opts.Validate(); err != nil {
+		return err
+	}
 	findOpts := options.Find()
 	if opts.Limit > 0 {
 		findOpts.SetLimit(opts.Limit)
@@ -52,11 +58,17 @@ func (d *MongoDatabase) FindMany(ctx context.Context, collection string, filter 
 }
 
 func (d *MongoDatabase) InsertOne(ctx context.Context, collection string, document any, opts WriteOptions) error {
+	if err := opts.Validate(); err != nil {
+		return err
+	}
 	_, err := d.db.Collection(collection).InsertOne(ctx, document)
 	return dependencyError("MongoDatabase.InsertOne", err)
 }
 
 func (d *MongoDatabase) UpdateOne(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
+	if err := opts.Validate(); err != nil {
+		return err
+	}
 	result, err := d.db.Collection(collection).UpdateOne(ctx, filter, update)
 	if err != nil {
 		return dependencyError("MongoDatabase.UpdateOne", err)
@@ -68,6 +80,9 @@ func (d *MongoDatabase) UpdateOne(ctx context.Context, collection string, filter
 }
 
 func (d *MongoDatabase) UpdateMany(ctx context.Context, collection string, filter any, update any, opts WriteOptions) error {
+	if err := opts.Validate(); err != nil {
+		return err
+	}
 	result, err := d.db.Collection(collection).UpdateMany(ctx, filter, update)
 	if err != nil {
 		return dependencyError("MongoDatabase.UpdateMany", err)
@@ -79,6 +94,9 @@ func (d *MongoDatabase) UpdateMany(ctx context.Context, collection string, filte
 }
 
 func (d *MongoDatabase) DeleteOne(ctx context.Context, collection string, filter any, opts WriteOptions) error {
+	if err := opts.Validate(); err != nil {
+		return err
+	}
 	result, err := d.db.Collection(collection).DeleteOne(ctx, filter)
 	if err != nil {
 		return dependencyError("MongoDatabase.DeleteOne", err)

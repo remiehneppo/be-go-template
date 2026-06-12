@@ -174,7 +174,7 @@ Checklist:
 - [ ] Không dùng variadic option mơ hồ cho behavior quan trọng; dùng typed options `ReadOptions` và `WriteOptions` có zero-value an toàn.
 - [ ] `ReadOptions` gồm `CacheKey`, `CacheTTL`, `LockOnMiss`.
 - [ ] `WriteOptions` gồm `LockKey`, `InvalidateKeys`, `StrictLock`.
-- [ ] Validate options trước khi chạy query; option invalid phải log warning hoặc trả lỗi theo environment policy.
+- [x] Validate options trước khi chạy query; option invalid phải log warning hoặc trả lỗi theo environment policy.
 - [ ] Implement `MongoDatabase` chỉ xử lý MongoDB.
 - [ ] Implement `CachedDatabase` wrap `MongoDatabase` và `Cache`.
 - [ ] Repository luôn nhận `database.Database`, không nhận Mongo client trực tiếp.
