@@ -746,7 +746,7 @@ Checklist:
 - [x] API boots, `/healthz` returns success, and `/readyz` returns success when dependencies are ready.
 - [x] End-to-end register -> login -> me -> refresh -> logout -> me fails.
 - [x] Logout all invalidates multiple sessions.
-- [ ] Cache key invalidates after user/session update.
+- [x] Cache key invalidates after user/session update.
 - [x] Request writes access log to terminal/file path.
 - [x] 5xx test path writes error log and error event with request id.
 - [ ] Monitoring auth stats reflect login/logout activity.

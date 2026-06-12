@@ -13,7 +13,9 @@ import (
 	"github.com/remihneppo/be-go-template/internal/domain/common"
 	"github.com/remihneppo/be-go-template/internal/domain/monitoring"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
+	"github.com/remihneppo/be-go-template/internal/platform/cache"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
+	"github.com/remihneppo/be-go-template/internal/platform/logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	mongodrv "go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -50,6 +52,22 @@ func TestUserRepositoryUpdateLastLoginInvalidatesID(t *testing.T) {
 	}
 	if !reflect.DeepEqual(db.lastWriteOptions.InvalidateKeys, []string{"user:id:u1"}) {
 		t.Fatalf("InvalidateKeys = %#v", db.lastWriteOptions.InvalidateKeys)
+	}
+}
+
+func TestUserRepositoryUpdateLastLoginInvalidatesCachedLookup(t *testing.T) {
+	base := &fakeDB{}
+	cacheStore := newRepositoryCache()
+	cacheStore.values[userIDKey("u1")] = userDocument{ID: "u1", Email: "user@example.com"}
+	db := database.NewCached(base, cacheStore, logger.NewNoop(), nil, false)
+	repo := NewUserRepository(db)
+	at := time.Unix(10, 0)
+
+	if err := repo.UpdateLastLogin(context.Background(), "u1", at); err != nil {
+		t.Fatalf("UpdateLastLogin() error = %v", err)
+	}
+	if cacheStore.exists(userIDKey("u1")) {
+		t.Fatalf("user cache key still present: %+v", cacheStore.values)
 	}
 }
 
@@ -184,6 +202,21 @@ func TestSessionRepositoryRevokeByTokenFamilyIDUsesUpdateMany(t *testing.T) {
 	wantInvalidation := []string{"session:family:family1", "session:id:s1", "session:refresh:old1", "session:user:u1:active"}
 	if !reflect.DeepEqual(db.lastWriteOptions.InvalidateKeys, wantInvalidation) {
 		t.Fatalf("InvalidateKeys = %#v", db.lastWriteOptions.InvalidateKeys)
+	}
+}
+
+func TestSessionRepositoryRevokeInvalidatesCachedSession(t *testing.T) {
+	base := &fakeDB{}
+	cacheStore := newRepositoryCache()
+	cacheStore.values[sessionIDKey("s1")] = sessionDocument{ID: "s1", UserID: "u1", RefreshTokenHash: "old"}
+	db := database.NewCached(base, cacheStore, logger.NewNoop(), nil, false)
+	repo := NewSessionRepository(db)
+
+	if err := repo.Revoke(context.Background(), "s1", "logout", time.Unix(10, 0)); err != nil {
+		t.Fatalf("Revoke() error = %v", err)
+	}
+	if cacheStore.exists(sessionIDKey("s1")) {
+		t.Fatalf("session cache key still present: %+v", cacheStore.values)
 	}
 }
 
@@ -399,6 +432,60 @@ func copyInto(dest any, src any) error {
 		return err
 	}
 	return json.Unmarshal(payload, dest)
+}
+
+type repositoryCache struct {
+	values map[string]any
+}
+
+func newRepositoryCache() *repositoryCache {
+	return &repositoryCache{values: map[string]any{}}
+}
+
+func (c *repositoryCache) Get(ctx context.Context, key string, dest any) error {
+	value, ok := c.values[key]
+	if !ok {
+		return cache.ErrCacheMiss
+	}
+	return copyInto(dest, value)
+}
+
+func (c *repositoryCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+	c.values[key] = value
+	return nil
+}
+
+func (c *repositoryCache) Delete(ctx context.Context, keys ...string) error {
+	for _, key := range keys {
+		delete(c.values, key)
+	}
+	return nil
+}
+
+func (c *repositoryCache) Exists(ctx context.Context, key string) (bool, error) {
+	_, ok := c.values[key]
+	return ok, nil
+}
+
+func (c *repositoryCache) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	return 0, nil
+}
+
+func (c *repositoryCache) WithLock(ctx context.Context, key string, ttl time.Duration, fn func(ctx context.Context) error) error {
+	return fn(ctx)
+}
+
+func (c *repositoryCache) Ping(ctx context.Context) error {
+	return nil
+}
+
+func (c *repositoryCache) Close() error {
+	return nil
+}
+
+func (c *repositoryCache) exists(key string) bool {
+	_, ok := c.values[key]
+	return ok
 }
 
 var _ user.Repository = (*UserRepository)(nil)
