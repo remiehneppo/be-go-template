@@ -615,7 +615,7 @@ Checklist:
 - [ ] `RuntimeMetrics` gồm goroutines, memory allocation, heap, GC count, process uptime.
 - [ ] `AuthStats` gồm login success/failure count, active sessions, revoked sessions, refresh count, logout count.
 - [x] Monitoring service dùng repository/query abstraction để lấy auth stats và audit logs.
-- [ ] Monitoring service có thể cache short TTL cho endpoint stats để tránh query nặng.
+- [x] Monitoring service có thể cache short TTL cho endpoint stats để tránh query nặng.
 - [x] Dùng Prometheus client library chính thức cho metrics, không tự tạo metrics format từ đầu.
 - [x] Expose `GET /metrics` theo Prometheus text exposition format.
 - [x] HTTP middleware ghi metrics: request total, request duration, response status, method, route.
