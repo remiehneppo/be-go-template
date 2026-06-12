@@ -779,7 +779,7 @@ Checklist:
 - [ ] Ghi JWT `kid` rotation process.
 - [ ] Ghi outbox behavior và at-least-once semantics.
 - [ ] Ghi revoked token Redis + Mongo fallback.
-- [ ] Ghi `HealthLevel` threshold config.
+- [x] Ghi `HealthLevel` threshold config.
 - [x] Ghi ETag behavior cho poll-heavy endpoints.
 - [x] Ghi validation error schema.
 - [x] Ghi graceful degradation matrix cho Redis/Mongo/outbox/rate limit.

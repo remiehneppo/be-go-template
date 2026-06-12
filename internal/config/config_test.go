@@ -88,6 +88,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Readiness.Timeout <= 0 || cfg.Readiness.RequiresRedis {
 		t.Fatalf("Readiness = %+v", cfg.Readiness)
 	}
+	if cfg.Readiness.MongoDegradedThreshold != 500*time.Millisecond || cfg.Readiness.RedisDegradedThreshold != 200*time.Millisecond {
+		t.Fatalf("Readiness thresholds = %+v", cfg.Readiness)
+	}
 }
 
 func TestValidateRequiresLogOutput(t *testing.T) {

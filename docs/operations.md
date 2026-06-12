@@ -28,6 +28,19 @@ Redis readiness is required when `READY_REQUIRES_REDIS=true`. Local defaults kee
 | Outbox enqueue fails | The caller receives the append error; auth audit calls are best-effort and ignore it. |
 | Outbox worker write fails | The event is marked failed and retried after `process_after`. |
 
+## Health levels
+
+Readiness and monitoring use a shared `HealthLevel` vocabulary:
+
+- `healthy`: dependency is available and latency is under the configured degraded threshold.
+- `degraded`: dependency responds, but latency exceeds `MONGO_DEGRADED_THRESHOLD` or `REDIS_DEGRADED_THRESHOLD`.
+- `unhealthy`: dependency is unavailable, not configured, or required but down.
+
+Defaults:
+
+- `MONGO_DEGRADED_THRESHOLD=500ms`
+- `REDIS_DEGRADED_THRESHOLD=200ms`
+
 ## Cache policy
 
 - `FindOne` may use read-through cache when a deterministic `ReadOptions.CacheKey` is provided.
