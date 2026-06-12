@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/remihneppo/be-go-template/internal/domain/auth"
@@ -157,6 +158,28 @@ func TestBodyLimitRejectsLargeBody(t *testing.T) {
 
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status = %d", rec.Code)
+	}
+}
+
+func TestTimeoutReturnsGatewayTimeout(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(RequestID(logger.NewNoop()))
+	router.Use(Timeout(10 * time.Millisecond))
+	router.GET("/slow", func(c *gin.Context) {
+		<-c.Request.Context().Done()
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/slow", nil)
+	req.Header.Set("X-Request-ID", "req-timeout")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusGatewayTimeout {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"TIMEOUT"`) || !strings.Contains(rec.Body.String(), `"request_id":"req-timeout"`) {
+		t.Fatalf("body = %s", rec.Body.String())
 	}
 }
 

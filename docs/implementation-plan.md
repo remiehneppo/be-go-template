@@ -662,8 +662,8 @@ Checklist:
 - [ ] Validate input bằng validator.
 - [ ] CORS để cấu hình được, không hardcode wildcard cho production.
 - [ ] Production startup fail nếu CORS origin không explicit.
-- [ ] Request body size limit mặc định 1MB cho auth/admin endpoints, có thể cấu hình.
-- [ ] HTTP/server timeout và per-route timeout được cấu hình để tránh request treo vô hạn.
+- [x] Request body size limit mặc định 1MB cho auth/admin endpoints, có thể cấu hình.
+- [x] HTTP/server timeout và per-route timeout được cấu hình để tránh request treo vô hạn.
 - [ ] Refresh token binding: session lưu IP/UserAgent/DeviceID để audit; DeviceID không dùng làm security lookup.
 - [ ] Optional IP anomaly policy: nếu refresh từ IP khác bất thường, log warning/audit hoặc revoke theo config, mặc định chỉ audit để tránh false positive mobile network.
 - [ ] Account lockout policy: sau N lần login fail trong T phút thì tạm khóa bằng Redis hoặc `LockedUntil`; nếu chưa implement captcha, ghi rõ trong README.
@@ -820,7 +820,7 @@ Checklist:
 - [x] Docker image build bằng non-root user.
 - [ ] Secret không được bake vào Docker image hoặc log startup.
 - [x] Graceful shutdown dừng HTTP server, Mongo/Redis client, Prometheus/metrics routines, outbox worker, logger flush.
-- [ ] Request body size limit và response/per-route timeout được test.
+- [x] Request body size limit và response/per-route timeout được test.
 - [ ] CORS production không cho wildcard và startup fail nếu config thiếu.
 - [ ] Mongo pool/read preference config được validate.
 - [ ] Redis TLS config được document và parse đúng.
