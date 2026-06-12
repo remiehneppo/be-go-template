@@ -215,6 +215,7 @@ X-Device-Name: <human-readable-device-name>
 - Logout revokes the session and blacklists the access token.
 - Blacklisted access token IDs are stored in Redis with TTL and backed by MongoDB `revoked_tokens` for Redis restart fallback.
 - Login history and audit events are persisted for device visibility and admin monitoring.
+- Auth endpoints are rate limited in Redis; login uses IP plus email when possible, register uses IP, and refresh uses IP. Fallback behavior follows `RATE_LIMIT_FALLBACK`.
 
 ## Observability
 

@@ -59,6 +59,16 @@ HTTP responses use this envelope:
 
 Internal logs may include operation names and wrapped causes. Client responses must only expose safe messages.
 
+## Auth rate limit
+
+Auth endpoints use Redis-backed rate limiting with per-endpoint keys:
+
+- `POST /v1/auth/register` by IP
+- `POST /v1/auth/login` by IP plus email when available
+- `POST /v1/auth/refresh` by IP
+
+When the Redis limiter is unavailable, behavior follows `RATE_LIMIT_FALLBACK`.
+
 ## Account lockout
 
 Login failures are tracked as consecutive failed attempts on the user document.

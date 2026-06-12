@@ -771,7 +771,7 @@ Checklist:
 - [ ] Ghi monitoring endpoints phục vụ admin panel.
 - [ ] Ghi RBAC/admin role policy.
 - [x] Ghi pagination/filter convention.
-- [ ] Ghi auth rate limit policy.
+- [x] Ghi auth rate limit policy.
 - [ ] Ghi Prometheus `/metrics` setup và ví dụ scrape config.
 - [ ] Ghi Mongo transaction requirement nếu muốn atomic multi-document writes.
 - [ ] Ghi quy ước `FindMany` cache explicit-only và trách nhiệm `InvalidateKeys`.
@@ -782,7 +782,7 @@ Checklist:
 - [ ] Ghi `HealthLevel` threshold config.
 - [x] Ghi ETag behavior cho poll-heavy endpoints.
 - [ ] Ghi validation error schema.
-- [ ] Ghi graceful degradation matrix cho Redis/Mongo/outbox/rate limit.
+- [x] Ghi graceful degradation matrix cho Redis/Mongo/outbox/rate limit.
 - [ ] Ghi context propagation contract và danh sách key chuẩn.
 - [ ] Ghi seed admin user bằng `cmd/seed`.
 - [ ] Ghi migration/backfill/index strategy bằng `cmd/migrate`.
