@@ -72,6 +72,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `RATE_LIMIT_FALLBACK` | `allow` locally, `block` in production |
 | `AUTH_LOCKOUT_MAX_FAILURES` | `5` |
 | `AUTH_LOCKOUT_DURATION` | `15m` |
+| `ERROR_INCLUDE_STACK` | `true` locally, `false` in production |
 | `OUTBOX_ENABLED` | `true` |
 | `OUTBOX_DRAIN_INTERVAL` | `5s` |
 | `OUTBOX_BATCH_SIZE` | `10` |

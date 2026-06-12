@@ -32,6 +32,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Auth.LockoutMaxFailures != 5 || cfg.Auth.LockoutDuration <= 0 {
 		t.Fatalf("Auth = %+v", cfg.Auth)
 	}
+	if !cfg.Errors.IncludeStack {
+		t.Fatal("Errors.IncludeStack = false")
+	}
 	if !cfg.Outbox.Enabled || cfg.Outbox.DrainInterval <= 0 || cfg.Outbox.BatchSize != 10 || cfg.Outbox.DefaultMaxRetries != 10 || cfg.Outbox.RetryDelay <= 0 {
 		t.Fatalf("Outbox = %+v", cfg.Outbox)
 	}
@@ -118,5 +121,17 @@ func TestLoadSupportsOutboxConfig(t *testing.T) {
 	}
 	if cfg.Outbox.DrainInterval != 2*time.Second || cfg.Outbox.BatchSize != 25 || cfg.Outbox.DefaultMaxRetries != 7 || cfg.Outbox.RetryDelay != 3*time.Minute {
 		t.Fatalf("Outbox = %+v", cfg.Outbox)
+	}
+}
+
+func TestLoadSupportsErrorStackConfig(t *testing.T) {
+	t.Setenv("ERROR_INCLUDE_STACK", "false")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Errors.IncludeStack {
+		t.Fatal("Errors.IncludeStack = true")
 	}
 }

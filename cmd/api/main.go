@@ -18,6 +18,7 @@ import (
 	httpserver "github.com/remihneppo/be-go-template/internal/handler/http"
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
+	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 	"github.com/remihneppo/be-go-template/internal/platform/health"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
 	platformmetrics "github.com/remihneppo/be-go-template/internal/platform/metrics"
@@ -41,6 +42,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
+	apperrors.SetStackTraceEnabled(cfg.Errors.IncludeStack)
 
 	log, closeLog, err := logger.New(logger.Config{
 		Level:      cfg.Log.Level,

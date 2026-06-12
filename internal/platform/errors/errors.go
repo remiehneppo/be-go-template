@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
+	"sync/atomic"
 )
 
 var (
@@ -16,6 +17,16 @@ var (
 	ErrTokenRevoked = errors.New("token revoked")
 	ErrTokenExpired = errors.New("token expired")
 )
+
+var stackTraceEnabled atomic.Bool
+
+func init() {
+	stackTraceEnabled.Store(true)
+}
+
+func SetStackTraceEnabled(enabled bool) {
+	stackTraceEnabled.Store(enabled)
+}
 
 type ValidationDetail struct {
 	Field  string         `json:"field"`
@@ -55,7 +66,7 @@ func Wrap(op string, err error, code Code, safeMessage string, status int) *AppE
 		HTTPStatus:  status,
 		Cause:       err,
 		Op:          op,
-		Stack:       debug.Stack(),
+		Stack:       captureStack(),
 	}
 }
 
@@ -82,6 +93,13 @@ func Validation(message string, details []ValidationDetail) *AppError {
 		HTTPStatus:  http.StatusBadRequest,
 		Details:     details,
 	}
+}
+
+func captureStack() []byte {
+	if !stackTraceEnabled.Load() {
+		return nil
+	}
+	return debug.Stack()
 }
 
 func TokenExpired(message string) *AppError {

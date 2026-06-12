@@ -18,6 +18,7 @@ type Config struct {
 	Redis     RedisConfig
 	RateLimit RateLimitConfig
 	Auth      AuthConfig
+	Errors    ErrorConfig
 	Outbox    OutboxConfig
 	Metrics   MetricsConfig
 	Readiness ReadinessConfig
@@ -87,6 +88,10 @@ type RateLimitConfig struct {
 type AuthConfig struct {
 	LockoutMaxFailures int
 	LockoutDuration    time.Duration
+}
+
+type ErrorConfig struct {
+	IncludeStack bool
 }
 
 type OutboxConfig struct {
@@ -168,6 +173,9 @@ func Load() (Config, error) {
 		Auth: AuthConfig{
 			LockoutMaxFailures: int(getInt64("AUTH_LOCKOUT_MAX_FAILURES", 5)),
 			LockoutDuration:    getDuration("AUTH_LOCKOUT_DURATION", 15*time.Minute),
+		},
+		Errors: ErrorConfig{
+			IncludeStack: getBool("ERROR_INCLUDE_STACK", getString("APP_ENV", "local") != "production"),
 		},
 		Outbox: OutboxConfig{
 			Enabled:           getBool("OUTBOX_ENABLED", true),

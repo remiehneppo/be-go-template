@@ -81,3 +81,22 @@ func TestTokenErrorConstructorsWrapSentinels(t *testing.T) {
 		t.Fatal("TokenRevoked() does not wrap ErrTokenRevoked")
 	}
 }
+
+func TestWrapHonorsStackToggle(t *testing.T) {
+	SetStackTraceEnabled(false)
+	t.Cleanup(func() { SetStackTraceEnabled(true) })
+
+	got := Wrap("op", errors.New("boom"), CodeInternal, "safe", http.StatusInternalServerError)
+	if got.Stack != nil {
+		t.Fatalf("Stack = %q", string(got.Stack))
+	}
+}
+
+func TestWrapCapturesStackWhenEnabled(t *testing.T) {
+	SetStackTraceEnabled(true)
+
+	got := Wrap("op", errors.New("boom"), CodeInternal, "safe", http.StatusInternalServerError)
+	if len(got.Stack) == 0 {
+		t.Fatal("Stack = empty")
+	}
+}

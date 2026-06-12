@@ -558,7 +558,7 @@ Checklist:
 - [x] Tạo domain errors: `ErrNotFound`, `ErrUnauthorized`, `ErrForbidden`, `ErrConflict`, `ErrValidation`, `ErrTokenRevoked`, `ErrTokenExpired`.
 - [x] Tạo `AppError` gồm `Code`, `Message`, `SafeMessage`, `HTTPStatus`, `Cause`, `Details`, `Op`, `Stack`, `Retryable`.
 - [ ] `Op` ghi operation gây lỗi, ví dụ `AuthService.Login`, `SessionRepository.RotateRefreshToken`.
-- [ ] `Stack` chỉ populate ở dev/staging hoặc panic/5xx theo config; không trả stack ra client.
+- [x] `Stack` chỉ populate ở dev/staging hoặc panic/5xx theo config; không trả stack ra client.
 - [ ] `Retryable` cho client/admin panel biết lỗi có nên retry không.
 - [x] Tạo error code ổn định: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `INTERNAL_ERROR`, `DEPENDENCY_ERROR`.
 - [x] Wrap lỗi ở layer thấp bằng cause, không mất lỗi gốc.
