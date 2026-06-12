@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/remihneppo/be-go-template/internal/bootstrap"
@@ -25,28 +26,67 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Mongo.ConnectTimeout)
+	return runMigrations(context.Background(), cfg, os.Stdout, buildMigrationRunner)
+}
+
+type migrationRunner interface {
+	Run(ctx context.Context, migrations []migration.Migration) ([]migration.AppliedMigration, error)
+}
+
+type migrationRunnerHandle struct {
+	Runner   migrationRunner
+	Database func() *mongo.Database
+	Close    func() error
+}
+
+type migrationRunnerBuilder func(ctx context.Context, cfg config.Config) (*migrationRunnerHandle, error)
+
+func runMigrations(ctx context.Context, cfg config.Config, out io.Writer, build migrationRunnerBuilder) error {
+	ctx, cancel := context.WithTimeout(ctx, cfg.Mongo.ConnectTimeout)
 	defer cancel()
-	client, err := connectMongo(ctx, cfg)
+
+	handle, err := build(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := client.Disconnect(context.Background()); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: disconnect mongo: %v\n", err)
-		}
-	}()
-	db := client.Database(cfg.Mongo.Database)
-	runner := migration.NewRunner(migration.NewMongoStore(db))
-	applied, err := runner.Run(ctx, migrations(db))
+	if handle == nil || handle.Runner == nil {
+		return fmt.Errorf("migration runner is required")
+	}
+	if handle.Close != nil {
+		defer func() {
+			if err := handle.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: disconnect mongo: %v\n", err)
+			}
+		}()
+	}
+	if handle.Database == nil {
+		return fmt.Errorf("migration database is required")
+	}
+	applied, err := handle.Runner.Run(ctx, migrations(handle.Database()))
 	if err != nil {
 		return err
 	}
-	fmt.Printf("migrations applied: %d\n", len(applied))
+	fmt.Fprintf(out, "migrations applied: %d\n", len(applied))
 	for _, item := range applied {
-		fmt.Printf("- %s %s\n", item.Version, item.Name)
+		fmt.Fprintf(out, "- %s %s\n", item.Version, item.Name)
 	}
 	return nil
+}
+
+func buildMigrationRunner(ctx context.Context, cfg config.Config) (*migrationRunnerHandle, error) {
+	client, err := connectMongo(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &migrationRunnerHandle{
+		Runner: migration.NewRunner(migration.NewMongoStore(client.Database(cfg.Mongo.Database))),
+		Database: func() *mongo.Database {
+			return client.Database(cfg.Mongo.Database)
+		},
+		Close: func() error {
+			return client.Disconnect(context.Background())
+		},
+	}, nil
 }
 
 func migrations(db *mongo.Database) []migration.Migration {

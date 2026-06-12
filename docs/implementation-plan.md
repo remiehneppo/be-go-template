@@ -755,7 +755,7 @@ Checklist:
 - [x] Non-transaction local environment logs audit/history failure, enqueues outbox event, and does not fail auth.
 - [ ] Redis restart simulation still rejects Mongo-persisted revoked access token.
 - [x] `cmd/seed` can create the first admin idempotently.
-- [ ] `cmd/migrate` applies a migration once and records version.
+- [x] `cmd/migrate` applies a migration once and records version.
 
 ## 15. Documentation checklist
 
