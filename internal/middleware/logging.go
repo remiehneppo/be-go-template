@@ -19,9 +19,11 @@ func Logging(log logger.Logger) gin.HandlerFunc {
 		requestLog.Info("http request",
 			logger.String("method", c.Request.Method),
 			logger.String("path", c.FullPath()),
+			logger.String("query", c.Request.URL.RawQuery),
 			logger.Int("status", c.Writer.Status()),
 			logger.Int("latency_ms", int(time.Since(start).Milliseconds())),
 			logger.String("ip", c.ClientIP()),
+			logger.String("user_agent", c.Request.UserAgent()),
 		)
 	}
 }
