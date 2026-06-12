@@ -506,11 +506,11 @@ Checklist:
 - [x] Thêm rate limit config: `AUTH_RATE_LIMIT_ENABLED`, `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE`, `AUTH_RATE_LIMIT_REFRESH_PER_MINUTE`, `AUTH_RATE_LIMIT_REGISTER_PER_MINUTE`, `RATE_LIMIT_FALLBACK`.
 - [x] Thêm outbox config: `OUTBOX_ENABLED`, `OUTBOX_DRAIN_INTERVAL`, `OUTBOX_BATCH_SIZE`, `OUTBOX_MAX_RETRIES`.
 - [x] Thêm HTTP cache config: `ETAG_ENABLED`.
-- [ ] Config có default an toàn cho local.
+- [x] Config có default an toàn cho local.
 - [x] Production yêu cầu JWT current secret không rỗng.
 - [x] JWT key format hỗ trợ `<key-id>/<base64-secret>` để tránh conflict ký tự trong secret.
 - [x] JWT previous key có `NotAfter`; previous key chỉ dùng validate, không dùng ký token mới, và hết hiệu lực sau grace window cấu hình.
-- [ ] Parse duration từ env.
+- [x] Parse duration từ env.
 - [x] Validate config lúc startup.
 - [x] Production fail startup nếu `CORS_ALLOWED_ORIGINS` rỗng hoặc wildcard.
 - [x] Local default chỉ allow `http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:3000`, `http://127.0.0.1:5173`.

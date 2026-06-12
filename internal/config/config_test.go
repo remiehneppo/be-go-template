@@ -122,6 +122,44 @@ func TestLoadSupportsConsoleAlias(t *testing.T) {
 	}
 }
 
+func TestLoadParsesDurationEnvValues(t *testing.T) {
+	t.Setenv("HTTP_READ_TIMEOUT", "7s")
+	t.Setenv("HTTP_WRITE_TIMEOUT", "13s")
+	t.Setenv("HTTP_IDLE_TIMEOUT", "1m5s")
+	t.Setenv("ROUTE_TIMEOUT_DEFAULT", "9s")
+	t.Setenv("MONGO_CONNECT_TIMEOUT", "4s")
+	t.Setenv("AUTH_LOCKOUT_DURATION", "17m")
+	t.Setenv("METRICS_COLLECT_INTERVAL", "45s")
+	t.Setenv("OUTBOX_DRAIN_INTERVAL", "8s")
+	t.Setenv("OUTBOX_RETRY_DELAY", "2m")
+	t.Setenv("READY_TIMEOUT", "3s")
+	t.Setenv("MONGO_DEGRADED_THRESHOLD", "600ms")
+	t.Setenv("REDIS_DEGRADED_THRESHOLD", "300ms")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.HTTP.ReadTimeout != 7*time.Second || cfg.HTTP.WriteTimeout != 13*time.Second || cfg.HTTP.IdleTimeout != 65*time.Second || cfg.HTTP.RouteTimeout != 9*time.Second {
+		t.Fatalf("HTTP durations = %+v", cfg.HTTP)
+	}
+	if cfg.Mongo.ConnectTimeout != 4*time.Second {
+		t.Fatalf("Mongo.ConnectTimeout = %s", cfg.Mongo.ConnectTimeout)
+	}
+	if cfg.Auth.LockoutDuration != 17*time.Minute {
+		t.Fatalf("Auth.LockoutDuration = %s", cfg.Auth.LockoutDuration)
+	}
+	if cfg.Monitoring.MetricsCollectInterval != 45*time.Second {
+		t.Fatalf("Monitoring.MetricsCollectInterval = %s", cfg.Monitoring.MetricsCollectInterval)
+	}
+	if cfg.Outbox.DrainInterval != 8*time.Second || cfg.Outbox.RetryDelay != 2*time.Minute {
+		t.Fatalf("Outbox durations = %+v", cfg.Outbox)
+	}
+	if cfg.Readiness.Timeout != 3*time.Second || cfg.Readiness.MongoDegradedThreshold != 600*time.Millisecond || cfg.Readiness.RedisDegradedThreshold != 300*time.Millisecond {
+		t.Fatalf("Readiness durations = %+v", cfg.Readiness)
+	}
+}
+
 func TestValidateRequiresRotationConfigWhenFileLoggingEnabled(t *testing.T) {
 	cfg, err := Load()
 	if err != nil {
