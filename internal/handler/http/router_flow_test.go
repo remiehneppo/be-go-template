@@ -116,6 +116,31 @@ func TestRouterAuthFlow(t *testing.T) {
 		t.Fatal("refresh token was not rotated")
 	}
 
+	claims, err := tokenService.ValidateAccessToken(context.Background(), registerData.AccessToken)
+	if err != nil {
+		t.Fatalf("ValidateAccessToken() error = %v", err)
+	}
+	if err := revokedTokens.Append(context.Background(), domainauth.RevokedToken{
+		TokenID:   claims.TokenID,
+		UserID:    claims.UserID,
+		SessionID: claims.SessionID,
+		ExpiresAt: claims.ExpiresAt,
+		RevokedAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("Append(revoked token) error = %v", err)
+	}
+	tokenCache.reset()
+
+	revokedResp := doJSONRequest(t, router, http.MethodGet, "/v1/users/me", nil, map[string]string{
+		"Authorization": "Bearer " + registerData.AccessToken,
+	})
+	if revokedResp.Code != http.StatusUnauthorized {
+		t.Fatalf("revoked token status = %d body = %s", revokedResp.Code, revokedResp.Body.String())
+	}
+	if !tokenCache.exists("token:blacklist:" + claims.TokenID) {
+		t.Fatalf("expected blacklist cache warm for %q", claims.TokenID)
+	}
+
 	logoutResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/logout", map[string]any{
 		"session_id": loginData.SessionID,
 	}, map[string]string{
@@ -433,6 +458,19 @@ func (c *memoryCache) Ping(ctx context.Context) error {
 
 func (c *memoryCache) Close() error {
 	return nil
+}
+
+func (c *memoryCache) reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.values = map[string]memoryCacheEntry{}
+}
+
+func (c *memoryCache) exists(key string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_, ok := c.values[key]
+	return ok
 }
 
 type memoryUserRepository struct {

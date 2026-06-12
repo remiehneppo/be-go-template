@@ -753,7 +753,7 @@ Checklist:
 - [x] Prometheus metrics include HTTP request counters/duration after traffic.
 - [ ] Transaction-capable environment handles register/login multi-write consistently.
 - [x] Non-transaction local environment logs audit/history failure, enqueues outbox event, and does not fail auth.
-- [ ] Redis restart simulation still rejects Mongo-persisted revoked access token.
+- [x] Redis restart simulation still rejects Mongo-persisted revoked access token.
 - [x] `cmd/seed` can create the first admin idempotently.
 - [x] `cmd/migrate` applies a migration once and records version.
 
