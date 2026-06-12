@@ -115,6 +115,7 @@ func queryErrorEventFilter(c *gin.Context) auth.ErrorEventFilter {
 	return auth.ErrorEventFilter{
 		ErrorCode: c.Query("error_code"),
 		RequestID: c.Query("request_id"),
+		Operation: c.Query("operation"),
 		Status:    status,
 		From:      queryTime(c, "from"),
 		To:        queryTime(c, "to"),

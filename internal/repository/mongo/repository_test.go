@@ -302,22 +302,25 @@ func TestMonitoringStatsRepositoryCountsAuthStats(t *testing.T) {
 }
 
 func TestErrorEventRepositoryAppendAndList(t *testing.T) {
-	db := &fakeDB{findManyValue: []errorEventDocument{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", CreatedAt: time.Unix(1, 0)}}}
+	db := &fakeDB{findManyValue: []errorEventDocument{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", Operation: "AuthService.Refresh", CreatedAt: time.Unix(1, 0)}}}
 	repo := NewErrorEventRepository(db)
 
-	if err := repo.Append(context.Background(), auth.ErrorEvent{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", Path: "/x", Method: http.MethodGet, Status: 500, CreatedAt: time.Unix(1, 0)}); err != nil {
+	if err := repo.Append(context.Background(), auth.ErrorEvent{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", Operation: "AuthService.Refresh", Path: "/x", Method: http.MethodGet, Status: 500, CreatedAt: time.Unix(1, 0)}); err != nil {
 		t.Fatalf("Append() error = %v", err)
 	}
 	if db.insertCalls != 1 || db.lastCollection != errorEventsCollection {
 		t.Fatalf("insertCalls = %d collection = %q", db.insertCalls, db.lastCollection)
 	}
 
-	got, err := repo.List(context.Background(), auth.ErrorEventFilter{ErrorCode: "INTERNAL_ERROR", RequestID: "req-1", Status: 500}, common.Pagination{Limit: 200, Offset: 2})
+	got, err := repo.List(context.Background(), auth.ErrorEventFilter{ErrorCode: "INTERNAL_ERROR", RequestID: "req-1", Operation: "AuthService.Refresh", Status: 500}, common.Pagination{Limit: 200, Offset: 2})
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
 	if len(got) != 1 || got[0].RequestID != "req-1" {
 		t.Fatalf("events = %+v", got)
+	}
+	if got[0].Operation != "AuthService.Refresh" {
+		t.Fatalf("operation = %+v", got[0])
 	}
 	if db.lastReadOptions.Limit != 100 || db.lastReadOptions.Offset != 2 {
 		t.Fatalf("read options = %+v", db.lastReadOptions)
@@ -326,7 +329,7 @@ func TestErrorEventRepositoryAppendAndList(t *testing.T) {
 	if !ok {
 		t.Fatalf("filter type = %T", db.lastFilter)
 	}
-	if filter["error_code"] != "INTERNAL_ERROR" || filter["request_id"] != "req-1" || filter["status"] != 500 {
+	if filter["error_code"] != "INTERNAL_ERROR" || filter["request_id"] != "req-1" || filter["operation"] != "AuthService.Refresh" || filter["status"] != 500 {
 		t.Fatalf("filter = %#v", filter)
 	}
 }

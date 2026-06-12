@@ -12,7 +12,7 @@ import (
 
 func Recovery(log logger.Logger) gin.HandlerFunc {
 	return gin.CustomRecovery(func(c *gin.Context, recovered any) {
-		appErr := apperrors.New(apperrors.CodeInternal, "Internal server error", http.StatusInternalServerError)
+		appErr := apperrors.New(apperrors.CodeInternal, "Internal server error", http.StatusInternalServerError).WithOp("middleware.Recovery")
 		appErr.Stack = debug.Stack()
 		requestLog := logger.FromContext(c.Request.Context())
 		requestLog.Error("panic recovered",
@@ -20,6 +20,7 @@ func Recovery(log logger.Logger) gin.HandlerFunc {
 			logger.String("request_id", requestID(c)),
 			logger.String("user_id", contextString(c, ctxkeys.UserID)),
 			logger.String("session_id", contextString(c, ctxkeys.SessionID)),
+			logger.String("operation", appErr.Op),
 			logger.String("method", c.Request.Method),
 			logger.String("path", c.Request.URL.Path),
 			logger.Int("status", appErr.HTTPStatus),

@@ -204,7 +204,7 @@ func TestErrorHandlerAppendsErrorEvent(t *testing.T) {
 	router.Use(RequestID(logger.NewNoop()))
 	router.Use(ErrorHandler(logger.NewNoop(), reporter))
 	router.GET("/boom", func(c *gin.Context) {
-		ignoreError(c.Error(apperrors.New(apperrors.CodeConflict, "Conflict", http.StatusConflict)))
+		ignoreError(c.Error(apperrors.New(apperrors.CodeConflict, "Conflict", http.StatusConflict).WithOp("AuthService.Login")))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/boom", nil)
@@ -219,7 +219,7 @@ func TestErrorHandlerAppendsErrorEvent(t *testing.T) {
 		t.Fatalf("events = %+v", reporter.events)
 	}
 	event := reporter.events[0]
-	if event.RequestID != "req-1" || event.ErrorCode != string(apperrors.CodeConflict) || event.Path != "/boom" || event.Method != http.MethodGet {
+	if event.RequestID != "req-1" || event.ErrorCode != string(apperrors.CodeConflict) || event.Operation != "AuthService.Login" || event.Path != "/boom" || event.Method != http.MethodGet {
 		t.Fatalf("event = %+v", event)
 	}
 }
@@ -257,7 +257,7 @@ func TestErrorHandlerWritesServerErrorLogAndEventToTerminalAndFile(t *testing.T)
 	router.Use(RequestID(log))
 	router.Use(ErrorHandler(log, reporter))
 	router.GET("/boom", func(c *gin.Context) {
-		ignoreError(c.Error(apperrors.New(apperrors.CodeInternal, "Internal server error", http.StatusInternalServerError)))
+		ignoreError(c.Error(apperrors.New(apperrors.CodeInternal, "Internal server error", http.StatusInternalServerError).WithOp("AuthService.Refresh")))
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/boom", nil)
@@ -292,7 +292,7 @@ func TestErrorHandlerWritesServerErrorLogAndEventToTerminalAndFile(t *testing.T)
 		{name: "stdout", data: stdoutBytes},
 		{name: "file", data: fileBytes},
 	} {
-		if !bytes.Contains(output.data, []byte(`"msg":"request failed"`)) || !bytes.Contains(output.data, []byte(`"request_id":"req-1"`)) || !bytes.Contains(output.data, []byte(`"error_code":"INTERNAL_ERROR"`)) {
+		if !bytes.Contains(output.data, []byte(`"msg":"request failed"`)) || !bytes.Contains(output.data, []byte(`"request_id":"req-1"`)) || !bytes.Contains(output.data, []byte(`"error_code":"INTERNAL_ERROR"`)) || !bytes.Contains(output.data, []byte(`"operation":"AuthService.Refresh"`)) {
 			t.Fatalf("%s output = %s", output.name, string(output.data))
 		}
 	}
@@ -307,12 +307,12 @@ func TestErrorHandlerLogsWarnForClientErrorsAndErrorForServerErrors(t *testing.T
 	router.GET("/client", func(c *gin.Context) {
 		c.Set(string(ctxkeys.UserID), "u1")
 		c.Set(string(ctxkeys.SessionID), "s1")
-		ignoreError(c.Error(apperrors.New(apperrors.CodeConflict, "Conflict", http.StatusConflict)))
+		ignoreError(c.Error(apperrors.New(apperrors.CodeConflict, "Conflict", http.StatusConflict).WithOp("AuthService.Login")))
 	})
 	router.GET("/server", func(c *gin.Context) {
 		c.Set(string(ctxkeys.UserID), "u1")
 		c.Set(string(ctxkeys.SessionID), "s1")
-		appErr := apperrors.New(apperrors.CodeInternal, "Internal server error", http.StatusInternalServerError)
+		appErr := apperrors.New(apperrors.CodeInternal, "Internal server error", http.StatusInternalServerError).WithOp("AuthService.Refresh")
 		appErr.Cause = testErr("db down")
 		ignoreError(c.Error(appErr))
 	})
@@ -324,7 +324,7 @@ func TestErrorHandlerLogsWarnForClientErrorsAndErrorForServerErrors(t *testing.T
 	if capture.lastWarnMessage != "request failed" || capture.lastErrorMessage != "" {
 		t.Fatalf("capture = %+v", capture)
 	}
-	if !capture.hasField("request_id", "req-1") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", "s1") || !capture.hasField("method", http.MethodGet) || !capture.hasField("path", "/client") || !capture.hasField("status", http.StatusConflict) || !capture.hasField("error_code", string(apperrors.CodeConflict)) || !capture.hasKey("latency_ms") {
+	if !capture.hasField("request_id", "req-1") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", "s1") || !capture.hasField("method", http.MethodGet) || !capture.hasField("path", "/client") || !capture.hasField("status", http.StatusConflict) || !capture.hasField("error_code", string(apperrors.CodeConflict)) || !capture.hasField("operation", "AuthService.Login") || !capture.hasKey("latency_ms") {
 		t.Fatalf("warn fields = %+v", capture.warnFields)
 	}
 
@@ -336,7 +336,7 @@ func TestErrorHandlerLogsWarnForClientErrorsAndErrorForServerErrors(t *testing.T
 	if capture.lastErrorMessage != "request failed" || capture.lastWarnMessage != "" {
 		t.Fatalf("capture = %+v", capture)
 	}
-	if !capture.hasField("request_id", "req-2") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", "s1") || !capture.hasField("status", http.StatusInternalServerError) || !capture.hasField("error_code", string(apperrors.CodeInternal)) || !capture.hasField("cause", testErr("db down")) || !capture.hasKey("latency_ms") {
+	if !capture.hasField("request_id", "req-2") || !capture.hasField("user_id", "u1") || !capture.hasField("session_id", "s1") || !capture.hasField("status", http.StatusInternalServerError) || !capture.hasField("error_code", string(apperrors.CodeInternal)) || !capture.hasField("operation", "AuthService.Refresh") || !capture.hasField("cause", testErr("db down")) || !capture.hasKey("latency_ms") {
 		t.Fatalf("error fields = %+v", capture.errorFields)
 	}
 }
@@ -362,7 +362,7 @@ func TestRecoveryLogsStackAndReturnsInternalError(t *testing.T) {
 	if capture.lastErrorMessage != "panic recovered" {
 		t.Fatalf("capture = %+v", capture)
 	}
-	if !capture.hasField("request_id", "req-3") || !capture.hasField("error_code", string(apperrors.CodeInternal)) || !capture.hasKey("stack") {
+	if !capture.hasField("request_id", "req-3") || !capture.hasField("error_code", string(apperrors.CodeInternal)) || !capture.hasField("operation", "middleware.Recovery") || !capture.hasKey("stack") {
 		t.Fatalf("panic fields = %+v", capture.errorFields)
 	}
 }

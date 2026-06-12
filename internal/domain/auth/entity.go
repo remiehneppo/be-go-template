@@ -66,6 +66,7 @@ type AuditLog struct {
 type ErrorEvent struct {
 	RequestID string
 	ErrorCode string
+	Operation string
 	Message   string
 	Cause     string
 	Stack     string

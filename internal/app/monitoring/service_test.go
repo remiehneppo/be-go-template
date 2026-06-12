@@ -124,7 +124,7 @@ func TestServiceAuthStatsCachesRepositoryResult(t *testing.T) {
 func TestServiceRecentErrorsPassesFilter(t *testing.T) {
 	repo := &fakeErrorEventRepository{events: []auth.ErrorEvent{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR"}}}
 	service := NewService(Dependencies{ErrorEvents: repo})
-	filter := auth.ErrorEventFilter{ErrorCode: "INTERNAL_ERROR", RequestID: "req-1", Status: 500}
+	filter := auth.ErrorEventFilter{ErrorCode: "INTERNAL_ERROR", RequestID: "req-1", Operation: "AuthService.Refresh", Status: 500}
 
 	got, err := service.GetRecentErrors(context.Background(), filter, common.Pagination{Limit: 200, Offset: 4})
 	if err != nil {

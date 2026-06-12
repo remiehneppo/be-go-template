@@ -7,11 +7,22 @@ import (
 )
 
 func TestFromErrorPreservesAppError(t *testing.T) {
-	want := New(CodeNotFound, "missing", http.StatusNotFound)
+	want := New(CodeNotFound, "missing", http.StatusNotFound).WithOp("AuthService.Login")
 
 	got := FromError(want)
 	if got != want {
 		t.Fatal("FromError() did not preserve AppError")
+	}
+}
+
+func TestWithOpClonesAppError(t *testing.T) {
+	base := New(CodeConflict, "conflict", http.StatusConflict)
+	got := base.WithOp("AuthService.Register")
+	if got == base {
+		t.Fatal("WithOp() returned the same instance")
+	}
+	if got.Op != "AuthService.Register" || base.Op != "" {
+		t.Fatalf("got = %+v base = %+v", got, base)
 	}
 }
 

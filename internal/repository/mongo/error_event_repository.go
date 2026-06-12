@@ -33,6 +33,9 @@ func (r *ErrorEventRepository) List(ctx context.Context, filter auth.ErrorEventF
 	if filter.RequestID != "" {
 		query["request_id"] = filter.RequestID
 	}
+	if filter.Operation != "" {
+		query["operation"] = filter.Operation
+	}
 	if filter.Status != 0 {
 		query["status"] = filter.Status
 	}
@@ -64,6 +67,7 @@ func (r *ErrorEventRepository) List(ctx context.Context, filter auth.ErrorEventF
 type errorEventDocument struct {
 	RequestID string    `bson:"request_id" json:"request_id"`
 	ErrorCode string    `bson:"error_code" json:"error_code"`
+	Operation string    `bson:"operation,omitempty" json:"operation,omitempty"`
 	Message   string    `bson:"message" json:"message"`
 	Cause     string    `bson:"cause,omitempty" json:"cause,omitempty"`
 	Stack     string    `bson:"stack,omitempty" json:"stack,omitempty"`
@@ -78,6 +82,7 @@ func errorEventDocumentFromDomain(event auth.ErrorEvent) errorEventDocument {
 	return errorEventDocument{
 		RequestID: event.RequestID,
 		ErrorCode: event.ErrorCode,
+		Operation: event.Operation,
 		Message:   event.Message,
 		Cause:     event.Cause,
 		Stack:     event.Stack,
@@ -93,6 +98,7 @@ func (d errorEventDocument) toDomain() auth.ErrorEvent {
 	return auth.ErrorEvent{
 		RequestID: d.RequestID,
 		ErrorCode: d.ErrorCode,
+		Operation: d.Operation,
 		Message:   d.Message,
 		Cause:     d.Cause,
 		Stack:     d.Stack,

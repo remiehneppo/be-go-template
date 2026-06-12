@@ -55,6 +55,15 @@ func New(code Code, safeMessage string, status int) *AppError {
 	}
 }
 
+func (e *AppError) WithOp(op string) *AppError {
+	if e == nil {
+		return nil
+	}
+	next := *e
+	next.Op = op
+	return &next
+}
+
 func Wrap(op string, err error, code Code, safeMessage string, status int) *AppError {
 	if err == nil {
 		return New(code, safeMessage, status)

@@ -99,9 +99,9 @@ func (s *Service) Register(ctx context.Context, input domainauth.RegisterInput, 
 	}
 	if existing, err := s.users.FindByEmail(ctx, email); err == nil && existing != nil {
 		logAuthWarn(ctx, "auth register failed", logger.String("reason", "email_exists"), logger.String("user_id", existing.ID))
-		return nil, apperrors.New(apperrors.CodeConflict, "Email already exists", http.StatusConflict)
+		return nil, apperrors.New(apperrors.CodeConflict, "Email already exists", http.StatusConflict).WithOp("AuthService.Register")
 	} else if err != nil && !errors.Is(err, database.ErrNotFound) {
-		return nil, err
+		return nil, opError("AuthService.Register", err)
 	}
 
 	now := s.now()
@@ -122,9 +122,9 @@ func (s *Service) Register(ctx context.Context, input domainauth.RegisterInput, 
 	}); err != nil {
 		if errors.Is(err, database.ErrConflict) {
 			logAuthWarn(ctx, "auth register failed", logger.String("reason", "email_exists"), logger.String("user_id", usr.ID))
-			return nil, apperrors.New(apperrors.CodeConflict, "Email already exists", http.StatusConflict)
+			return nil, apperrors.New(apperrors.CodeConflict, "Email already exists", http.StatusConflict).WithOp("AuthService.Register")
 		}
-		return nil, err
+		return nil, opError("AuthService.Register", err)
 	}
 	s.recordSessionCreated()
 	logAuthInfo(ctx, "auth register succeeded", logger.String("user_id", usr.ID), logger.String("session_id", result.SessionID))
@@ -139,18 +139,21 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 	email := user.NormalizeEmail(input.Email)
 	usr, err := s.users.FindByEmail(ctx, email)
 	if err != nil {
+		if !errors.Is(err, database.ErrNotFound) {
+			return nil, opError("AuthService.Login", err)
+		}
 		s.recordLogin(false)
 		s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), Email: email, Success: false, FailureReason: "invalid_credentials", IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: domainauth.NormalizeDeviceID(meta.DeviceID), CreatedAt: s.now()})
 		logAuthWarn(ctx, "auth login failed", logger.String("reason", "invalid_credentials"), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
 		s.appendAuditLog(ctx, auditEvent("auth.login_failed", "", "user", "", meta, map[string]string{"email": email, "reason": "invalid_credentials"}))
-		return nil, invalidCredentials()
+		return nil, invalidCredentials("AuthService.Login")
 	}
 	if usr.Status != user.StatusActive || usr.IsLocked(s.now()) {
 		s.recordLogin(false)
 		s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: false, FailureReason: "account_unavailable", IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: domainauth.NormalizeDeviceID(meta.DeviceID), CreatedAt: s.now()})
 		logAuthWarn(ctx, "auth login failed", logger.String("reason", "account_unavailable"), logger.String("user_id", usr.ID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
 		s.appendAuditLog(ctx, auditEvent("auth.login_failed", usr.ID, "user", usr.ID, meta, map[string]string{"email": email, "reason": "account_unavailable"}))
-		return nil, apperrors.New(apperrors.CodeForbidden, "Account is not available", http.StatusForbidden)
+		return nil, apperrors.New(apperrors.CodeForbidden, "Account is not available", http.StatusForbidden).WithOp("AuthService.Login")
 	}
 	if err := s.passwords.Compare(usr.PasswordHash, input.Password); err != nil {
 		s.recordLogin(false)
@@ -163,7 +166,7 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 		s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: false, FailureReason: reason, IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: domainauth.NormalizeDeviceID(meta.DeviceID), CreatedAt: now})
 		logAuthWarn(ctx, "auth login failed", logger.String("reason", reason), logger.String("user_id", usr.ID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
 		s.appendAuditLog(ctx, auditEvent("auth.login_failed", usr.ID, "user", usr.ID, meta, map[string]string{"email": email, "reason": reason}))
-		return nil, invalidCredentials()
+		return nil, invalidCredentials("AuthService.Login")
 	}
 	var result *domainauth.AuthResult
 	if err := s.withTransaction(ctx, "AuthService.Login", func(txCtx context.Context) error {
@@ -181,7 +184,7 @@ func (s *Service) Login(ctx context.Context, input domainauth.LoginInput, meta d
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, opError("AuthService.Login", err)
 	}
 	now := s.now()
 	s.appendLoginHistory(ctx, domainauth.LoginHistory{ID: newID(), UserID: usr.ID, Email: email, Success: true, IP: meta.IP, UserAgent: meta.UserAgent, DeviceID: resultDeviceID(meta.DeviceID), CreatedAt: now})
@@ -197,23 +200,36 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 		return nil, err
 	}
 	if strings.TrimSpace(refreshToken) == "" {
-		return nil, invalidRefreshToken()
+		return nil, invalidRefreshToken("AuthService.Refresh")
 	}
 	oldHash := s.tokens.HashRefreshToken(refreshToken)
 	session, err := s.sessions.FindByRefreshTokenHash(ctx, oldHash)
-	if err != nil || session == nil || !session.IsActive(s.now()) {
+	if err != nil {
+		if !errors.Is(err, database.ErrNotFound) {
+			return nil, opError("AuthService.Refresh", err)
+		}
 		s.recordRefresh(false)
 		logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "invalid_refresh_token"), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
-		return nil, invalidRefreshToken()
+		return nil, invalidRefreshToken("AuthService.Refresh")
+	}
+	if session == nil || !session.IsActive(s.now()) {
+		s.recordRefresh(false)
+		logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "invalid_refresh_token"), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
+		return nil, invalidRefreshToken("AuthService.Refresh")
 	}
 	usr, err := s.users.FindByID(ctx, session.UserID)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, database.ErrNotFound) {
+			s.recordRefresh(false)
+			logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "invalid_refresh_token"), logger.String("user_id", session.UserID), logger.String("session_id", session.ID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
+			return nil, invalidRefreshToken("AuthService.Refresh")
+		}
+		return nil, opError("AuthService.Refresh", err)
 	}
 	if usr.Status != user.StatusActive || usr.IsLocked(s.now()) {
 		s.recordRefresh(false)
 		logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "account_unavailable"), logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
-		return nil, apperrors.New(apperrors.CodeForbidden, "Account is not available", http.StatusForbidden)
+		return nil, apperrors.New(apperrors.CodeForbidden, "Account is not available", http.StatusForbidden).WithOp("AuthService.Refresh")
 	}
 	if refreshIPAnomalyReason(session.IP, meta.IP) != "" {
 		fields := []logger.Field{
@@ -238,12 +254,12 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 				ignoreError(s.sessions.Revoke(ctx, session.ID, "refresh_ip_anomaly", s.now()))
 			}
 			s.recordRefresh(false)
-			return nil, invalidRefreshToken()
+			return nil, invalidRefreshToken("AuthService.Refresh")
 		}
 	}
 	newRefreshPlain, newRefreshHash, err := s.tokens.GenerateRefreshToken()
 	if err != nil {
-		return nil, err
+		return nil, opError("AuthService.Refresh", err)
 	}
 	newRefreshExpiresAt := s.now().Add(s.refreshTTL)
 	if err := s.sessions.RotateRefreshToken(ctx, session.ID, oldHash, newRefreshHash, newRefreshExpiresAt); err != nil {
@@ -253,23 +269,23 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 				if errors.Is(activeErr, database.ErrNotFound) {
 					s.recordRefresh(false)
 					logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "invalid_refresh_token"), logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("token_family_id", session.TokenFamilyID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
-					return nil, invalidRefreshToken()
+					return nil, invalidRefreshToken("AuthService.Refresh")
 				}
-				return nil, activeErr
+				return nil, opError("AuthService.Refresh", activeErr)
 			}
 			if activeSession == nil {
 				s.recordRefresh(false)
 				logAuthWarn(ctx, "auth refresh failed", logger.String("reason", "invalid_refresh_token"), logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("token_family_id", session.TokenFamilyID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
-				return nil, invalidRefreshToken()
+				return nil, invalidRefreshToken("AuthService.Refresh")
 			}
 			ignoreError(s.sessions.RevokeByTokenFamilyID(ctx, session.TokenFamilyID, "refresh_reuse_suspected", s.now()))
 			s.recordRefresh(false)
 			s.recordRefreshReuseSuspected()
 			logAuthWarn(ctx, "auth refresh reuse suspected", logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("token_family_id", session.TokenFamilyID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
 			s.appendAuditLog(ctx, auditEvent("auth.refresh_reuse_suspected", usr.ID, "session", session.ID, meta, map[string]string{"token_family_id": session.TokenFamilyID}))
-			return nil, invalidRefreshToken()
+			return nil, invalidRefreshToken("AuthService.Refresh")
 		}
-		return nil, err
+		return nil, opError("AuthService.Refresh", err)
 	}
 	s.appendAuditLog(ctx, auditEvent("auth.refresh", usr.ID, "session", session.ID, meta, nil))
 	accessToken, accessExpiresAt, err := s.tokens.GenerateAccessToken(ctx, domainauth.AccessClaims{
@@ -279,7 +295,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 		Roles:     rolesToStrings(usr.Roles),
 	})
 	if err != nil {
-		return nil, err
+		return nil, opError("AuthService.Refresh", err)
 	}
 	s.recordRefresh(true)
 	logAuthInfo(ctx, "auth refresh succeeded", logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("token_family_id", session.TokenFamilyID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
@@ -310,7 +326,7 @@ func (s *Service) Logout(ctx context.Context, accessToken string, sessionID stri
 	claims, err := s.tokens.ValidateAccessToken(ctx, accessToken)
 	if err != nil {
 		logAuthWarn(ctx, "auth logout failed", logger.String("reason", "invalid_access_token"))
-		return apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized)
+		return apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized).WithOp("AuthService.Logout")
 	}
 	ttl := claims.ExpiresAt.Sub(s.now())
 	if s.revokedTokens != nil && claims.TokenID != "" {
@@ -321,12 +337,12 @@ func (s *Service) Logout(ctx context.Context, accessToken string, sessionID stri
 			ExpiresAt: claims.ExpiresAt,
 			RevokedAt: s.now(),
 		}); err != nil {
-			return err
+			return opError("AuthService.Logout", err)
 		}
 	}
 	if ttl > 0 {
 		if err := s.tokens.BlacklistAccessToken(ctx, claims.TokenID, ttl); err != nil {
-			return err
+			return opError("AuthService.Logout", err)
 		}
 	}
 	targetSessionID := strings.TrimSpace(sessionID)
@@ -335,7 +351,7 @@ func (s *Service) Logout(ctx context.Context, accessToken string, sessionID stri
 	}
 	if targetSessionID != "" {
 		if err := s.sessions.Revoke(ctx, targetSessionID, "logout", s.now()); err != nil {
-			return err
+			return opError("AuthService.Logout", err)
 		}
 		s.recordLogout(1)
 		logAuthInfo(ctx, "auth logout succeeded", logger.String("user_id", claims.UserID), logger.String("session_id", targetSessionID), logger.String("token_id", claims.TokenID))
@@ -350,10 +366,10 @@ func (s *Service) LogoutAll(ctx context.Context, userID string) error {
 	}
 	activeSessions, err := s.sessions.ListActiveByUserID(ctx, userID)
 	if err != nil {
-		return err
+		return opError("AuthService.LogoutAll", err)
 	}
 	if err := s.sessions.RevokeAllByUserID(ctx, userID, "logout_all", s.now()); err != nil {
-		return err
+		return opError("AuthService.LogoutAll", err)
 	}
 	s.recordLogout(int64(len(activeSessions)))
 	logAuthInfo(ctx, "auth logout all succeeded", logger.String("user_id", userID))
@@ -367,7 +383,7 @@ func (s *Service) ListDevices(ctx context.Context, userID string) ([]domainauth.
 	}
 	sessions, err := s.sessions.ListActiveByUserID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, opError("AuthService.ListDevices", err)
 	}
 	devices := make([]domainauth.DeviceSession, 0, len(sessions))
 	for _, session := range sessions {
@@ -389,7 +405,11 @@ func (s *Service) ListLoginHistory(ctx context.Context, userID string, paginatio
 	if s.loginHistory == nil {
 		return nil, notImplemented("AuthService.ListLoginHistory")
 	}
-	return s.loginHistory.ListByUserID(ctx, userID, pagination)
+	events, err := s.loginHistory.ListByUserID(ctx, userID, pagination)
+	if err != nil {
+		return nil, opError("AuthService.ListLoginHistory", err)
+	}
+	return events, nil
 }
 
 func (s *Service) requireAuthCore(op string) error {
@@ -407,7 +427,7 @@ func (s *Service) withTransaction(ctx context.Context, op string, fn func(contex
 		return fn(ctx)
 	}
 	if err := s.transactions.RunInTransaction(ctx, fn); err != nil {
-		return err
+		return opError(op, err)
 	}
 	return nil
 }
@@ -416,7 +436,7 @@ func (s *Service) issueAuthResult(ctx context.Context, usr user.User, meta domai
 	now := s.now()
 	refreshPlain, refreshHash, err := s.tokens.GenerateRefreshToken()
 	if err != nil {
-		return nil, err
+		return nil, opError("AuthService.IssueAuthResult", err)
 	}
 	deviceID := resultDeviceID(meta.DeviceID)
 	session := domainauth.Session{
@@ -434,7 +454,7 @@ func (s *Service) issueAuthResult(ctx context.Context, usr user.User, meta domai
 		UpdatedAt:             now,
 	}
 	if err := s.sessions.Create(ctx, session); err != nil {
-		return nil, err
+		return nil, opError("AuthService.IssueAuthResult", err)
 	}
 	accessToken, accessExpiresAt, err := s.tokens.GenerateAccessToken(ctx, domainauth.AccessClaims{
 		UserID:    usr.ID,
@@ -443,7 +463,7 @@ func (s *Service) issueAuthResult(ctx context.Context, usr user.User, meta domai
 		Roles:     rolesToStrings(usr.Roles),
 	})
 	if err != nil {
-		return nil, err
+		return nil, opError("AuthService.IssueAuthResult", err)
 	}
 	return &domainauth.AuthResult{
 		User:      usr,
@@ -526,12 +546,12 @@ func validateCredentials(email string, password string) error {
 	return nil
 }
 
-func invalidCredentials() error {
-	return apperrors.New(apperrors.CodeUnauthorized, "Invalid email or password", http.StatusUnauthorized)
+func invalidCredentials(op string) error {
+	return apperrors.New(apperrors.CodeUnauthorized, "Invalid email or password", http.StatusUnauthorized).WithOp(op)
 }
 
-func invalidRefreshToken() error {
-	return apperrors.New(apperrors.CodeUnauthorized, "Invalid refresh token", http.StatusUnauthorized)
+func invalidRefreshToken(op string) error {
+	return apperrors.New(apperrors.CodeUnauthorized, "Invalid refresh token", http.StatusUnauthorized).WithOp(op)
 }
 
 func resultDeviceID(deviceID string) string {
@@ -622,7 +642,14 @@ func newID() string {
 }
 
 func notImplemented(op string) error {
-	return apperrors.New(apperrors.CodeDependency, op+" dependencies are not configured", http.StatusServiceUnavailable)
+	return apperrors.New(apperrors.CodeDependency, op+" dependencies are not configured", http.StatusServiceUnavailable).WithOp(op)
+}
+
+func opError(op string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return apperrors.FromError(err).WithOp(op)
 }
 
 var _ domainauth.Service = (*Service)(nil)

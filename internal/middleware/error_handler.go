@@ -49,6 +49,7 @@ func errorLogFields(c *gin.Context, appErr *apperrors.AppError, err error) []log
 		logger.String("request_id", requestID(c)),
 		logger.String("user_id", contextString(c, ctxkeys.UserID)),
 		logger.String("session_id", contextString(c, ctxkeys.SessionID)),
+		logger.String("operation", appErr.Op),
 		logger.String("method", c.Request.Method),
 		logger.String("path", c.Request.URL.Path),
 		logger.Int("status", status),
@@ -89,6 +90,7 @@ func reportErrorEvent(c *gin.Context, reporter ErrorEventReporter, appErr *apper
 	event := auth.ErrorEvent{
 		RequestID: requestID(c),
 		ErrorCode: string(appErr.Code),
+		Operation: appErr.Op,
 		Message:   appErr.SafeMessage,
 		Cause:     appErr.Message,
 		Stack:     string(appErr.Stack),

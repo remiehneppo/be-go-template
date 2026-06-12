@@ -557,7 +557,7 @@ Checklist:
 
 - [x] Tạo domain errors: `ErrNotFound`, `ErrUnauthorized`, `ErrForbidden`, `ErrConflict`, `ErrValidation`, `ErrTokenRevoked`, `ErrTokenExpired`.
 - [x] Tạo `AppError` gồm `Code`, `Message`, `SafeMessage`, `HTTPStatus`, `Cause`, `Details`, `Op`, `Stack`, `Retryable`.
-- [ ] `Op` ghi operation gây lỗi, ví dụ `AuthService.Login`, `SessionRepository.RotateRefreshToken`.
+- [x] `Op` ghi operation gây lỗi, ví dụ `AuthService.Login`, `SessionRepository.RotateRefreshToken`.
 - [x] `Stack` chỉ populate ở dev/staging hoặc panic/5xx theo config; không trả stack ra client.
 - [x] `Retryable` cho client/admin panel biết lỗi có nên retry không.
 - [x] Tạo error code ổn định: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `INTERNAL_ERROR`, `DEPENDENCY_ERROR`.
@@ -575,7 +575,7 @@ Checklist:
 - [x] Middleware error handler log tất cả lỗi 5xx ở level error.
 - [x] Middleware error handler log lỗi 4xx quan trọng ở level warn.
 - [x] Log internal error với context: request id, user id, path, method, status, latency, error code, cause.
-- [ ] Ghi error event phục vụ monitoring cho 5xx và các lỗi security quan trọng.
+- [x] Ghi error event phục vụ monitoring cho 5xx và các lỗi security quan trọng.
 - [x] Unit test error mapper và response format.
 
 ## 10. Logging và tracing

@@ -36,6 +36,7 @@ type RevokedTokenRepository interface {
 type ErrorEventFilter struct {
 	ErrorCode string
 	RequestID string
+	Operation string
 	Status    int
 	From      time.Time
 	To        time.Time

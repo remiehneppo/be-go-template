@@ -36,7 +36,7 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 			From:              time.Unix(100, 0).UTC(),
 			To:                time.Unix(200, 0).UTC(),
 		},
-		errors: []auth.ErrorEvent{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR"}},
+		errors: []auth.ErrorEvent{{RequestID: "req-1", ErrorCode: "INTERNAL_ERROR", Operation: "AuthService.Refresh"}},
 		audits: []auth.AuditLog{{ID: "a1", Action: "auth.login"}},
 	}
 	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
@@ -59,7 +59,7 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 		{name: "dependencies", method: http.MethodGet, path: "/v1/admin/monitoring/dependencies", want: `"redis down"`},
 		{name: "runtime", method: http.MethodGet, path: "/v1/admin/monitoring/runtime", want: `"goroutines":4`},
 		{name: "auth stats", method: http.MethodGet, path: "/v1/admin/monitoring/auth-stats?from=1970-01-01T00:01:40Z&to=1970-01-01T00:03:20Z", want: `"login_success_count":3`},
-		{name: "errors", method: http.MethodGet, path: "/v1/admin/monitoring/errors?limit=7&offset=2&cursor=abc&error_code=INTERNAL_ERROR&request_id=req-1&status=500", want: `req-1`},
+		{name: "errors", method: http.MethodGet, path: "/v1/admin/monitoring/errors?limit=7&offset=2&cursor=abc&error_code=INTERNAL_ERROR&request_id=req-1&operation=AuthService.Refresh&status=500", want: `AuthService.Refresh`},
 		{name: "audit logs", method: http.MethodGet, path: "/v1/admin/monitoring/audit-logs?limit=5&offset=1&actor_user_id=admin-1&action=auth.login&resource_type=session&resource_id=s1", want: `auth.login`},
 	}
 
@@ -84,6 +84,9 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 	}
 	if service.errorsPagination.Limit != 7 || service.errorsPagination.Offset != 2 || service.errorsPagination.Cursor != "abc" {
 		t.Fatalf("errors pagination = %+v", service.errorsPagination)
+	}
+	if service.errorsFilter.Operation != "AuthService.Refresh" || service.errorsFilter.ErrorCode != "INTERNAL_ERROR" || service.errorsFilter.RequestID != "req-1" {
+		t.Fatalf("errors filter = %+v", service.errorsFilter)
 	}
 	if service.auditPagination.Limit != 5 || service.auditPagination.Offset != 1 {
 		t.Fatalf("audit pagination = %+v", service.auditPagination)

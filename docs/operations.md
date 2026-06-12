@@ -144,6 +144,7 @@ Error code table:
 | `TIMEOUT` | 504 | Request timeout middleware or dependency deadline |
 
 Internal `AppError` values wrap the underlying cause for logging and tracing. Client responses should only use the safe `message` and `details` fields.
+Monitoring error events carry the same `operation` name when available, so the admin panel can group incidents by source path.
 
 ## Auth rate limit
 
@@ -226,6 +227,7 @@ Refresh rotation is atomic at the session row level.
 - `cursor`
 - `error_code`
 - `request_id`
+- `operation`
 - `status`
 - `from`
 - `to`

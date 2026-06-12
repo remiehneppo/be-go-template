@@ -139,6 +139,9 @@ func TestServiceRegisterMapsConflict(t *testing.T) {
 	if appErr == nil || appErr.Code != apperrors.CodeConflict {
 		t.Fatalf("Register() error = %v", err)
 	}
+	if appErr.Op != "AuthService.Register" {
+		t.Fatalf("Register() op = %q", appErr.Op)
+	}
 }
 
 func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
@@ -248,7 +251,8 @@ func TestServiceLoginFailureWritesHistory(t *testing.T) {
 	})
 
 	ctx := logger.WithContext(context.Background(), capture)
-	if _, err := service.Login(ctx, domainauth.LoginInput{Email: "user@example.com", Password: "password123"}, domainauth.RequestMeta{}); err == nil {
+	var err error
+	if _, err = service.Login(ctx, domainauth.LoginInput{Email: "user@example.com", Password: "password123"}, domainauth.RequestMeta{}); err == nil {
 		t.Fatal("Login() error = nil")
 	}
 	if len(history.events) != 1 || history.events[0].Success || history.events[0].FailureReason != "invalid_credentials" {
@@ -256,6 +260,10 @@ func TestServiceLoginFailureWritesHistory(t *testing.T) {
 	}
 	if !capture.hasEntry("warn", "auth login failed") || !capture.hasField("reason", "invalid_credentials") {
 		t.Fatalf("logger entries = %+v", capture.entries)
+	}
+	appErr := apperrors.FromError(err)
+	if appErr == nil || appErr.Op != "AuthService.Login" {
+		t.Fatalf("Login() op = %q", appErr.Op)
 	}
 }
 
@@ -356,7 +364,8 @@ func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
 	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
 
 	ctx := logger.WithContext(context.Background(), capture)
-	if _, err := service.Refresh(ctx, "old-refresh", domainauth.RequestMeta{}); err == nil {
+	var err error
+	if _, err = service.Refresh(ctx, "old-refresh", domainauth.RequestMeta{}); err == nil {
 		t.Fatal("Refresh() error = nil")
 	}
 	if sessions.revokedFamilyID != "family1" || sessions.revokedReason != "refresh_reuse_suspected" {
@@ -367,6 +376,10 @@ func TestServiceRefreshReuseRevokesTokenFamilyAndAudits(t *testing.T) {
 	}
 	if !capture.hasEntry("warn", "auth refresh reuse suspected") || !capture.hasField("token_family_id", "family1") {
 		t.Fatalf("logger entries = %+v", capture.entries)
+	}
+	appErr := apperrors.FromError(err)
+	if appErr == nil || appErr.Op != "AuthService.Refresh" {
+		t.Fatalf("Refresh() op = %q", appErr.Op)
 	}
 }
 
@@ -506,6 +519,8 @@ func TestServiceRefreshRejectsInvalidToken(t *testing.T) {
 	})
 	if _, err := service.Refresh(context.Background(), "missing", domainauth.RequestMeta{}); err == nil {
 		t.Fatal("Refresh() error = nil")
+	} else if appErr := apperrors.FromError(err); appErr == nil || appErr.Op != "AuthService.Refresh" {
+		t.Fatalf("Refresh() op = %q", appErr.Op)
 	}
 }
 
