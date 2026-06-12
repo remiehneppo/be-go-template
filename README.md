@@ -137,6 +137,8 @@ Run versioned Mongo migrations:
 go run ./cmd/migrate
 ```
 
+`cmd/migrate` runs ordered, versioned migrations and records applied versions in `schema_migrations`. The built-in `bootstrap_indexes` migration creates the canonical index set first.
+
 Seed an admin user:
 
 ```sh

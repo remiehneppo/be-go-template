@@ -258,6 +258,16 @@ Each migration has:
 
 Applied versions are recorded in `schema_migrations` with a unique `version` index. A migration is recorded only after `Apply` succeeds.
 
+Migration strategy:
+
+- Use `cmd/migrate` for schema evolution, backfills, and index changes.
+- Keep migrations idempotent so reruns after partial failure are safe.
+- Prefer monotonic string versions with a timestamp prefix, so sort order matches rollout order.
+- Put destructive or data-shaping changes in explicit migrations, not in API startup code.
+- Treat `bootstrap_indexes` as the first migration; it creates the canonical index set and then records its version.
+- If a migration fails, the runner stops and does not record the version.
+- `cmd/migrate` prints the number of applied migrations and the version/name of each applied item.
+
 ## Outbox contract
 
 Audit logs, login history fallbacks, and HTTP error events are enqueued into `outbox_events` when the direct write path fails or when the async path is enabled. The API process starts a background worker that drains pending events and writes them into `audit_logs`, `login_history`, or `error_events`.

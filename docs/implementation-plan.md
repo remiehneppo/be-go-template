@@ -548,8 +548,8 @@ Checklist:
 - [x] Health endpoint `/healthz` kiểm tra process sống.
 - [x] Ready endpoint `/readyz` ping MongoDB và Redis với timeout.
 - [ ] Tạo `cmd/seed` CLI để seed admin user đầu tiên và test data local.
-- [ ] Tạo `cmd/migrate` CLI cho Mongo schema evolution/backfill/index changes.
-- [ ] Migration có version tracking collection, log version applied/skipped/failed.
+- [x] Tạo `cmd/migrate` CLI cho Mongo schema evolution/backfill/index changes.
+- [x] Migration có version tracking collection, log version applied/skipped/failed.
 
 ## 9. Error handling và response
 
@@ -785,7 +785,7 @@ Checklist:
 - [x] Ghi graceful degradation matrix cho Redis/Mongo/outbox/rate limit.
 - [x] Ghi context propagation contract và danh sách key chuẩn.
 - [x] Ghi seed admin user bằng `cmd/seed`.
-- [ ] Ghi migration/backfill/index strategy bằng `cmd/migrate`.
+- [x] Ghi migration/backfill/index strategy bằng `cmd/migrate`.
 - [x] Ghi JWT key format `<key-id>/<base64-secret>` và previous key `NotAfter`.
 - [x] Ghi refresh token binding là audit/anomaly signal, không phải security lookup chính.
 - [x] Ghi account lockout policy hoặc lý do intentionally scoped out.
@@ -867,7 +867,7 @@ Checklist:
 - [x] Outbox có unique `IdempotencyKey` và worker idempotent để tránh duplicate audit/history.
 - [ ] Token family reuse detection phân biệt active-stale hash, logout, expired session và race theo policy.
 - [x] `cmd/seed` seed được admin đầu tiên mà không qua public register.
-- [ ] `cmd/migrate` quản lý index/backfill/schema evolution có version tracking.
+- [x] `cmd/migrate` quản lý index/backfill/schema evolution có version tracking.
 - [ ] Graceful degradation matrix được implement/config rõ cho Redis/Mongo/outbox/rate limit.
 - [x] `/healthz` và `/readyz` có behavior khác nhau, timeout rõ ràng.
 - [x] CORS, body size limit, HTTP timeout, Mongo pool, Redis TLS đều có config và validation.
