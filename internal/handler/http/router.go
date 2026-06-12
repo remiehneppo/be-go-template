@@ -57,7 +57,7 @@ func NewRouterWithDependencies(cfg config.Config, log logger.Logger, deps Router
 
 	router.Use(middleware.Recovery(log))
 	router.Use(middleware.RequestID(log))
-	router.Use(middleware.CORS(cfg.HTTP.CORSAllowOrigins))
+	router.Use(middleware.CORS(cfg.HTTP.CORSAllowOrigins, cfg.HTTP.CORSAllowMethods, cfg.HTTP.CORSAllowHeaders))
 	router.Use(middleware.BodyLimit(cfg.HTTP.BodyLimitBytes))
 	router.Use(middleware.Timeout(cfg.HTTP.RouteTimeout))
 	if cfg.Metrics.Enabled {

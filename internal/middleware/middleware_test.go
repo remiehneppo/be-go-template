@@ -121,7 +121,11 @@ func TestRequestIDFallsBackToRequestIDForInvalidTraceHeader(t *testing.T) {
 func TestCORSAllowsTraceAndSpanHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.Use(CORS([]string{"https://app.example.com"}))
+	router.Use(CORS(
+		[]string{"https://app.example.com"},
+		[]string{"GET", "POST"},
+		[]string{"Authorization", "Content-Type", "X-Trace-ID", "X-Span-ID", "X-Device-ID", "X-Device-Name"},
+	))
 	router.OPTIONS("/ping", func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	})
@@ -138,6 +142,12 @@ func TestCORSAllowsTraceAndSpanHeaders(t *testing.T) {
 	allowHeaders := rec.Header().Get("Access-Control-Allow-Headers")
 	if !strings.Contains(allowHeaders, "X-Trace-ID") || !strings.Contains(allowHeaders, "X-Span-ID") {
 		t.Fatalf("allow headers = %q", allowHeaders)
+	}
+	if got, want := rec.Header().Get("Access-Control-Allow-Methods"), "GET,POST"; got != want {
+		t.Fatalf("allow methods = %q, want %q", got, want)
+	}
+	if !strings.Contains(allowHeaders, "X-Device-ID") || !strings.Contains(allowHeaders, "X-Device-Name") {
+		t.Fatalf("allow headers missing device fields = %q", allowHeaders)
 	}
 }
 

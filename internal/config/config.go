@@ -38,6 +38,8 @@ type HTTPConfig struct {
 	RouteTimeout     time.Duration
 	ETagEnabled      bool
 	CORSAllowOrigins []string
+	CORSAllowMethods []string
+	CORSAllowHeaders []string
 }
 
 type LogConfig struct {
@@ -131,6 +133,8 @@ func Load() (Config, error) {
 			RouteTimeout:     getDuration("ROUTE_TIMEOUT_DEFAULT", 5*time.Second),
 			ETagEnabled:      getBool("ETAG_ENABLED", true),
 			CORSAllowOrigins: getCSV("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"}),
+			CORSAllowMethods: getCSV("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
+			CORSAllowHeaders: getCSV("CORS_ALLOWED_HEADERS", []string{"Authorization", "Content-Type", "X-Request-ID", "X-Trace-ID", "X-Span-ID", "X-Device-ID", "X-Device-Name"}),
 		},
 		Log: LogConfig{
 			Level:      strings.ToLower(getString("LOG_LEVEL", "info")),

@@ -40,6 +40,12 @@ func TestLoadDefaults(t *testing.T) {
 			t.Fatalf("unexpected CORS origin %q", origin)
 		}
 	}
+	if got, want := cfg.HTTP.CORSAllowMethods, []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}; !equalStrings(got, want) {
+		t.Fatalf("CORSAllowMethods = %+v, want %+v", got, want)
+	}
+	if got, want := cfg.HTTP.CORSAllowHeaders, []string{"Authorization", "Content-Type", "X-Request-ID", "X-Trace-ID", "X-Span-ID", "X-Device-ID", "X-Device-Name"}; !equalStrings(got, want) {
+		t.Fatalf("CORSAllowHeaders = %+v, want %+v", got, want)
+	}
 	if !cfg.RateLimit.AuthEnabled || cfg.RateLimit.Fallback != "allow" {
 		t.Fatalf("RateLimit = %+v", cfg.RateLimit)
 	}
@@ -212,6 +218,26 @@ func TestLoadSupportsETagConfig(t *testing.T) {
 	}
 }
 
+func TestLoadSupportsCORSConfig(t *testing.T) {
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://app.example.com")
+	t.Setenv("CORS_ALLOWED_METHODS", "GET,POST")
+	t.Setenv("CORS_ALLOWED_HEADERS", "Authorization,X-Request-ID")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if got, want := cfg.HTTP.CORSAllowOrigins, []string{"https://app.example.com"}; !equalStrings(got, want) {
+		t.Fatalf("CORSAllowOrigins = %+v, want %+v", got, want)
+	}
+	if got, want := cfg.HTTP.CORSAllowMethods, []string{"GET", "POST"}; !equalStrings(got, want) {
+		t.Fatalf("CORSAllowMethods = %+v, want %+v", got, want)
+	}
+	if got, want := cfg.HTTP.CORSAllowHeaders, []string{"Authorization", "X-Request-ID"}; !equalStrings(got, want) {
+		t.Fatalf("CORSAllowHeaders = %+v, want %+v", got, want)
+	}
+}
+
 func TestLoadSupportsErrorStackConfig(t *testing.T) {
 	t.Setenv("ERROR_INCLUDE_STACK", "false")
 
@@ -222,4 +248,16 @@ func TestLoadSupportsErrorStackConfig(t *testing.T) {
 	if cfg.Errors.IncludeStack {
 		t.Fatal("Errors.IncludeStack = true")
 	}
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
