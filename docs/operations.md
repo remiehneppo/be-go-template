@@ -190,6 +190,7 @@ Session records keep `ip`, `user_agent`, and `device_id` for audit and device hi
 - `DeviceID` is validated as UUID v4 when the client sends it.
 - If the client omits `DeviceID`, the server generates one.
 - `DeviceID` is for UX and audit only; refresh and session lookup never use it as a security key.
+- `POST /v1/auth/register` and `POST /v1/auth/login` return the created session object with device metadata in the `session` field.
 - `AUTH_REFRESH_IP_ANOMALY_ACTION=audit` logs and audits refreshes from a new IP.
 - `AUTH_REFRESH_IP_ANOMALY_ACTION=revoke` revokes the session family on refresh IP mismatch.
 

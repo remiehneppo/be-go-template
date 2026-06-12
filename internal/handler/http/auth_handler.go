@@ -65,7 +65,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Error(c, validationError(err))
 		return
 	}
-	result, err := h.service.Register(c.Request.Context(), input)
+	result, err := h.service.Register(c.Request.Context(), input, requestMeta(c))
 	if err != nil {
 		reportContextError(c, err)
 		return
@@ -167,12 +167,13 @@ func (h *AuthHandler) ListLoginHistory(c *gin.Context) {
 }
 
 type authResultResponse struct {
-	User                  userResponse `json:"user"`
-	SessionID             string       `json:"session_id"`
-	AccessToken           string       `json:"access_token"`
-	AccessTokenExpiresAt  string       `json:"access_token_expires_at"`
-	RefreshToken          string       `json:"refresh_token"`
-	RefreshTokenExpiresAt string       `json:"refresh_token_expires_at"`
+	User                  userResponse             `json:"user"`
+	SessionID             string                   `json:"session_id"`
+	Session               domainauth.DeviceSession `json:"session"`
+	AccessToken           string                   `json:"access_token"`
+	AccessTokenExpiresAt  string                   `json:"access_token_expires_at"`
+	RefreshToken          string                   `json:"refresh_token"`
+	RefreshTokenExpiresAt string                   `json:"refresh_token_expires_at"`
 }
 
 type userResponse struct {
@@ -189,6 +190,7 @@ func authResultResponseFromDomain(result *domainauth.AuthResult) authResultRespo
 	return authResultResponse{
 		User:                  userResponseFromDomain(result.User),
 		SessionID:             result.SessionID,
+		Session:               result.Session,
 		AccessToken:           result.AccessToken,
 		AccessTokenExpiresAt:  result.AccessTokenExpiresAt.Format(timeFormat),
 		RefreshToken:          result.RefreshToken,

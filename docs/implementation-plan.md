@@ -359,11 +359,11 @@ Checklist:
 
 Checklist:
 
-- [ ] `POST /v1/auth/register`.
-- [ ] Validate email, password, name.
+- [x] `POST /v1/auth/register`.
+- [x] Validate email, password, name.
 - [x] Hash password bằng bcrypt.
-- [ ] Trả access token, refresh token, user summary, session/device info.
-- [ ] Không trả refresh token hash, access token jti nội bộ, hoặc thông tin device của user khác.
+- [x] Trả access token, refresh token, user summary, session/device info.
+- [x] Không trả refresh token hash, access token jti nội bộ, hoặc thông tin device của user khác.
 - [ ] `POST /v1/auth/login`.
 - [ ] Validate credentials.
 - [ ] Ghi login history.

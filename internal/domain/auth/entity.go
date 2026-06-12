@@ -98,6 +98,7 @@ type LoginInput struct {
 type AuthResult struct {
 	User                  user.User
 	SessionID             string
+	Session               DeviceSession
 	AccessToken           string
 	AccessTokenExpiresAt  time.Time
 	RefreshToken          string

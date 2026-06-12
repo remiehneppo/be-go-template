@@ -57,6 +57,9 @@ func TestServiceRegisterCreatesUserSessionAndTokens(t *testing.T) {
 		Email:    " USER@Example.COM ",
 		Password: "password123",
 		Name:     "User",
+	}, domainauth.RequestMeta{
+		DeviceID:   "550e8400-e29b-41d4-a716-446655440000",
+		DeviceName: "laptop",
 	})
 	if err != nil {
 		t.Fatalf("Register() error = %v", err)
@@ -72,6 +75,9 @@ func TestServiceRegisterCreatesUserSessionAndTokens(t *testing.T) {
 	}
 	if result.AccessToken != "access" || result.RefreshToken != "refresh" {
 		t.Fatalf("result = %+v", result)
+	}
+	if result.Session.SessionID != result.SessionID || result.Session.DeviceID != "550e8400-e29b-41d4-a716-446655440000" || result.Session.DeviceName != "laptop" || !result.Session.Current {
+		t.Fatalf("result session = %+v", result.Session)
 	}
 	if len(audit.events) != 1 || audit.events[0].Action != "auth.register" {
 		t.Fatalf("audit = %+v", audit.events)
@@ -102,7 +108,7 @@ func TestServiceRegisterUsesTransactionRunnerForCoreWrites(t *testing.T) {
 		Email:    "user@example.com",
 		Password: "password123",
 		Name:     "User",
-	}); err != nil {
+	}, domainauth.RequestMeta{}); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
 	if txRunner.calls != 1 {
@@ -128,7 +134,7 @@ func TestServiceRegisterMapsConflict(t *testing.T) {
 		Email:    "user@example.com",
 		Password: "password123",
 		Name:     "User",
-	})
+	}, domainauth.RequestMeta{})
 	appErr := apperrors.FromError(err)
 	if appErr == nil || appErr.Code != apperrors.CodeConflict {
 		t.Fatalf("Register() error = %v", err)
@@ -171,6 +177,9 @@ func TestServiceLoginSuccessCreatesSessionAndHistory(t *testing.T) {
 	}
 	if result.AccessToken != "access" || result.SessionID == "" {
 		t.Fatalf("result = %+v", result)
+	}
+	if result.Session.SessionID != result.SessionID || result.Session.DeviceID != "550e8400-e29b-41d4-a716-446655440000" || result.Session.DeviceName != "phone" || !result.Session.Current {
+		t.Fatalf("result session = %+v", result.Session)
 	}
 	if users.lastLoginUserID != "u1" {
 		t.Fatalf("lastLoginUserID = %q", users.lastLoginUserID)

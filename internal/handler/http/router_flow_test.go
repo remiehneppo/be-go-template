@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -73,13 +74,22 @@ func TestRouterAuthFlow(t *testing.T) {
 		"email":    "user@example.com",
 		"password": "password123",
 		"name":     "User",
-	}, nil)
+	}, map[string]string{
+		"X-Device-ID":   "550e8400-e29b-41d4-a716-446655440000",
+		"X-Device-Name": "laptop",
+	})
 	if registerResp.Code != http.StatusCreated {
 		t.Fatalf("register status = %d body = %s", registerResp.Code, registerResp.Body.String())
 	}
 	registerData := decodeAuthResultResponse(t, registerResp.Body.Bytes())
-	if registerData.User.Email != "user@example.com" || registerData.SessionID == "" {
+	if registerData.User.Email != "user@example.com" || registerData.SessionID == "" || registerData.Session.SessionID == "" || registerData.Session.DeviceID != "550e8400-e29b-41d4-a716-446655440000" || registerData.Session.DeviceName != "laptop" || !registerData.Session.Current {
 		t.Fatalf("register data = %+v", registerData)
+	}
+	if strings.Contains(registerResp.Body.String(), "refresh_token_hash") {
+		t.Fatalf("register response leaked refresh_token_hash: %s", registerResp.Body.String())
+	}
+	if strings.Contains(registerResp.Body.String(), "\"token_id\"") {
+		t.Fatalf("register response leaked token_id: %s", registerResp.Body.String())
 	}
 
 	meResp := doJSONRequest(t, router, http.MethodGet, "/v1/users/me", nil, map[string]string{
@@ -96,13 +106,25 @@ func TestRouterAuthFlow(t *testing.T) {
 	loginResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/login", map[string]any{
 		"email":    "user@example.com",
 		"password": "password123",
-	}, nil)
+	}, map[string]string{
+		"X-Device-ID":   "550e8400-e29b-41d4-a716-446655440001",
+		"X-Device-Name": "phone",
+	})
 	if loginResp.Code != http.StatusOK {
 		t.Fatalf("login status = %d body = %s", loginResp.Code, loginResp.Body.String())
 	}
 	loginData := decodeAuthResultResponse(t, loginResp.Body.Bytes())
 	if loginData.SessionID == registerData.SessionID {
 		t.Fatalf("expected a new session, got %q", loginData.SessionID)
+	}
+	if loginData.Session.SessionID == "" || loginData.Session.DeviceID != "550e8400-e29b-41d4-a716-446655440001" || loginData.Session.DeviceName != "phone" || !loginData.Session.Current {
+		t.Fatalf("login session = %+v", loginData.Session)
+	}
+	if strings.Contains(loginResp.Body.String(), "refresh_token_hash") {
+		t.Fatalf("login response leaked refresh_token_hash: %s", loginResp.Body.String())
+	}
+	if strings.Contains(loginResp.Body.String(), "\"token_id\"") {
+		t.Fatalf("login response leaked token_id: %s", loginResp.Body.String())
 	}
 
 	refreshResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/refresh", map[string]any{
@@ -173,7 +195,10 @@ func TestRouterAuthFlow(t *testing.T) {
 	adminLoginResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/login", map[string]any{
 		"email":    "user@example.com",
 		"password": "password123",
-	}, nil)
+	}, map[string]string{
+		"X-Device-ID":   "550e8400-e29b-41d4-a716-446655440002",
+		"X-Device-Name": "desktop",
+	})
 	if adminLoginResp.Code != http.StatusOK {
 		t.Fatalf("admin login status = %d body = %s", adminLoginResp.Code, adminLoginResp.Body.String())
 	}
@@ -247,20 +272,32 @@ func TestRouterLogoutAllInvalidatesMultipleSessions(t *testing.T) {
 		"email":    "user@example.com",
 		"password": "password123",
 		"name":     "User",
-	}, nil)
+	}, map[string]string{
+		"X-Device-ID":   "550e8400-e29b-41d4-a716-446655440010",
+		"X-Device-Name": "tablet",
+	})
 	if registerResp.Code != http.StatusCreated {
 		t.Fatalf("register status = %d body = %s", registerResp.Code, registerResp.Body.String())
 	}
 	registerData := decodeAuthResultResponse(t, registerResp.Body.Bytes())
+	if registerData.Session.DeviceID != "550e8400-e29b-41d4-a716-446655440010" || registerData.Session.DeviceName != "tablet" || !registerData.Session.Current {
+		t.Fatalf("register session = %+v", registerData.Session)
+	}
 
 	loginResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/login", map[string]any{
 		"email":    "user@example.com",
 		"password": "password123",
-	}, nil)
+	}, map[string]string{
+		"X-Device-ID":   "550e8400-e29b-41d4-a716-446655440011",
+		"X-Device-Name": "desktop",
+	})
 	if loginResp.Code != http.StatusOK {
 		t.Fatalf("login status = %d body = %s", loginResp.Code, loginResp.Body.String())
 	}
 	loginData := decodeAuthResultResponse(t, loginResp.Body.Bytes())
+	if loginData.Session.DeviceID != "550e8400-e29b-41d4-a716-446655440011" || loginData.Session.DeviceName != "desktop" || !loginData.Session.Current {
+		t.Fatalf("login session = %+v", loginData.Session)
+	}
 
 	logoutAllResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/logout-all", nil, map[string]string{
 		"Authorization": "Bearer " + loginData.AccessToken,

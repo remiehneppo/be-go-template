@@ -88,7 +88,7 @@ func NewService(deps ServiceDependencies) *Service {
 	}
 }
 
-func (s *Service) Register(ctx context.Context, input domainauth.RegisterInput) (*domainauth.AuthResult, error) {
+func (s *Service) Register(ctx context.Context, input domainauth.RegisterInput, meta domainauth.RequestMeta) (*domainauth.AuthResult, error) {
 	if err := s.requireAuthCore("AuthService.Register"); err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (s *Service) Register(ctx context.Context, input domainauth.RegisterInput) 
 			return err
 		}
 		var innerErr error
-		result, innerErr = s.issueAuthResult(txCtx, usr, domainauth.RequestMeta{})
+		result, innerErr = s.issueAuthResult(txCtx, usr, meta)
 		return innerErr
 	}); err != nil {
 		if errors.Is(err, database.ErrConflict) {
@@ -284,8 +284,18 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, meta domaina
 	s.recordRefresh(true)
 	logAuthInfo(ctx, "auth refresh succeeded", logger.String("user_id", usr.ID), logger.String("session_id", session.ID), logger.String("token_family_id", session.TokenFamilyID), logger.String("ip", meta.IP), logger.String("user_agent", meta.UserAgent), logger.String("device_id", domainauth.NormalizeDeviceID(meta.DeviceID)))
 	return &domainauth.AuthResult{
-		User:                  *usr,
-		SessionID:             session.ID,
+		User:      *usr,
+		SessionID: session.ID,
+		Session: domainauth.DeviceSession{
+			SessionID:  session.ID,
+			DeviceID:   session.DeviceID,
+			DeviceName: session.DeviceName,
+			UserAgent:  session.UserAgent,
+			IP:         session.IP,
+			LastSeenAt: session.LastSeenAt,
+			CreatedAt:  session.CreatedAt,
+			Current:    true,
+		},
 		AccessToken:           accessToken,
 		AccessTokenExpiresAt:  accessExpiresAt,
 		RefreshToken:          newRefreshPlain,
@@ -436,8 +446,18 @@ func (s *Service) issueAuthResult(ctx context.Context, usr user.User, meta domai
 		return nil, err
 	}
 	return &domainauth.AuthResult{
-		User:                  usr,
-		SessionID:             session.ID,
+		User:      usr,
+		SessionID: session.ID,
+		Session: domainauth.DeviceSession{
+			SessionID:  session.ID,
+			DeviceID:   session.DeviceID,
+			DeviceName: session.DeviceName,
+			UserAgent:  session.UserAgent,
+			IP:         session.IP,
+			LastSeenAt: session.LastSeenAt,
+			CreatedAt:  session.CreatedAt,
+			Current:    true,
+		},
 		AccessToken:           accessToken,
 		AccessTokenExpiresAt:  accessExpiresAt,
 		RefreshToken:          refreshPlain,

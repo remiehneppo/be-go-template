@@ -557,7 +557,7 @@ type fakeAuthService struct {
 	listLoginHistoryPagination common.Pagination
 }
 
-func (s *fakeAuthService) Register(ctx context.Context, input domainauth.RegisterInput) (*domainauth.AuthResult, error) {
+func (s *fakeAuthService) Register(ctx context.Context, input domainauth.RegisterInput, meta domainauth.RequestMeta) (*domainauth.AuthResult, error) {
 	return s.result, nil
 }
 
