@@ -749,7 +749,7 @@ Checklist:
 - [x] Cache key invalidates after user/session update.
 - [x] Request writes access log to terminal/file path.
 - [x] 5xx test path writes error log and error event with request id.
-- [ ] Monitoring auth stats reflect login/logout activity.
+- [x] Monitoring auth stats reflect login/logout activity.
 - [x] Prometheus metrics include HTTP request counters/duration after traffic.
 - [ ] Transaction-capable environment handles register/login multi-write consistently.
 - [x] Non-transaction local environment logs audit/history failure, enqueues outbox event, and does not fail auth.

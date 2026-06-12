@@ -13,9 +13,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	appauth "github.com/remihneppo/be-go-template/internal/app/auth"
+	appmonitoring "github.com/remihneppo/be-go-template/internal/app/monitoring"
 	appuser "github.com/remihneppo/be-go-template/internal/app/user"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/domain/common"
+	domainmonitoring "github.com/remihneppo/be-go-template/internal/domain/monitoring"
 	domainuser "github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
@@ -35,6 +37,7 @@ func TestRouterAuthFlow(t *testing.T) {
 	auditLogs := &memoryAuditLogRepository{}
 	revokedTokens := &memoryRevokedTokenRepository{}
 	tokenCache := newMemoryCache()
+	authStats := &memoryAuthStatsRepository{loginHistory: loginHistory, sessions: sessions, audits: auditLogs}
 
 	tokenService, err := appauth.NewTokenService(appauth.TokenConfig{
 		CurrentKey:       cfg.JWT.AccessCurrentKey,
@@ -57,10 +60,12 @@ func TestRouterAuthFlow(t *testing.T) {
 		RefreshTTL:    24 * time.Hour,
 	})
 	userService := appuser.NewService(users)
+	monitoringService := appmonitoring.NewService(appmonitoring.Dependencies{AuthStats: authStats})
 	router := NewRouterWithDependencies(cfg, logger.NewNoop(), RouterDependencies{
 		AuthService:  authService,
 		UserService:  userService,
 		TokenService: tokenService,
+		Monitoring:   monitoringService,
 		Sessions:     sessions,
 	})
 
@@ -135,6 +140,39 @@ func TestRouterAuthFlow(t *testing.T) {
 	}
 	if got := len(sessions.activeByUser(registerData.User.ID)); got < 2 {
 		t.Fatalf("expected sessions to be persisted, got %d", got)
+	}
+
+	if err := users.EnsureRole(context.Background(), registerData.User.ID, domainuser.RoleAdmin, time.Now().UTC()); err != nil {
+		t.Fatalf("EnsureRole(admin) error = %v", err)
+	}
+	adminLoginResp := doJSONRequest(t, router, http.MethodPost, "/v1/auth/login", map[string]any{
+		"email":    "user@example.com",
+		"password": "password123",
+	}, nil)
+	if adminLoginResp.Code != http.StatusOK {
+		t.Fatalf("admin login status = %d body = %s", adminLoginResp.Code, adminLoginResp.Body.String())
+	}
+	adminLoginData := decodeAuthResultResponse(t, adminLoginResp.Body.Bytes())
+
+	statsResp := doJSONRequest(t, router, http.MethodGet, "/v1/admin/monitoring/auth-stats?from=1970-01-01T00:00:00Z&to=2100-01-01T00:00:00Z", nil, map[string]string{
+		"Authorization": "Bearer " + adminLoginData.AccessToken,
+	})
+	if statsResp.Code != http.StatusOK {
+		t.Fatalf("auth-stats status = %d body = %s", statsResp.Code, statsResp.Body.String())
+	}
+	var statsEnvelope struct {
+		Success bool `json:"success"`
+		Data    struct {
+			LoginSuccessCount  int64 `json:"login_success_count"`
+			LogoutCount        int64 `json:"logout_count"`
+			ActiveSessionCount int64 `json:"active_session_count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(statsResp.Body.Bytes(), &statsEnvelope); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v body = %s", err, statsResp.Body.String())
+	}
+	if !statsEnvelope.Success || statsEnvelope.Data.LoginSuccessCount < 2 || statsEnvelope.Data.LogoutCount == 0 || statsEnvelope.Data.ActiveSessionCount == 0 {
+		t.Fatalf("auth stats = %+v body = %s", statsEnvelope, statsResp.Body.String())
 	}
 }
 
@@ -702,3 +740,63 @@ func (r *memoryRevokedTokenRepository) FindByTokenID(ctx context.Context, tokenI
 func ignoreError(err error) {
 	_ = err
 }
+
+type memoryAuthStatsRepository struct {
+	loginHistory *memoryLoginHistoryRepository
+	sessions     *memorySessionRepository
+	audits       *memoryAuditLogRepository
+}
+
+func (r *memoryAuthStatsRepository) GetAuthStats(ctx context.Context, from time.Time, to time.Time) (*domainmonitoring.AuthStats, error) {
+	r.loginHistory.mu.Lock()
+	loginEvents := append([]domainauth.LoginHistory(nil), r.loginHistory.events...)
+	r.loginHistory.mu.Unlock()
+
+	r.sessions.mu.Lock()
+	sessions := make([]domainauth.Session, 0, len(r.sessions.sessions))
+	for _, session := range r.sessions.sessions {
+		sessions = append(sessions, session)
+	}
+	r.sessions.mu.Unlock()
+
+	r.audits.mu.Lock()
+	audits := append([]domainauth.AuditLog(nil), r.audits.events...)
+	r.audits.mu.Unlock()
+
+	var loginSuccess, loginFailure, activeSessions, revokedSessions, refreshCount, logoutCount int64
+	for _, event := range loginEvents {
+		if event.Success {
+			loginSuccess++
+		} else {
+			loginFailure++
+		}
+	}
+	for _, session := range sessions {
+		if session.RevokedAt != nil {
+			revokedSessions++
+			continue
+		}
+		activeSessions++
+	}
+	for _, event := range audits {
+		switch event.Action {
+		case "auth.refresh":
+			refreshCount++
+		case "auth.logout", "auth.logout_all":
+			logoutCount++
+		}
+	}
+
+	return &domainmonitoring.AuthStats{
+		LoginSuccessCount:   loginSuccess,
+		LoginFailureCount:   loginFailure,
+		ActiveSessionCount:  activeSessions,
+		RevokedSessionCount: revokedSessions,
+		RefreshCount:        refreshCount,
+		LogoutCount:         logoutCount,
+		From:                from,
+		To:                  to,
+	}, nil
+}
+
+var _ domainmonitoring.AuthStatsRepository = (*memoryAuthStatsRepository)(nil)
