@@ -109,12 +109,17 @@ Validation errors use a stable schema:
     "details": [
       {
         "field": "body",
-        "reason": "invalid_json"
+        "reason": "invalid_json",
+        "meta": {
+          "kind": "syntax"
+        }
       }
     ]
   }
 }
 ```
+
+Structured validation details may also use `reason="invalid_type"` with `meta` fields such as `expected` when JSON types do not match the request shape.
 
 Error code table:
 

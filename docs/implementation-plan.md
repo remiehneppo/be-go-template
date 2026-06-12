@@ -568,7 +568,7 @@ Checklist:
 - [x] Cache/database map dependency timeout sang `DEPENDENCY_ERROR`.
 - [x] Handler map domain error sang HTTP status.
 - [x] Response lỗi thống nhất: `code`, `message`, `request_id`, `details` nếu là validation error an toàn.
-- [ ] Validation error details chuẩn hóa dạng array `{field, reason, meta}`; `reason` là code ổn định cho frontend i18n.
+- [x] Validation error details chuẩn hóa dạng array `{field, reason, meta}`; `reason` là code ổn định cho frontend i18n.
 - [ ] Response success thống nhất: `data`.
 - [x] Không trả internal error detail ra client.
 - [x] Middleware recovery bắt panic, log stack trace, trả `INTERNAL_ERROR`.
@@ -714,7 +714,7 @@ Checklist:
 - [x] Redis blacklist miss falls back to Mongo revoked token repository.
 - [x] HealthLevel maps dependency latency/error to healthy/degraded/unhealthy.
 - [x] Rate limit fallback `block/allow` hoạt động đúng khi Redis down.
-- [ ] Validation error details use `{field, reason, meta}` schema.
+- [x] Validation error details use `{field, reason, meta}` schema.
 
 ### 14.2. Handler tests
 

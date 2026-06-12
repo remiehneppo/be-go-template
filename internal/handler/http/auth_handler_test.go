@@ -102,8 +102,53 @@ func TestAuthHandlerInvalidJSONReturnsValidationError(t *testing.T) {
 	if len(response.Error.Details) != 1 || response.Error.Details[0].Field != "body" || response.Error.Details[0].Reason != "invalid_json" {
 		t.Fatalf("details = %+v body = %s", response.Error.Details, rec.Body.String())
 	}
+	if response.Error.Details[0].Meta["kind"] != "syntax" {
+		t.Fatalf("meta = %+v body = %s", response.Error.Details[0].Meta, rec.Body.String())
+	}
 	if strings.Contains(rec.Body.String(), "unexpected EOF") || strings.Contains(rec.Body.String(), "invalid character") {
 		t.Fatalf("body leaked raw bind error: %s", rec.Body.String())
+	}
+}
+
+func TestAuthHandlerLoginTypeMismatchReturnsStructuredValidationError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{AuthService: &fakeAuthService{}})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":123,"password":"secret"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	var response struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+			Details []struct {
+				Field  string                 `json:"field"`
+				Reason string                 `json:"reason"`
+				Meta   map[string]interface{} `json:"meta"`
+			} `json:"details"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v body = %s", err, rec.Body.String())
+	}
+	if response.Error.Code != "VALIDATION_ERROR" || response.Error.Message != "Invalid input" {
+		t.Fatalf("response = %+v body = %s", response.Error, rec.Body.String())
+	}
+	if len(response.Error.Details) != 1 {
+		t.Fatalf("details = %+v body = %s", response.Error.Details, rec.Body.String())
+	}
+	detail := response.Error.Details[0]
+	if detail.Field != "body.email" || detail.Reason != "invalid_type" {
+		t.Fatalf("detail = %+v body = %s", detail, rec.Body.String())
+	}
+	if detail.Meta["expected"] != "string" {
+		t.Fatalf("meta = %+v body = %s", detail.Meta, rec.Body.String())
 	}
 }
 

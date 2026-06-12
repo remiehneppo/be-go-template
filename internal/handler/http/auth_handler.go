@@ -1,6 +1,8 @@
 package http
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -238,7 +240,54 @@ func contextString(c *gin.Context, key ctxkeys.Key) string {
 }
 
 func validationError(err error) *apperrors.AppError {
-	return apperrors.Validation("Invalid input", []apperrors.ValidationDetail{
-		{Field: "body", Reason: "invalid_json"},
-	})
+	detail := apperrors.ValidationDetail{
+		Field:  "body",
+		Reason: "invalid_json",
+		Meta:   map[string]any{"kind": "binding"},
+	}
+
+	var syntaxErr *json.SyntaxError
+	if errors.As(err, &syntaxErr) || isJSONSyntaxError(err) {
+		detail.Meta = map[string]any{
+			"kind": "syntax",
+		}
+		if syntaxErr != nil {
+			detail.Meta["offset"] = syntaxErr.Offset
+		}
+		return apperrors.Validation("Invalid input", []apperrors.ValidationDetail{detail})
+	}
+
+	var typeErr *json.UnmarshalTypeError
+	if errors.As(err, &typeErr) {
+		field := "body"
+		if typeErr.Field != "" {
+			field = "body." + normalizeJSONFieldPath(typeErr.Field)
+		}
+		return apperrors.Validation("Invalid input", []apperrors.ValidationDetail{{
+			Field:  field,
+			Reason: "invalid_type",
+			Meta: map[string]any{
+				"expected": typeErr.Type.String(),
+				"offset":   typeErr.Offset,
+			},
+		}})
+	}
+
+	return apperrors.Validation("Invalid input", []apperrors.ValidationDetail{detail})
+}
+
+func normalizeJSONFieldPath(field string) string {
+	parts := strings.Split(field, ".")
+	for i := range parts {
+		parts[i] = strings.ToLower(strings.TrimSpace(parts[i]))
+	}
+	return strings.Join(parts, ".")
+}
+
+func isJSONSyntaxError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "unexpected eof") || strings.Contains(msg, "invalid character")
 }
