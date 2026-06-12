@@ -657,7 +657,7 @@ Checklist:
 - [ ] Refresh token reuse sau rotation fail.
 - [ ] Logout revoke session và blacklist access token.
 - [ ] Logout ghi revoked access token `jti` vào Redis và Mongo `revoked_tokens` với TTL index.
-- [ ] Blacklist validation Redis miss thì fallback Mongo để chịu được Redis restart.
+- [x] Blacklist validation Redis miss thì fallback Mongo để chịu được Redis restart.
 - [ ] Không log password/token.
 - [ ] Validate input bằng validator.
 - [ ] CORS để cấu hình được, không hardcode wildcard cho production.

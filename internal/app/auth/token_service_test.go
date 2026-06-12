@@ -118,6 +118,30 @@ func TestBlacklistFallsBackToRevokedRepositoryOnCacheMiss(t *testing.T) {
 	}
 }
 
+func TestBlacklistWarmsCacheFromRevokedRepository(t *testing.T) {
+	cacheStore := newMemoryCache()
+	repo := &fakeRevokedRepo{token: &domainauth.RevokedToken{
+		TokenID:   "jti1",
+		ExpiresAt: time.Now().Add(time.Hour),
+		RevokedAt: time.Now(),
+	}}
+	svc := newTestTokenService(t)
+	svc.cache = cacheStore
+	svc.revoked = repo
+
+	got, err := svc.IsAccessTokenBlacklisted(context.Background(), "jti1")
+	if err != nil {
+		t.Fatalf("IsAccessTokenBlacklisted() error = %v", err)
+	}
+	if !got {
+		t.Fatal("IsAccessTokenBlacklisted() = false")
+	}
+	value, ok := cacheStore.values[accessBlacklistPrefix+"jti1"]
+	if !ok || value != true {
+		t.Fatalf("cache value = %#v ok=%v", value, ok)
+	}
+}
+
 func TestParseJWTKeyRejectsBadFormat(t *testing.T) {
 	if _, err := ParseJWTKey("missing-separator", time.Time{}); err == nil {
 		t.Fatal("ParseJWTKey() error = nil")
