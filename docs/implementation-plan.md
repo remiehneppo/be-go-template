@@ -781,7 +781,7 @@ Checklist:
 - [ ] Ghi revoked token Redis + Mongo fallback.
 - [ ] Ghi `HealthLevel` threshold config.
 - [x] Ghi ETag behavior cho poll-heavy endpoints.
-- [ ] Ghi validation error schema.
+- [x] Ghi validation error schema.
 - [x] Ghi graceful degradation matrix cho Redis/Mongo/outbox/rate limit.
 - [ ] Ghi context propagation contract và danh sách key chuẩn.
 - [ ] Ghi seed admin user bằng `cmd/seed`.

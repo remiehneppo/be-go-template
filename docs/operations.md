@@ -59,6 +59,25 @@ HTTP responses use this envelope:
 
 Internal logs may include operation names and wrapped causes. Client responses must only expose safe messages.
 
+Validation errors use a stable schema:
+
+```json
+{
+  "success": false,
+  "request_id": "request-id",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input",
+    "details": [
+      {
+        "field": "body",
+        "reason": "invalid_json"
+      }
+    ]
+  }
+}
+```
+
 ## Auth rate limit
 
 Auth endpoints use Redis-backed rate limiting with per-endpoint keys:

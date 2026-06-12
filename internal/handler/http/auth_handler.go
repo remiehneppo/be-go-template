@@ -239,6 +239,6 @@ func contextString(c *gin.Context, key ctxkeys.Key) string {
 
 func validationError(err error) *apperrors.AppError {
 	return apperrors.Validation("Invalid input", []apperrors.ValidationDetail{
-		{Field: "body", Reason: "invalid_json", Meta: map[string]any{"error": err.Error()}},
+		{Field: "body", Reason: "invalid_json"},
 	})
 }

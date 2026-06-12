@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -73,8 +74,36 @@ func TestAuthHandlerInvalidJSONReturnsValidationError(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), "VALIDATION_ERROR") {
-		t.Fatalf("body = %s", rec.Body.String())
+	var response struct {
+		Success   bool   `json:"success"`
+		RequestID string `json:"request_id"`
+		Error     struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+			Details []struct {
+				Field  string                 `json:"field"`
+				Reason string                 `json:"reason"`
+				Meta   map[string]interface{} `json:"meta"`
+			} `json:"details"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v body = %s", err, rec.Body.String())
+	}
+	if response.Success {
+		t.Fatal("success = true")
+	}
+	if response.Error.Code != "VALIDATION_ERROR" {
+		t.Fatalf("code = %q body = %s", response.Error.Code, rec.Body.String())
+	}
+	if response.Error.Message != "Invalid input" {
+		t.Fatalf("message = %q body = %s", response.Error.Message, rec.Body.String())
+	}
+	if len(response.Error.Details) != 1 || response.Error.Details[0].Field != "body" || response.Error.Details[0].Reason != "invalid_json" {
+		t.Fatalf("details = %+v body = %s", response.Error.Details, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "unexpected EOF") || strings.Contains(rec.Body.String(), "invalid character") {
+		t.Fatalf("body leaked raw bind error: %s", rec.Body.String())
 	}
 }
 
