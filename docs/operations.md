@@ -50,6 +50,8 @@ scrape_configs:
 | Outbox enqueue fails | The caller receives the append error; auth audit calls are best-effort and ignore it. |
 | Outbox worker write fails | The event is marked failed and retried after `process_after`. |
 
+Database calls enforce typed `ReadOptions` and `WriteOptions` before reaching MongoDB. Invalid combinations fail fast, and the lock fallback contract is defined by the option values rather than implicit repository behavior.
+
 ## Health levels
 
 Readiness and monitoring use a shared `HealthLevel` vocabulary:

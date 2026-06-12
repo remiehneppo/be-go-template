@@ -702,7 +702,7 @@ Checklist:
 - [ ] Refresh token reuse revokes token family.
 - [x] Prometheus collectors register without duplicate registration panic.
 - [ ] Context keys không conflict giữa middleware/logger/service.
-- [ ] Database read/write options validate `ReadOptions`/`WriteOptions` và lock fallback đúng policy.
+- [x] Database read/write options validate `ReadOptions`/`WriteOptions` và lock fallback đúng policy.
 - [ ] `FindMany` không cache nếu không có explicit `CacheKey`.
 - [ ] `FindMany` chỉ cache với explicit normalized `CacheKey` và `CacheableFilter`.
 - [ ] Session rotation invalidates `session:id`, old `session:refresh`, and active device list keys.
@@ -711,9 +711,9 @@ Checklist:
 - [x] DeviceID validation rejects invalid/oversized input and never drives security lookup.
 - [x] JWT `kid` validates current and previous key.
 - [x] JWT previous key hết hiệu lực theo `NotAfter`.
-- [ ] Redis blacklist miss falls back to Mongo revoked token repository.
-- [ ] HealthLevel maps dependency latency/error to healthy/degraded/unhealthy.
-- [ ] Rate limit fallback `block/allow` hoạt động đúng khi Redis down.
+- [x] Redis blacklist miss falls back to Mongo revoked token repository.
+- [x] HealthLevel maps dependency latency/error to healthy/degraded/unhealthy.
+- [x] Rate limit fallback `block/allow` hoạt động đúng khi Redis down.
 - [ ] Validation error details use `{field, reason, meta}` schema.
 
 ### 14.2. Handler tests
@@ -847,20 +847,20 @@ Checklist:
 - [x] Monitoring endpoints cung cấp system status, dependency status, runtime metrics, auth stats, recent errors, audit logs.
 - [ ] Monitoring implementation đi qua service/repository/interface, không phụ thuộc trực tiếp driver cụ thể ở handler.
 - [x] `/v1/admin/*` chỉ admin role truy cập được.
-- [ ] Auth endpoints có Redis-backed rate limit.
-- [ ] Refresh token rotation là atomic và detect reuse.
-- [ ] Reuse refresh token cũ revoke toàn bộ token family theo policy.
+- [x] Auth endpoints có Redis-backed rate limit.
+- [x] Refresh token rotation là atomic và detect reuse.
+- [x] Reuse refresh token cũ revoke toàn bộ token family theo policy.
 - [x] `/metrics` expose Prometheus metrics khi bật config.
 - [x] Pagination/filter thống nhất cho login history, audit logs, recent errors.
 - [ ] Mongo-specific query types không leak ra domain/service/handler.
 - [x] `FindMany` cache chỉ hoạt động với explicit normalized `CacheKey` và `CacheableFilter`.
-- [ ] Session rotation invalidates all related old session/refresh/device-list cache keys.
+- [x] Session rotation invalidates all related old session/refresh/device-list cache keys.
 - [x] Audit/error/history events không mất vĩnh viễn khi write tạm fail; outbox retry at-least-once.
 - [ ] DeviceID chỉ là UX hint, được validate, và không dùng làm security lookup.
 - [ ] JWT `kid` rotation hỗ trợ current/previous key và previous key `NotAfter`.
-- [ ] Logout security chịu được Redis restart nhờ Mongo `revoked_tokens` fallback.
-- [ ] Dependency health trả `healthy/degraded/unhealthy` theo threshold config.
-- [ ] `GET /v1/users/me` và device list hỗ trợ ETag/304.
+- [x] Logout security chịu được Redis restart nhờ Mongo `revoked_tokens` fallback.
+- [x] Dependency health trả `healthy/degraded/unhealthy` theo threshold config.
+- [x] `GET /v1/users/me` và device list hỗ trợ ETag/304.
 - [x] Validation errors có field-level stable reason codes.
 - [ ] Database abstraction dùng typed read/write options, lock fallback/strict behavior rõ ràng và test được.
 - [x] `FindMany` cache được enforce bằng `CacheableFilter`, không chỉ là convention.
@@ -868,6 +868,6 @@ Checklist:
 - [x] Token family reuse detection phân biệt active-stale hash, logout, expired session và race theo policy.
 - [x] `cmd/seed` seed được admin đầu tiên mà không qua public register.
 - [x] `cmd/migrate` quản lý index/backfill/schema evolution có version tracking.
-- [ ] Graceful degradation matrix được implement/config rõ cho Redis/Mongo/outbox/rate limit.
+- [x] Graceful degradation matrix được implement/config rõ cho Redis/Mongo/outbox/rate limit.
 - [x] `/healthz` và `/readyz` có behavior khác nhau, timeout rõ ràng.
 - [x] CORS, body size limit, HTTP timeout, Mongo pool, Redis TLS đều có config và validation.
