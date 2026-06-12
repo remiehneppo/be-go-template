@@ -25,7 +25,11 @@ func Authenticate(tokens domainauth.TokenService, sessions domainauth.SessionRep
 		}
 		claims, err := tokens.ValidateAccessToken(c.Request.Context(), rawToken)
 		if err != nil || claims == nil || claims.UserID == "" {
-			writeError(c, apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized))
+			if appErr := apperrors.FromError(err); appErr != nil && appErr.Code != apperrors.CodeInternal {
+				writeError(c, appErr)
+			} else {
+				writeError(c, apperrors.New(apperrors.CodeUnauthorized, "Unauthorized", http.StatusUnauthorized))
+			}
 			c.Abort()
 			return
 		}

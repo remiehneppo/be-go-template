@@ -4,12 +4,14 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/platform/ctxkeys"
+	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
 )
 
@@ -66,6 +68,48 @@ func TestAuthenticateRejectsMissingBearerToken(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAuthenticatePropagatesTokenExpiredError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(Authenticate(&fakeTokenService{err: apperrors.TokenExpired("expired")}, nil))
+	router.GET("/me", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/me", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "TOKEN_EXPIRED") {
+		t.Fatalf("body = %s", rec.Body.String())
+	}
+}
+
+func TestAuthenticatePropagatesTokenRevokedError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(Authenticate(&fakeTokenService{err: apperrors.TokenRevoked("revoked")}, nil))
+	router.GET("/me", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/me", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "TOKEN_REVOKED") {
+		t.Fatalf("body = %s", rec.Body.String())
 	}
 }
 

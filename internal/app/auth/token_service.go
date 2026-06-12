@@ -15,6 +15,7 @@ import (
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
+	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 )
 
 const accessBlacklistPrefix = "token:blacklist:"
@@ -128,6 +129,9 @@ func (s *TokenService) ValidateAccessToken(ctx context.Context, rawToken string)
 		return key.Secret, nil
 	})
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, apperrors.TokenExpired(err.Error())
+		}
 		return nil, err
 	}
 	if !token.Valid {
@@ -141,7 +145,7 @@ func (s *TokenService) ValidateAccessToken(ctx context.Context, rawToken string)
 	if blacklisted, err := s.IsAccessTokenBlacklisted(ctx, accessClaims.TokenID); err != nil {
 		return nil, err
 	} else if blacklisted {
-		return nil, fmt.Errorf("access token revoked")
+		return nil, apperrors.TokenRevoked("access token revoked")
 	}
 	return accessClaims, nil
 }
@@ -208,7 +212,7 @@ func (s *TokenService) keyForID(kid string) (JWTKey, error) {
 	}
 	if s.previous != nil && kid == s.previous.ID {
 		if !s.previous.NotAfter.IsZero() && now.After(s.previous.NotAfter) {
-			return JWTKey{}, fmt.Errorf("previous jwt key expired")
+			return JWTKey{}, apperrors.TokenExpired("previous jwt key expired")
 		}
 		return *s.previous, nil
 	}

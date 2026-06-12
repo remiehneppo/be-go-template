@@ -555,12 +555,12 @@ Checklist:
 
 Checklist:
 
-- [ ] Tạo domain errors: `ErrNotFound`, `ErrUnauthorized`, `ErrForbidden`, `ErrConflict`, `ErrValidation`, `ErrTokenRevoked`, `ErrTokenExpired`.
+- [x] Tạo domain errors: `ErrNotFound`, `ErrUnauthorized`, `ErrForbidden`, `ErrConflict`, `ErrValidation`, `ErrTokenRevoked`, `ErrTokenExpired`.
 - [ ] Tạo `AppError` gồm `Code`, `Message`, `SafeMessage`, `HTTPStatus`, `Cause`, `Details`, `Op`, `Stack`, `Retryable`.
 - [ ] `Op` ghi operation gây lỗi, ví dụ `AuthService.Login`, `SessionRepository.RotateRefreshToken`.
 - [ ] `Stack` chỉ populate ở dev/staging hoặc panic/5xx theo config; không trả stack ra client.
 - [ ] `Retryable` cho client/admin panel biết lỗi có nên retry không.
-- [ ] Tạo error code ổn định: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `INTERNAL_ERROR`, `DEPENDENCY_ERROR`.
+- [x] Tạo error code ổn định: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `INTERNAL_ERROR`, `DEPENDENCY_ERROR`.
 - [ ] Wrap lỗi ở layer thấp bằng cause, không mất lỗi gốc.
 - [ ] Service trả domain/app error, không trả lỗi driver thô trực tiếp lên handler.
 - [x] Repository map Mongo duplicate key sang `ErrConflict`.
@@ -652,7 +652,7 @@ Checklist:
 - [ ] Refresh token chỉ lưu hash.
 - [ ] Access JWT có `sub`, `sid`, `jti`, `iat`, `exp`.
 - [ ] JWT secret đọc từ env.
-- [ ] JWT header có `kid`; token service ký bằng current key và validate bằng current rồi fallback previous nếu configured.
+- [x] JWT header có `kid`; token service ký bằng current key và validate bằng current rồi fallback previous nếu configured.
 - [ ] Refresh token rotation bắt buộc.
 - [ ] Refresh token reuse sau rotation fail.
 - [ ] Logout revoke session và blacklist access token.
@@ -709,8 +709,8 @@ Checklist:
 - [ ] Outbox enqueue/drain/retry handles temporary audit write failure.
 - [ ] Outbox unique `IdempotencyKey` ngăn duplicate khi caller retry sau timeout.
 - [ ] DeviceID validation rejects invalid/oversized input and never drives security lookup.
-- [ ] JWT `kid` validates current and previous key.
-- [ ] JWT previous key hết hiệu lực theo `NotAfter`.
+- [x] JWT `kid` validates current and previous key.
+- [x] JWT previous key hết hiệu lực theo `NotAfter`.
 - [ ] Redis blacklist miss falls back to Mongo revoked token repository.
 - [ ] HealthLevel maps dependency latency/error to healthy/degraded/unhealthy.
 - [ ] Rate limit fallback `block/allow` hoạt động đúng khi Redis down.

@@ -74,6 +74,30 @@ func Validation(message string, details []ValidationDetail) *AppError {
 	}
 }
 
+func TokenExpired(message string) *AppError {
+	if message == "" {
+		message = "Token expired"
+	}
+	return &AppError{
+		Code:        CodeTokenExpired,
+		Message:     message,
+		SafeMessage: "Unauthorized",
+		HTTPStatus:  http.StatusUnauthorized,
+	}
+}
+
+func TokenRevoked(message string) *AppError {
+	if message == "" {
+		message = "Token revoked"
+	}
+	return &AppError{
+		Code:        CodeTokenRevoked,
+		Message:     message,
+		SafeMessage: "Unauthorized",
+		HTTPStatus:  http.StatusUnauthorized,
+	}
+}
+
 func (e *AppError) Error() string {
 	if e == nil {
 		return ""

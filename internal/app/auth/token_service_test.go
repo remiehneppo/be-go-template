@@ -11,6 +11,7 @@ import (
 	domainauth "github.com/remihneppo/be-go-template/internal/domain/auth"
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
+	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 )
 
 func TestTokenServiceGenerateAndValidateAccessToken(t *testing.T) {
@@ -61,6 +62,21 @@ func TestTokenServiceRejectsExpiredPreviousKey(t *testing.T) {
 	}
 }
 
+func TestTokenServiceReturnsExpiredError(t *testing.T) {
+	svc := newTestTokenService(t)
+	svc.now = func() time.Time { return time.Unix(200, 0).UTC() }
+	token := signTestTokenAt(t, "current", []byte("current-secret-value"), time.Unix(100, 0).UTC(), time.Unix(150, 0).UTC())
+
+	_, err := svc.ValidateAccessToken(context.Background(), token)
+	if err == nil {
+		t.Fatal("ValidateAccessToken() error = nil")
+	}
+	var appErr *apperrors.AppError
+	if !errors.As(err, &appErr) || appErr.Code != apperrors.CodeTokenExpired {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestRefreshTokenHashIsStableAndDoesNotExposePlaintext(t *testing.T) {
 	svc := newTestTokenService(t)
 	plain, hash, err := svc.GenerateRefreshToken()
@@ -92,6 +108,27 @@ func TestBlacklistAccessTokenUsesCache(t *testing.T) {
 	}
 	if !got {
 		t.Fatal("IsAccessTokenBlacklisted() = false")
+	}
+}
+
+func TestTokenServiceReturnsRevokedError(t *testing.T) {
+	cacheStore := newMemoryCache()
+	repo := &fakeRevokedRepo{token: &domainauth.RevokedToken{
+		TokenID:   "jti1",
+		ExpiresAt: time.Now().Add(time.Hour),
+		RevokedAt: time.Now(),
+	}}
+	svc := newTestTokenService(t)
+	svc.cache = cacheStore
+	svc.revoked = repo
+
+	_, err := svc.ValidateAccessToken(context.Background(), signTestTokenAt(t, "current", []byte("current-secret-value"), time.Now().Add(-time.Minute), time.Now().Add(time.Minute)))
+	if err == nil {
+		t.Fatal("ValidateAccessToken() error = nil")
+	}
+	var appErr *apperrors.AppError
+	if !errors.As(err, &appErr) || appErr.Code != apperrors.CodeTokenRevoked {
+		t.Fatalf("err = %v", err)
 	}
 }
 
@@ -167,13 +204,18 @@ func keyValue(id string, secret string) string {
 
 func signTestToken(t *testing.T, kid string, secret []byte) string {
 	t.Helper()
+	return signTestTokenAt(t, kid, secret, time.Now().Add(-time.Minute), time.Now().Add(time.Minute))
+}
+
+func signTestTokenAt(t *testing.T, kid string, secret []byte, issuedAt time.Time, expiresAt time.Time) string {
+	t.Helper()
 	claims := jwt.MapClaims{
 		"sub":        "u1",
 		"session_id": "s1",
 		"jti":        "jti1",
 		"roles":      []string{"user"},
-		"iat":        time.Now().Add(-time.Minute).Unix(),
-		"exp":        time.Now().Add(time.Minute).Unix(),
+		"iat":        issuedAt.Unix(),
+		"exp":        expiresAt.Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token.Header["kid"] = kid

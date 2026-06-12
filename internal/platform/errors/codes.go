@@ -9,6 +9,8 @@ const (
 	CodeForbidden       Code = "FORBIDDEN"
 	CodeNotFound        Code = "NOT_FOUND"
 	CodeConflict        Code = "CONFLICT"
+	CodeTokenExpired    Code = "TOKEN_EXPIRED"
+	CodeTokenRevoked    Code = "TOKEN_REVOKED"
 	CodeDependency      Code = "DEPENDENCY_ERROR"
 	CodeRateLimited     Code = "RATE_LIMITED"
 	CodeRequestTooLarge Code = "REQUEST_TOO_LARGE"

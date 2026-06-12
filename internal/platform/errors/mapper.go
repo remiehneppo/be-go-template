@@ -14,6 +14,10 @@ func StatusForCode(code Code) int {
 		return http.StatusNotFound
 	case CodeConflict:
 		return http.StatusConflict
+	case CodeTokenExpired:
+		return http.StatusUnauthorized
+	case CodeTokenRevoked:
+		return http.StatusUnauthorized
 	case CodeDependency:
 		return http.StatusServiceUnavailable
 	case CodeRateLimited:
