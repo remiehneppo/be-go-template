@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -389,6 +390,44 @@ func TestRouterReadyzReturns503WhenNotReady(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"status":"unhealthy"`) {
 		t.Fatalf("body = %s", rec.Body.String())
+	}
+}
+
+func TestRouterHealthzAndReadyzReturnSuccessWhenReady(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		Readiness: &fakeReadiness{ready: true, status: monitoring.DependencyStatus{
+			MongoDB: monitoring.DependencyCheck{Status: monitoring.Healthy},
+			Redis:   monitoring.DependencyCheck{Status: monitoring.Healthy},
+		}},
+	})
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	healthResp, err := http.Get(server.URL + "/healthz")
+	if err != nil {
+		t.Fatalf("healthz request error = %v", err)
+	}
+	defer healthResp.Body.Close()
+	healthBody, err := io.ReadAll(healthResp.Body)
+	if err != nil {
+		t.Fatalf("healthz read error = %v", err)
+	}
+	if healthResp.StatusCode != http.StatusOK || !strings.Contains(string(healthBody), `"success":true`) || !strings.Contains(string(healthBody), `"data"`) {
+		t.Fatalf("healthz = %d body = %s", healthResp.StatusCode, string(healthBody))
+	}
+
+	readyResp, err := http.Get(server.URL + "/readyz")
+	if err != nil {
+		t.Fatalf("readyz request error = %v", err)
+	}
+	defer readyResp.Body.Close()
+	readyBody, err := io.ReadAll(readyResp.Body)
+	if err != nil {
+		t.Fatalf("readyz read error = %v", err)
+	}
+	if readyResp.StatusCode != http.StatusOK || !strings.Contains(string(readyBody), `"success":true`) || !strings.Contains(string(readyBody), `"status":"healthy"`) {
+		t.Fatalf("readyz = %d body = %s", readyResp.StatusCode, string(readyBody))
 	}
 }
 

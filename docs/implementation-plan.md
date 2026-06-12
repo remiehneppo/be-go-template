@@ -743,7 +743,7 @@ Checklist:
 ### 14.3. Integration tests
 
 - [ ] Docker Compose starts MongoDB and Redis.
-- [ ] API boots, `/healthz` returns success, and `/readyz` returns success when dependencies are ready.
+- [x] API boots, `/healthz` returns success, and `/readyz` returns success when dependencies are ready.
 - [x] End-to-end register -> login -> me -> refresh -> logout -> me fails.
 - [x] Logout all invalidates multiple sessions.
 - [ ] Cache key invalidates after user/session update.
