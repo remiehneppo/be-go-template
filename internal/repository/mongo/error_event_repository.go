@@ -21,7 +21,7 @@ func NewErrorEventRepository(db database.Database) *ErrorEventRepository {
 }
 
 func (r *ErrorEventRepository) Append(ctx context.Context, event auth.ErrorEvent) error {
-	return r.db.InsertOne(ctx, errorEventsCollection, errorEventDocumentFromDomain(event), database.WriteOptions{})
+	return mapWriteError(r.db.InsertOne(ctx, errorEventsCollection, errorEventDocumentFromDomain(event), database.WriteOptions{}))
 }
 
 func (r *ErrorEventRepository) List(ctx context.Context, filter auth.ErrorEventFilter, pagination common.Pagination) ([]auth.ErrorEvent, error) {

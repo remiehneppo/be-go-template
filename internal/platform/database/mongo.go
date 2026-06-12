@@ -3,12 +3,14 @@ package database
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var ErrNotFound = errors.New("document not found")
+var ErrConflict = errors.New("document conflict")
 
 type MongoDatabase struct {
 	client *mongo.Client
@@ -97,4 +99,21 @@ func (d *MongoDatabase) Ping(ctx context.Context) error {
 
 func (d *MongoDatabase) Close(ctx context.Context) error {
 	return d.client.Disconnect(ctx)
+}
+
+func IsDuplicateKeyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	type codedError interface {
+		HasErrorCode(int) bool
+	}
+	var ce codedError
+	if errors.As(err, &ce) && ce.HasErrorCode(11000) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+		return true
+	}
+	return false
 }

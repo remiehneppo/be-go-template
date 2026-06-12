@@ -563,8 +563,8 @@ Checklist:
 - [ ] Tạo error code ổn định: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `INTERNAL_ERROR`, `DEPENDENCY_ERROR`.
 - [ ] Wrap lỗi ở layer thấp bằng cause, không mất lỗi gốc.
 - [ ] Service trả domain/app error, không trả lỗi driver thô trực tiếp lên handler.
-- [ ] Repository map Mongo duplicate key sang `ErrConflict`.
-- [ ] Repository map Mongo no documents sang `ErrNotFound`.
+- [x] Repository map Mongo duplicate key sang `ErrConflict`.
+- [x] Repository map Mongo no documents sang `ErrNotFound`.
 - [ ] Cache/database map dependency timeout sang `DEPENDENCY_ERROR`.
 - [ ] Handler map domain error sang HTTP status.
 - [ ] Response lỗi thống nhất: `code`, `message`, `request_id`, `details` nếu là validation error an toàn.

@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"reflect"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodrv "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func TestUserRepositoryFindByEmailNormalizesAndCaches(t *testing.T) {
@@ -111,6 +113,16 @@ func TestUserRepositoryResetLoginFailuresUnsetsLock(t *testing.T) {
 	}
 	if _, ok := update["$unset"].(bson.M); !ok {
 		t.Fatalf("update = %#v", update)
+	}
+}
+
+func TestUserRepositoryCreateMapsDuplicateKeyToConflict(t *testing.T) {
+	db := &fakeDB{insertErr: mongodrv.WriteException{WriteErrors: mongodrv.WriteErrors{{Code: 11000, Message: "duplicate key"}}}}
+	repo := NewUserRepository(db)
+
+	err := repo.Create(context.Background(), user.User{ID: "u1", Email: "user@example.com"})
+	if !errors.Is(err, database.ErrConflict) {
+		t.Fatalf("Create() error = %v", err)
 	}
 }
 
@@ -289,6 +301,7 @@ func TestErrorEventRepositoryAppendAndList(t *testing.T) {
 type fakeDB struct {
 	findOneValue  any
 	findManyValue any
+	insertErr     error
 
 	lastCollection   string
 	lastFilter       any
@@ -329,7 +342,7 @@ func (d *fakeDB) InsertOne(ctx context.Context, collection string, document any,
 	d.insertCalls++
 	d.lastCollection = collection
 	d.lastWriteOptions = opts
-	return nil
+	return d.insertErr
 }
 
 func (d *fakeDB) UpdateOne(ctx context.Context, collection string, filter any, update any, opts database.WriteOptions) error {

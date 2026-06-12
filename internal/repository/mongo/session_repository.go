@@ -21,9 +21,10 @@ func NewSessionRepository(db database.Database) *SessionRepository {
 
 func (r *SessionRepository) Create(ctx context.Context, session auth.Session) error {
 	doc := sessionDocumentFromDomain(session)
-	return r.db.InsertOne(ctx, sessionsCollection, doc, database.WriteOptions{
+	err := r.db.InsertOne(ctx, sessionsCollection, doc, database.WriteOptions{
 		InvalidateKeys: []string{sessionIDKey(session.ID), sessionRefreshKey(session.RefreshTokenHash), userActiveSessionsKey(session.UserID)},
 	})
+	return mapWriteError(err)
 }
 
 func (r *SessionRepository) FindActiveByID(ctx context.Context, sessionID string) (*auth.Session, error) {

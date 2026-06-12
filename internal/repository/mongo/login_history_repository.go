@@ -21,7 +21,7 @@ func NewLoginHistoryRepository(db database.Database) *LoginHistoryRepository {
 }
 
 func (r *LoginHistoryRepository) Append(ctx context.Context, event auth.LoginHistory) error {
-	return r.db.InsertOne(ctx, loginHistoryCollection, loginHistoryDocumentFromDomain(event), database.WriteOptions{})
+	return mapWriteError(r.db.InsertOne(ctx, loginHistoryCollection, loginHistoryDocumentFromDomain(event), database.WriteOptions{}))
 }
 
 func (r *LoginHistoryRepository) ListByUserID(ctx context.Context, userID string, pagination common.Pagination) ([]auth.LoginHistory, error) {

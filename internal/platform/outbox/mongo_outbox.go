@@ -37,7 +37,14 @@ func (o *MongoOutbox) Enqueue(ctx context.Context, event Event) error {
 		event.CreatedAt = now
 	}
 	event.UpdatedAt = now
-	return o.db.InsertOne(ctx, collectionName, documentFromEvent(event), database.WriteOptions{})
+	err := o.db.InsertOne(ctx, collectionName, documentFromEvent(event), database.WriteOptions{})
+	if database.IsDuplicateKeyError(err) {
+		if event.IdempotencyKey != "" {
+			return nil
+		}
+		return database.ErrConflict
+	}
+	return err
 }
 
 func (o *MongoOutbox) ClaimBatch(ctx context.Context, limit int) ([]Event, error) {

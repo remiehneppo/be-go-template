@@ -21,9 +21,10 @@ func NewUserRepository(db database.Database) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, usr user.User) error {
 	doc := userDocumentFromDomain(usr)
-	return r.db.InsertOne(ctx, usersCollection, doc, database.WriteOptions{
+	err := r.db.InsertOne(ctx, usersCollection, doc, database.WriteOptions{
 		InvalidateKeys: []string{userIDKey(usr.ID), userEmailKey(usr.Email)},
 	})
+	return mapWriteError(err)
 }
 
 func (r *UserRepository) FindByID(ctx context.Context, id string) (*user.User, error) {

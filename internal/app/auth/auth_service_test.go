@@ -10,6 +10,7 @@ import (
 	"github.com/remihneppo/be-go-template/internal/domain/common"
 	"github.com/remihneppo/be-go-template/internal/domain/user"
 	"github.com/remihneppo/be-go-template/internal/platform/database"
+	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 )
 
 func TestNewIDFallsBackWithoutPanic(t *testing.T) {
@@ -63,6 +64,28 @@ func TestServiceRegisterCreatesUserSessionAndTokens(t *testing.T) {
 	}
 	if len(audit.events) != 1 || audit.events[0].Action != "auth.register" {
 		t.Fatalf("audit = %+v", audit.events)
+	}
+}
+
+func TestServiceRegisterMapsConflict(t *testing.T) {
+	users := &fakeUserRepository{findErr: database.ErrNotFound, createErr: database.ErrConflict}
+	service := NewService(ServiceDependencies{
+		Users:      users,
+		Sessions:   &fakeSessionRepository{},
+		Tokens:     &fakeTokenService{},
+		Passwords:  fakePasswordHasher{hash: "hashed-password"},
+		RefreshTTL: time.Hour,
+	})
+	service.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	_, err := service.Register(context.Background(), domainauth.RegisterInput{
+		Email:    "user@example.com",
+		Password: "password123",
+		Name:     "User",
+	})
+	appErr := apperrors.FromError(err)
+	if appErr == nil || appErr.Code != apperrors.CodeConflict {
+		t.Fatalf("Register() error = %v", err)
 	}
 }
 
@@ -386,6 +409,7 @@ type fakeUserRepository struct {
 	found              *user.User
 	findErr            error
 	created            user.User
+	createErr          error
 	lastLoginUserID    string
 	resetFailureUserID string
 	failedAttempts     int
@@ -394,7 +418,7 @@ type fakeUserRepository struct {
 
 func (r *fakeUserRepository) Create(ctx context.Context, usr user.User) error {
 	r.created = usr
-	return nil
+	return r.createErr
 }
 
 func (r *fakeUserRepository) FindByID(ctx context.Context, id string) (*user.User, error) {

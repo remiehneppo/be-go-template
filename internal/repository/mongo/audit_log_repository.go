@@ -21,7 +21,7 @@ func NewAuditLogRepository(db database.Database) *AuditLogRepository {
 }
 
 func (r *AuditLogRepository) Append(ctx context.Context, event auth.AuditLog) error {
-	return r.db.InsertOne(ctx, auditLogsCollection, auditLogDocumentFromDomain(event), database.WriteOptions{})
+	return mapWriteError(r.db.InsertOne(ctx, auditLogsCollection, auditLogDocumentFromDomain(event), database.WriteOptions{}))
 }
 
 func (r *AuditLogRepository) List(ctx context.Context, filter auth.AuditLogFilter, pagination common.Pagination) ([]auth.AuditLog, error) {

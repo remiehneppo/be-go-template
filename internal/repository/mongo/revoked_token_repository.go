@@ -20,7 +20,7 @@ func NewRevokedTokenRepository(db database.Database) *RevokedTokenRepository {
 }
 
 func (r *RevokedTokenRepository) Append(ctx context.Context, token auth.RevokedToken) error {
-	return r.db.InsertOne(ctx, revokedTokensCollection, revokedTokenDocumentFromDomain(token), database.WriteOptions{})
+	return mapWriteError(r.db.InsertOne(ctx, revokedTokensCollection, revokedTokenDocumentFromDomain(token), database.WriteOptions{}))
 }
 
 func (r *RevokedTokenRepository) FindByTokenID(ctx context.Context, tokenID string) (*auth.RevokedToken, error) {

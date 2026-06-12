@@ -9,6 +9,7 @@ import (
 
 	"github.com/remihneppo/be-go-template/internal/platform/database"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodrv "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func TestMongoOutboxEnqueueDefaults(t *testing.T) {
@@ -23,6 +24,28 @@ func TestMongoOutboxEnqueueDefaults(t *testing.T) {
 	doc := db.inserted.(eventDocument)
 	if doc.Status != StatusPending || doc.MaxRetries != 10 || !doc.ProcessAfter.Equal(time.Unix(10, 0).UTC()) {
 		t.Fatalf("document = %+v", doc)
+	}
+}
+
+func TestMongoOutboxEnqueueIgnoresDuplicateIdempotencyKey(t *testing.T) {
+	db := &fakeDatabase{insertErr: mongodrv.WriteException{WriteErrors: mongodrv.WriteErrors{{Code: 11000, Message: "duplicate key"}}}}
+	out := NewMongoOutbox(db)
+	out.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	err := out.Enqueue(context.Background(), Event{ID: "e1", IdempotencyKey: "k1", Type: "audit"})
+	if err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+}
+
+func TestMongoOutboxEnqueueReturnsConflictWithoutIdempotencyKey(t *testing.T) {
+	db := &fakeDatabase{insertErr: mongodrv.WriteException{WriteErrors: mongodrv.WriteErrors{{Code: 11000, Message: "duplicate key"}}}}
+	out := NewMongoOutbox(db)
+	out.now = func() time.Time { return time.Unix(10, 0).UTC() }
+
+	err := out.Enqueue(context.Background(), Event{ID: "e1", Type: "audit"})
+	if !errors.Is(err, database.ErrConflict) {
+		t.Fatalf("Enqueue() error = %v", err)
 	}
 }
 
@@ -82,6 +105,7 @@ func TestWorkerDrainOnceMarksDoneAndFailed(t *testing.T) {
 type fakeDatabase struct {
 	inserted       any
 	findManyValue  any
+	insertErr      error
 	lastUpdate     any
 	updateOneCalls int
 }
@@ -96,7 +120,7 @@ func (d *fakeDatabase) FindMany(ctx context.Context, collection string, filter a
 
 func (d *fakeDatabase) InsertOne(ctx context.Context, collection string, document any, opts database.WriteOptions) error {
 	d.inserted = document
-	return nil
+	return d.insertErr
 }
 
 func (d *fakeDatabase) UpdateOne(ctx context.Context, collection string, filter any, update any, opts database.WriteOptions) error {

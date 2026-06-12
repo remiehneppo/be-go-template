@@ -95,6 +95,9 @@ func (s *Service) Register(ctx context.Context, input domainauth.RegisterInput) 
 	usr := user.New(email, passwordHash, input.Name, now)
 	usr.ID = newID()
 	if err := s.users.Create(ctx, usr); err != nil {
+		if errors.Is(err, database.ErrConflict) {
+			return nil, apperrors.New(apperrors.CodeConflict, "Email already exists", http.StatusConflict)
+		}
 		return nil, err
 	}
 	result, err := s.issueAuthResult(ctx, usr, domainauth.RequestMeta{})
