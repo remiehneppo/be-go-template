@@ -731,8 +731,8 @@ Checklist:
 - [x] Login history endpoint paginates.
 - [x] Error response always includes `request_id`.
 - [x] Response header always includes `X-Request-ID`.
-- [ ] Monitoring endpoints require auth/admin guard.
-- [ ] Monitoring status/dependencies/runtime endpoints return expected shape.
+- [x] Monitoring endpoints require auth/admin guard.
+- [x] Monitoring status/dependencies/runtime endpoints return expected shape.
 - [ ] User role cannot access `/v1/admin/*`.
 - [ ] Admin role can access `/v1/admin/*`.
 - [ ] Auth rate limit returns 429 when exceeded.

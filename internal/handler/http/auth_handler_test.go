@@ -491,6 +491,57 @@ func TestAdminMonitoringStatusAllowsAdminRole(t *testing.T) {
 	}
 }
 
+func TestAdminMonitoringRoutesRequireAdminAndReturnExpectedShapes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
+		Monitoring: &fakeMonitoringService{
+			status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test"},
+			dependencies: &monitoring.DependencyStatus{
+				MongoDB: monitoring.DependencyCheck{Status: monitoring.Healthy},
+				Redis:   monitoring.DependencyCheck{Status: monitoring.Degraded, Error: "redis slow"},
+			},
+			runtime: &monitoring.RuntimeMetrics{Goroutines: 7},
+		},
+		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
+			UserID:    "admin1",
+			SessionID: "s1",
+			TokenID:   "jti1",
+			Roles:     []string{"admin"},
+		}},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/status", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("missing token status = %d body = %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/status", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"service_name":"api"`) {
+		t.Fatalf("status body = %s", rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/dependencies", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"redis"`) {
+		t.Fatalf("dependencies body = %s", rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/admin/monitoring/runtime", nil)
+	req.Header.Set("Authorization", "Bearer access-token")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"goroutines":7`) {
+		t.Fatalf("runtime body = %s", rec.Body.String())
+	}
+}
+
 func testConfig() config.Config {
 	cfg, err := config.Load()
 	if err != nil {
@@ -565,7 +616,9 @@ func (r *fakeReadiness) Check(ctx context.Context) (monitoring.DependencyStatus,
 }
 
 type fakeMonitoringService struct {
-	status *monitoring.SystemStatus
+	status       *monitoring.SystemStatus
+	dependencies *monitoring.DependencyStatus
+	runtime      *monitoring.RuntimeMetrics
 }
 
 func (s *fakeMonitoringService) GetSystemStatus(ctx context.Context) (*monitoring.SystemStatus, error) {
@@ -573,10 +626,16 @@ func (s *fakeMonitoringService) GetSystemStatus(ctx context.Context) (*monitorin
 }
 
 func (s *fakeMonitoringService) GetRuntimeMetrics(ctx context.Context) (*monitoring.RuntimeMetrics, error) {
+	if s.runtime != nil {
+		return s.runtime, nil
+	}
 	return &monitoring.RuntimeMetrics{}, nil
 }
 
 func (s *fakeMonitoringService) GetDependencyStatus(ctx context.Context) (*monitoring.DependencyStatus, error) {
+	if s.dependencies != nil {
+		return s.dependencies, nil
+	}
 	return &monitoring.DependencyStatus{}, nil
 }
 
