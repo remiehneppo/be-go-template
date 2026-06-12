@@ -105,6 +105,31 @@ func TestRateLimitFallbackDefaultsToBlockInProduction(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsInvalidMongoPoolConfig(t *testing.T) {
+	t.Setenv("MONGO_MAX_POOL_SIZE", "0")
+	t.Setenv("MONGO_MIN_POOL_SIZE", "1")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if got, want := err.Error(), "MONGO_MAX_POOL_SIZE must be positive"; got != want {
+		t.Fatalf("Load() error = %q, want %q", got, want)
+	}
+}
+
+func TestValidateRejectsInvalidMongoReadPreference(t *testing.T) {
+	t.Setenv("MONGO_READ_PREFERENCE", "random")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if got, want := err.Error(), "MONGO_READ_PREFERENCE must be one of primary, primaryPreferred, secondary, secondaryPreferred, nearest"; got != want {
+		t.Fatalf("Load() error = %q, want %q", got, want)
+	}
+}
+
 func TestValidateRejectsWildcardCorsInProduction(t *testing.T) {
 	t.Setenv("APP_ENV", "production")
 	t.Setenv("CORS_ALLOWED_ORIGINS", "https://example.com,https://*.example.com")

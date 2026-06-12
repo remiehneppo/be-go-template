@@ -230,8 +230,8 @@ func run() error {
 func connectMongo(ctx context.Context, cfg config.Config) (*mongo.Client, error) {
 	clientOptions := options.Client().
 		ApplyURI(cfg.Mongo.URI).
-		SetMaxPoolSize(cfg.Mongo.MaxPoolSize).
-		SetMinPoolSize(cfg.Mongo.MinPoolSize).
+		SetMaxPoolSize(uint64(cfg.Mongo.MaxPoolSize)).
+		SetMinPoolSize(uint64(cfg.Mongo.MinPoolSize)).
 		SetConnectTimeout(cfg.Mongo.ConnectTimeout).
 		SetReadPreference(readPreference(cfg.Mongo.ReadPreference))
 	client, err := mongo.Connect(clientOptions)

@@ -62,8 +62,8 @@ type JWTConfig struct {
 type MongoConfig struct {
 	URI            string
 	Database       string
-	MaxPoolSize    uint64
-	MinPoolSize    uint64
+	MaxPoolSize    int64
+	MinPoolSize    int64
 	ConnectTimeout time.Duration
 	ReadPreference string
 }
@@ -150,8 +150,8 @@ func Load() (Config, error) {
 		Mongo: MongoConfig{
 			URI:            getString("MONGO_URI", "mongodb://localhost:27017"),
 			Database:       getString("MONGO_DATABASE", "be_go_template"),
-			MaxPoolSize:    uint64(getInt64("MONGO_MAX_POOL_SIZE", 100)),
-			MinPoolSize:    uint64(getInt64("MONGO_MIN_POOL_SIZE", 0)),
+			MaxPoolSize:    getInt64("MONGO_MAX_POOL_SIZE", 100),
+			MinPoolSize:    getInt64("MONGO_MIN_POOL_SIZE", 0),
 			ConnectTimeout: getDuration("MONGO_CONNECT_TIMEOUT", 10*time.Second),
 			ReadPreference: getString("MONGO_READ_PREFERENCE", "primary"),
 		},
@@ -222,6 +222,20 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.HTTP.RouteTimeout <= 0 {
 		return fmt.Errorf("ROUTE_TIMEOUT_DEFAULT must be positive")
+	}
+	if cfg.Mongo.MaxPoolSize <= 0 {
+		return fmt.Errorf("MONGO_MAX_POOL_SIZE must be positive")
+	}
+	if cfg.Mongo.MinPoolSize < 0 {
+		return fmt.Errorf("MONGO_MIN_POOL_SIZE must not be negative")
+	}
+	if cfg.Mongo.MinPoolSize > cfg.Mongo.MaxPoolSize {
+		return fmt.Errorf("MONGO_MIN_POOL_SIZE must not exceed MONGO_MAX_POOL_SIZE")
+	}
+	switch cfg.Mongo.ReadPreference {
+	case "primary", "primaryPreferred", "secondary", "secondaryPreferred", "nearest":
+	default:
+		return fmt.Errorf("MONGO_READ_PREFERENCE must be one of primary, primaryPreferred, secondary, secondaryPreferred, nearest")
 	}
 	switch cfg.Log.Level {
 	case "debug", "info", "warn", "error":

@@ -822,7 +822,7 @@ Checklist:
 - [x] Graceful shutdown dừng HTTP server, Mongo/Redis client, Prometheus/metrics routines, outbox worker, logger flush.
 - [x] Request body size limit và response/per-route timeout được test.
 - [x] CORS production không cho wildcard và startup fail nếu config thiếu.
-- [ ] Mongo pool/read preference config được validate.
+- [x] Mongo pool/read preference config được validate.
 - [ ] Redis TLS config được document và parse đúng.
 
 ## 17. Acceptance criteria

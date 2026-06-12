@@ -86,6 +86,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | `REDIS_DEGRADED_THRESHOLD` | `200ms` |
 
 Production startup requires explicit non-wildcard `CORS_ALLOWED_ORIGINS`.
+`MONGO_READ_PREFERENCE` accepts `primary`, `primaryPreferred`, `secondary`, `secondaryPreferred`, or `nearest`.
 
 JWT key format:
 
