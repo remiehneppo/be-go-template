@@ -232,6 +232,7 @@ X-Device-Name: <human-readable-device-name>
 - Error responses use a stable envelope with `success`, `request_id`, and structured `error`.
 - Prometheus metrics are exposed at `METRICS_PATH`.
 - Admin monitoring endpoints expose runtime, dependency, auth, audit, and recent error views.
+- Error responses use stable codes such as `VALIDATION_ERROR`, `UNAUTHORIZED`, `CONFLICT`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `DEPENDENCY_ERROR`, `RATE_LIMITED`, `REQUEST_TOO_LARGE`, and `TIMEOUT`.
 
 Prometheus metrics use the `be_go_template` namespace by default and include:
 

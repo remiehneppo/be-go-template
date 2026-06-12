@@ -738,7 +738,7 @@ Checklist:
 - [ ] Auth rate limit returns 429 when exceeded.
 - [x] `/metrics` returns Prometheus exposition format when enabled.
 - [x] `GET /v1/users/me` and device list return 304 for matching ETag.
-- [ ] Validation errors return field-level details with stable reason codes.
+- [x] Validation errors return field-level details with stable reason codes.
 
 ### 14.3. Integration tests
 
@@ -767,7 +767,7 @@ Checklist:
 - [ ] Ghi cách mock database/cache/repository/service khi test.
 - [ ] Ghi policy refresh token rotation và logout invalidation.
 - [ ] Ghi logging config, log format, log file path, rotation policy.
-- [ ] Ghi error response format và error code table.
+- [x] Ghi error response format và error code table.
 - [ ] Ghi monitoring endpoints phục vụ admin panel.
 - [ ] Ghi RBAC/admin role policy.
 - [x] Ghi pagination/filter convention.
@@ -861,7 +861,7 @@ Checklist:
 - [ ] Logout security chịu được Redis restart nhờ Mongo `revoked_tokens` fallback.
 - [ ] Dependency health trả `healthy/degraded/unhealthy` theo threshold config.
 - [ ] `GET /v1/users/me` và device list hỗ trợ ETag/304.
-- [ ] Validation errors có field-level stable reason codes.
+- [x] Validation errors có field-level stable reason codes.
 - [ ] Database abstraction dùng typed read/write options, lock fallback/strict behavior rõ ràng và test được.
 - [x] `FindMany` cache được enforce bằng `CacheableFilter`, không chỉ là convention.
 - [x] Outbox có unique `IdempotencyKey` và worker idempotent để tránh duplicate audit/history.

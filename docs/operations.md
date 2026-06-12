@@ -114,6 +114,25 @@ Validation errors use a stable schema:
 }
 ```
 
+Error code table:
+
+| Code | HTTP status | Typical source |
+| --- | --- | --- |
+| `INTERNAL_ERROR` | 500 | Unknown/unwrapped server error |
+| `VALIDATION_ERROR` | 400 | Input validation, bind, or schema checks |
+| `UNAUTHORIZED` | 401 | Missing/invalid credentials |
+| `FORBIDDEN` | 403 | Authenticated but not allowed |
+| `NOT_FOUND` | 404 | Missing resource |
+| `CONFLICT` | 409 | Duplicate key or state conflict |
+| `TOKEN_EXPIRED` | 401 | Expired JWT or expired previous JWT key overlap |
+| `TOKEN_REVOKED` | 401 | Logout or blacklist hit |
+| `DEPENDENCY_ERROR` | 503 | Mongo/Redis/other dependency unavailable |
+| `RATE_LIMITED` | 429 | Auth or endpoint rate limit exceeded |
+| `REQUEST_TOO_LARGE` | 413 | Request body exceeds configured limit |
+| `TIMEOUT` | 504 | Request timeout middleware or dependency deadline |
+
+Internal `AppError` values wrap the underlying cause for logging and tracing. Client responses should only use the safe `message` and `details` fields.
+
 ## Auth rate limit
 
 Auth endpoints use Redis-backed rate limiting with per-endpoint keys:
