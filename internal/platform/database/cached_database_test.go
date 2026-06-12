@@ -83,6 +83,9 @@ func TestCachedDatabaseFindManyRequiresCacheableFilter(t *testing.T) {
 	err := db.FindMany(context.Background(), "docs", map[string]string{"name": "x"}, &got, ReadOptions{
 		CacheKey: "docs:list",
 		CacheTTL: time.Minute,
+		Limit:    25,
+		Offset:   10,
+		Sort:     map[string]int{"created_at": -1},
 	})
 	if err != nil {
 		t.Fatalf("FindMany() error = %v", err)
@@ -92,6 +95,9 @@ func TestCachedDatabaseFindManyRequiresCacheableFilter(t *testing.T) {
 	}
 	if cacheStore.setCalls != 0 {
 		t.Fatalf("cache set calls = %d", cacheStore.setCalls)
+	}
+	if base.lastFindManyOpts.Limit != 25 || base.lastFindManyOpts.Offset != 10 || base.lastFindManyOpts.Sort == nil {
+		t.Fatalf("preserved opts = %+v", base.lastFindManyOpts)
 	}
 }
 
@@ -169,12 +175,13 @@ type fakeDatabase struct {
 	findOneValue  any
 	findManyValue any
 
-	findOneCalls    int
-	findManyCalls   int
-	insertCalls     int
-	updateCalls     int
-	updateManyCalls int
-	deleteCalls     int
+	findOneCalls     int
+	findManyCalls    int
+	insertCalls      int
+	updateCalls      int
+	updateManyCalls  int
+	deleteCalls      int
+	lastFindManyOpts ReadOptions
 }
 
 func (d *fakeDatabase) FindOne(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
@@ -184,6 +191,7 @@ func (d *fakeDatabase) FindOne(ctx context.Context, collection string, filter an
 
 func (d *fakeDatabase) FindMany(ctx context.Context, collection string, filter any, dest any, opts ReadOptions) error {
 	d.findManyCalls++
+	d.lastFindManyOpts = opts
 	return copyValue(dest, d.findManyValue)
 }
 

@@ -184,9 +184,9 @@ Checklist:
 - [ ] Nếu read lock fail và `LockOnMiss=true`, fallback mặc định là đọc thẳng MongoDB, log warning, không fail API.
 - [ ] Database abstraction dùng write lock/invalidation để tránh stale read sau write.
 - [ ] Nếu write lock fail và `WriteOptions.StrictLock=true`, write fail với `DEPENDENCY_ERROR`; nếu `StrictLock=false`, ghi MongoDB rồi invalidate best-effort.
-- [ ] `FindMany` chỉ cache khi filter implement `CacheableFilter` và caller truyền `CacheKey` deterministic.
+- [x] `FindMany` chỉ cache khi filter implement `CacheableFilter` và caller truyền `CacheKey` deterministic.
 - [ ] Nếu `FindMany` có `CacheKey` nhưng filter không implement `CacheableFilter`, skip cache và log warning ở production; có thể fail/panic trong dev/test theo config.
-- [ ] Unit test cached database với mock base database và mock cache.
+- [x] Unit test cached database với mock base database và mock cache.
 
 ### 3.3. Repository interfaces
 

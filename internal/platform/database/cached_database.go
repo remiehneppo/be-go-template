@@ -45,7 +45,7 @@ func (d *CachedDatabase) FindMany(ctx context.Context, collection string, filter
 	}
 	if _, ok := filter.(CacheableFilter); !ok {
 		d.log.Warn("FindMany cache skipped because filter is not CacheableFilter", logger.String("cache_key", opts.CacheKey))
-		return d.base.FindMany(ctx, collection, filter, dest, ReadOptions{})
+		return d.base.FindMany(ctx, collection, filter, dest, opts)
 	}
 	return d.readThrough(ctx, opts, dest, func() error {
 		return d.base.FindMany(ctx, collection, filter, dest, opts)
