@@ -240,6 +240,15 @@ func (cfg Config) Validate() error {
 	if cfg.HTTP.BodyLimitBytes <= 0 {
 		return fmt.Errorf("HTTP_BODY_LIMIT_BYTES must be positive")
 	}
+	if cfg.HTTP.ReadTimeout <= 0 {
+		return fmt.Errorf("HTTP_READ_TIMEOUT must be positive")
+	}
+	if cfg.HTTP.WriteTimeout <= 0 {
+		return fmt.Errorf("HTTP_WRITE_TIMEOUT must be positive")
+	}
+	if cfg.HTTP.IdleTimeout <= 0 {
+		return fmt.Errorf("HTTP_IDLE_TIMEOUT must be positive")
+	}
 	if cfg.HTTP.RouteTimeout <= 0 {
 		return fmt.Errorf("ROUTE_TIMEOUT_DEFAULT must be positive")
 	}

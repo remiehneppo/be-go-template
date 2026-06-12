@@ -23,6 +23,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.HTTP.BodyLimitBytes != 1<<20 {
 		t.Fatalf("BodyLimitBytes = %d", cfg.HTTP.BodyLimitBytes)
 	}
+	if cfg.HTTP.ReadTimeout != 5*time.Second || cfg.HTTP.WriteTimeout != 10*time.Second || cfg.HTTP.IdleTimeout != 60*time.Second || cfg.HTTP.RouteTimeout != 5*time.Second {
+		t.Fatalf("HTTP timeouts = %+v", cfg.HTTP)
+	}
 	if !cfg.HTTP.ETagEnabled {
 		t.Fatal("HTTP.ETagEnabled = false")
 	}
@@ -114,6 +117,35 @@ func TestValidateRequiresRotationConfigWhenFileLoggingEnabled(t *testing.T) {
 
 	if err := cfg.Validate(); err == nil {
 		t.Fatal("Validate() error = nil")
+	}
+}
+
+func TestValidateRejectsInvalidHTTPTimeouts(t *testing.T) {
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	cfg.HTTP.ReadTimeout = 0
+	if err := cfg.Validate(); err == nil || err.Error() != "HTTP_READ_TIMEOUT must be positive" {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	cfg.HTTP.WriteTimeout = 0
+	if err := cfg.Validate(); err == nil || err.Error() != "HTTP_WRITE_TIMEOUT must be positive" {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	cfg.HTTP.IdleTimeout = 0
+	if err := cfg.Validate(); err == nil || err.Error() != "HTTP_IDLE_TIMEOUT must be positive" {
+		t.Fatalf("Validate() error = %v", err)
 	}
 }
 
