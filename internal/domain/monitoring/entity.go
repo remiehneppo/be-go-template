@@ -11,10 +11,13 @@ const (
 )
 
 type SystemStatus struct {
-	Status      HealthLevel `json:"status"`
-	ServiceName string      `json:"service_name"`
-	Version     string      `json:"version"`
-	CheckedAt   time.Time   `json:"checked_at"`
+	Status        HealthLevel `json:"status"`
+	ServiceName   string      `json:"service_name"`
+	Version       string      `json:"version"`
+	Env           string      `json:"env"`
+	StartedAt     time.Time   `json:"started_at"`
+	UptimeSeconds int64       `json:"uptime_seconds"`
+	CheckedAt     time.Time   `json:"checked_at"`
 }
 
 type RuntimeMetrics struct {

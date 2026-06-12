@@ -18,6 +18,7 @@ type DependencyChecker interface {
 type Dependencies struct {
 	ServiceName       string
 	Version           string
+	Env               string
 	StartedAt         time.Time
 	DependencyChecker DependencyChecker
 	AuthStats         domainmonitoring.AuthStatsRepository
@@ -31,6 +32,7 @@ type Dependencies struct {
 type Service struct {
 	serviceName       string
 	version           string
+	env               string
 	startedAt         time.Time
 	dependencyChecker DependencyChecker
 	authStats         domainmonitoring.AuthStatsRepository
@@ -58,6 +60,10 @@ func NewService(deps Dependencies) *Service {
 	if version == "" {
 		version = "dev"
 	}
+	env := deps.Env
+	if env == "" {
+		env = "local"
+	}
 	statsTTL := deps.AuthStatsTTL
 	if statsTTL <= 0 {
 		statsTTL = 30 * time.Second
@@ -65,6 +71,7 @@ func NewService(deps Dependencies) *Service {
 	return &Service{
 		serviceName:       serviceName,
 		version:           version,
+		env:               env,
 		startedAt:         startedAt,
 		dependencyChecker: deps.DependencyChecker,
 		authStats:         deps.AuthStats,
@@ -78,6 +85,7 @@ func NewService(deps Dependencies) *Service {
 
 func (s *Service) GetSystemStatus(ctx context.Context) (*domainmonitoring.SystemStatus, error) {
 	status := domainmonitoring.Healthy
+	now := s.now()
 	if s.dependencyChecker != nil {
 		dependencies, ready := s.dependencyChecker.Check(ctx)
 		if !ready {
@@ -89,10 +97,13 @@ func (s *Service) GetSystemStatus(ctx context.Context) (*domainmonitoring.System
 		}
 	}
 	return &domainmonitoring.SystemStatus{
-		Status:      status,
-		ServiceName: s.serviceName,
-		Version:     s.version,
-		CheckedAt:   s.now(),
+		Status:        status,
+		ServiceName:   s.serviceName,
+		Version:       s.version,
+		Env:           s.env,
+		StartedAt:     s.startedAt,
+		UptimeSeconds: int64(now.Sub(s.startedAt).Seconds()),
+		CheckedAt:     now,
 	}, nil
 }
 

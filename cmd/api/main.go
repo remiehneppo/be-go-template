@@ -174,7 +174,8 @@ func run() error {
 	})
 	monitoringService := appmonitoring.NewService(appmonitoring.Dependencies{
 		ServiceName:       cfg.App.Name,
-		Version:           cfg.App.Env,
+		Version:           cfg.App.Version,
+		Env:               cfg.App.Env,
 		StartedAt:         time.Now().UTC(),
 		DependencyChecker: readiness,
 		AuthStats:         monitoringStatsRepo,

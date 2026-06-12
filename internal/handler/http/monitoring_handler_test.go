@@ -21,10 +21,13 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &monitoringServiceStub{
 		status: &domainmonitoring.SystemStatus{
-			Status:      domainmonitoring.Degraded,
-			ServiceName: "api",
-			Version:     "test",
-			CheckedAt:   time.Unix(10, 0).UTC(),
+			Status:        domainmonitoring.Degraded,
+			ServiceName:   "api",
+			Version:       "test",
+			Env:           "production",
+			StartedAt:     time.Unix(1, 0).UTC(),
+			UptimeSeconds: 9,
+			CheckedAt:     time.Unix(10, 0).UTC(),
 		},
 		dependencies: &domainmonitoring.DependencyStatus{
 			MongoDB: domainmonitoring.DependencyCheck{Status: domainmonitoring.Healthy},
@@ -55,7 +58,7 @@ func TestMonitoringRoutesReturnPayloadsAndQueryParams(t *testing.T) {
 		path   string
 		want   string
 	}{
-		{name: "status", method: http.MethodGet, path: "/v1/admin/monitoring/status", want: `"service_name":"api"`},
+		{name: "status", method: http.MethodGet, path: "/v1/admin/monitoring/status", want: `"env":"production"`},
 		{name: "dependencies", method: http.MethodGet, path: "/v1/admin/monitoring/dependencies", want: `"redis down"`},
 		{name: "runtime", method: http.MethodGet, path: "/v1/admin/monitoring/runtime", want: `"goroutines":4`},
 		{name: "auth stats", method: http.MethodGet, path: "/v1/admin/monitoring/auth-stats?from=1970-01-01T00:01:40Z&to=1970-01-01T00:03:20Z", want: `"login_success_count":3`},

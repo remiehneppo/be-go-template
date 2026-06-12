@@ -28,8 +28,9 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Name string
-	Env  string
+	Name    string
+	Version string
+	Env     string
 }
 
 type HTTPConfig struct {
@@ -133,8 +134,9 @@ type ReadinessConfig struct {
 func Load() (Config, error) {
 	cfg := Config{
 		App: AppConfig{
-			Name: getString("APP_NAME", "be-go-template"),
-			Env:  getString("APP_ENV", "local"),
+			Name:    getString("APP_NAME", "be-go-template"),
+			Version: getString("APP_VERSION", "dev"),
+			Env:     getString("APP_ENV", "local"),
 		},
 		HTTP: HTTPConfig{
 			Addr:             getString("HTTP_ADDR", ":8080"),

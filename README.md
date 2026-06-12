@@ -36,6 +36,7 @@ Start from [`.env.example`](.env.example) when you want a complete local environ
 | Variable | Default |
 | --- | --- |
 | `APP_NAME` | `be-go-template` |
+| `APP_VERSION` | `dev` |
 | `APP_ENV` | `local` |
 | `HTTP_ADDR` | `:8080` |
 | `ETAG_ENABLED` | `true` |

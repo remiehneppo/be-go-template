@@ -256,7 +256,7 @@ Admin monitoring endpoints are protected by both authentication and admin-role a
 
 Endpoint groups:
 
-- `GET /v1/admin/monitoring/status` returns service status and deployment identity.
+- `GET /v1/admin/monitoring/status` returns service status, app name, version, environment, started_at, uptime, and check timestamp.
 - `GET /v1/admin/monitoring/dependencies` returns Mongo/Redis readiness health.
 - `GET /v1/admin/monitoring/runtime` returns runtime process metrics.
 - `GET /v1/admin/monitoring/auth-stats` returns login/logout/refresh counters within the requested time range.

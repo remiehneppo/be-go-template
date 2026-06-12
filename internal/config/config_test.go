@@ -23,6 +23,12 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.App.Name != "be-go-template" {
 		t.Fatalf("App.Name = %q", cfg.App.Name)
 	}
+	if cfg.App.Version != "dev" {
+		t.Fatalf("App.Version = %q", cfg.App.Version)
+	}
+	if cfg.App.Env != "local" {
+		t.Fatalf("App.Env = %q", cfg.App.Env)
+	}
 	if cfg.HTTP.BodyLimitBytes != 1<<20 {
 		t.Fatalf("BodyLimitBytes = %d", cfg.HTTP.BodyLimitBytes)
 	}
@@ -119,6 +125,18 @@ func TestLoadSupportsConsoleAlias(t *testing.T) {
 	}
 	if !cfg.Log.ToTerminal {
 		t.Fatal("LOG_TO_CONSOLE should override LOG_TO_TERMINAL")
+	}
+}
+
+func TestLoadParsesAppVersion(t *testing.T) {
+	t.Setenv("APP_VERSION", "1.2.3")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.App.Version != "1.2.3" {
+		t.Fatalf("App.Version = %q", cfg.App.Version)
 	}
 }
 

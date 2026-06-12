@@ -606,14 +606,14 @@ Checklist:
 
 Checklist:
 
-- [ ] Tạo monitoring domain models: `SystemStatus`, `DependencyStatus`, `RuntimeMetrics`, `AuthStats`, `AuditLog`, `ErrorEvent`.
-- [ ] `SystemStatus` gồm app name, version, env, uptime, started_at.
-- [ ] `DependencyStatus` gồm MongoDB ping status, Redis ping status, latency, checked_at.
-- [ ] Tạo `HealthLevel` enum: `healthy`, `degraded`, `unhealthy`.
-- [ ] `DependencyCheck` gồm `status`, `latency_ms`, `error` safe message, `checked_at`.
-- [ ] MongoDB/Redis status dùng degraded threshold từ config, timeout/error là unhealthy.
-- [ ] `RuntimeMetrics` gồm goroutines, memory allocation, heap, GC count, process uptime.
-- [ ] `AuthStats` gồm login success/failure count, active sessions, revoked sessions, refresh count, logout count.
+- [x] Tạo monitoring domain models: `SystemStatus`, `DependencyStatus`, `RuntimeMetrics`, `AuthStats`, `AuditLog`, `ErrorEvent`.
+- [x] `SystemStatus` gồm app name, version, env, uptime, started_at.
+- [x] `DependencyStatus` gồm MongoDB ping status, Redis ping status, latency, checked_at.
+- [x] Tạo `HealthLevel` enum: `healthy`, `degraded`, `unhealthy`.
+- [x] `DependencyCheck` gồm `status`, `latency_ms`, `error` safe message, `checked_at`.
+- [x] MongoDB/Redis status dùng degraded threshold từ config, timeout/error là unhealthy.
+- [x] `RuntimeMetrics` gồm goroutines, memory allocation, heap, GC count, process uptime.
+- [x] `AuthStats` gồm login success/failure count, active sessions, revoked sessions, refresh count, logout count.
 - [x] Monitoring service dùng repository/query abstraction để lấy auth stats và audit logs.
 - [x] Monitoring service có thể cache short TTL cho endpoint stats để tránh query nặng.
 - [x] Dùng Prometheus client library chính thức cho metrics, không tự tạo metrics format từ đầu.
@@ -621,7 +621,7 @@ Checklist:
 - [x] HTTP middleware ghi metrics: request total, request duration, response status, method, route.
 - [x] Cache/database layer ghi metrics: cache hit/miss, lock wait duration, Mongo/Redis dependency errors.
 - [x] Auth service ghi metrics: login success/failure, refresh success/failure, logout, active sessions gauge nếu tính được.
-- [ ] Monitoring endpoints trả response thống nhất như API còn lại.
+- [x] Monitoring endpoints trả response thống nhất như API còn lại.
 - [ ] Monitoring endpoints không expose secret, connection string, token, stack trace raw cho non-admin.
 - [ ] Chuẩn bị interface để sau này admin panel gọi trực tiếp qua HTTP API.
 

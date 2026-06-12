@@ -441,7 +441,7 @@ func TestRouterHealthzAndReadyzReturnSuccessWhenReady(t *testing.T) {
 func TestAdminMonitoringRequiresAdminRole(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
-		Monitoring: &fakeMonitoringService{status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test"}},
+		Monitoring: &fakeMonitoringService{status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test", Env: "test", StartedAt: time.Unix(1, 0).UTC(), UptimeSeconds: 1}},
 		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
 			UserID:    "u1",
 			SessionID: "s1",
@@ -469,7 +469,7 @@ func TestAdminMonitoringRequiresAdminRole(t *testing.T) {
 func TestAdminMonitoringStatusAllowsAdminRole(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
-		Monitoring: &fakeMonitoringService{status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test"}},
+		Monitoring: &fakeMonitoringService{status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test", Env: "test", StartedAt: time.Unix(1, 0).UTC(), UptimeSeconds: 1}},
 		TokenService: &fakeHTTPTokenService{claims: &domainauth.AccessClaims{
 			UserID:    "admin1",
 			SessionID: "s1",
@@ -495,7 +495,7 @@ func TestAdminMonitoringRoutesRequireAdminAndReturnExpectedShapes(t *testing.T) 
 	gin.SetMode(gin.TestMode)
 	router := NewRouterWithDependencies(testConfig(), logger.NewNoop(), RouterDependencies{
 		Monitoring: &fakeMonitoringService{
-			status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test"},
+			status: &monitoring.SystemStatus{Status: monitoring.Healthy, ServiceName: "api", Version: "test", Env: "test", StartedAt: time.Unix(1, 0).UTC(), UptimeSeconds: 1},
 			dependencies: &monitoring.DependencyStatus{
 				MongoDB: monitoring.DependencyCheck{Status: monitoring.Healthy},
 				Redis:   monitoring.DependencyCheck{Status: monitoring.Degraded, Error: "redis slow"},

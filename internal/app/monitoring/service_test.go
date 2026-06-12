@@ -27,10 +27,13 @@ func TestServiceRuntimeMetrics(t *testing.T) {
 }
 
 func TestServiceSystemStatusReflectsDependencies(t *testing.T) {
+	startedAt := time.Unix(40, 0).UTC()
 	now := time.Unix(100, 0).UTC()
 	service := NewService(Dependencies{
 		ServiceName: "api",
 		Version:     "v1",
+		Env:         "production",
+		StartedAt:   startedAt,
 		Now:         func() time.Time { return now },
 		DependencyChecker: &fakeDependencyChecker{
 			ready: true,
@@ -45,7 +48,7 @@ func TestServiceSystemStatusReflectsDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSystemStatus() error = %v", err)
 	}
-	if got.Status != monitoring.Degraded || got.ServiceName != "api" || got.Version != "v1" {
+	if got.Status != monitoring.Degraded || got.ServiceName != "api" || got.Version != "v1" || got.Env != "production" || got.StartedAt != startedAt || got.UptimeSeconds != 60 {
 		t.Fatalf("system status = %+v", got)
 	}
 }
