@@ -256,7 +256,7 @@ Checklist:
 - [ ] Key tối thiểu: `request_id`, `user_id`, `session_id`, `token_id`, `trace_id`, `span_id`, `logger`.
 - [x] Middleware request id set `request_id` và logger vào context.
 - [x] Auth middleware bổ sung `user_id`, `session_id`, `token_id` vào context.
-- [ ] Middleware tracing-readiness đọc `X-Trace-ID` nếu có, validate format, nếu không có thì có thể dùng request id làm trace id tạm.
+- [x] Middleware tracing-readiness đọc `X-Trace-ID` nếu có, validate format, nếu không có thì có thể dùng request id làm trace id tạm.
 - [ ] Logger lấy các field chuẩn từ context, không để từng layer tự đặt key riêng.
 
 ### 3.7. Monitoring service interfaces
@@ -586,7 +586,7 @@ Checklist:
 - [ ] Context keys dùng tập trung từ `internal/platform/ctxkeys`, không tự định nghĩa rời rạc.
 - [ ] Nếu client gửi `X-Request-ID` hợp lệ thì reuse, nếu không server sinh mới.
 - [ ] Response luôn trả `X-Request-ID`.
-- [ ] Nếu client/load balancer gửi `X-Trace-ID`, validate và đưa vào context/log; response có thể trả lại `X-Trace-ID`.
+- [x] Nếu client/load balancer gửi `X-Trace-ID`, validate và đưa vào context/log; response có thể trả lại `X-Trace-ID`.
 - [ ] Log include `trace_id` và `span_id` nếu có trong context để sẵn sàng tích hợp OpenTelemetry sau này.
 - [ ] Access log ghi khi request kết thúc.
 - [ ] Access log có method, path, query, status, latency, ip, user agent, request id, user id nếu có.
