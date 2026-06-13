@@ -1,3 +1,9 @@
+// Package user defines the User entity, repository interface, and service contract
+// for the authentication domain.
+//
+// Repository implementations (e.g. mongo) never depend on the domain package.
+// Domain entities must not import infrastructure packages.
+
 package user
 
 import (

@@ -1,3 +1,9 @@
+// Package auth defines the Session, LoginHistory, and DeviceSession entities
+// used by the authentication domain.
+//
+// Entities are plain structs without methods so they can be marshalled
+// and persisted without coupling to infrastructure.
+
 package auth
 
 import (

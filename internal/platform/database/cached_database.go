@@ -1,5 +1,12 @@
 package database
 
+// CachedDatabase wraps a base Database with cache coordination: read-through
+// cache, write invalidation, and optional Redis-backed locks.
+//
+// Repositories receive a CachedDatabase (or any Database implementation) and
+// never import the cache layer directly. Cache keys are provided through
+// ReadOptions and WriteOptions so the repository code remains database-agnostic.
+
 import (
 	"context"
 	"errors"

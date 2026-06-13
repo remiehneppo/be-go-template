@@ -1,3 +1,9 @@
+// Package logger provides structured logging with JSON or text format,
+// optional file output with rotation, and automatic redaction of sensitive
+// fields such as passwords, tokens, and secrets.
+//
+// Use New() to create a logger configured through environment variables.
+// The returned CloseFunc should be called during shutdown to flush file logs.
 package logger
 
 import (
@@ -19,11 +25,13 @@ import (
 	"github.com/remihneppo/be-go-template/internal/platform/ctxkeys"
 )
 
+// Field represents a key-value pair attached to a log entry.
 type Field struct {
 	Key   string
 	Value any
 }
 
+// Logger writes structured log entries at debug, info, warn, and error level.
 type Logger interface {
 	Debug(msg string, fields ...Field)
 	Info(msg string, fields ...Field)
@@ -32,6 +40,8 @@ type Logger interface {
 	With(fields ...Field) Logger
 }
 
+// Config controls logger behaviour: level, format, file path, rotation knobs,
+// and output toggles for terminal and file.
 type Config struct {
 	Level      string
 	Format     string
@@ -44,6 +54,7 @@ type Config struct {
 	Compress   bool
 }
 
+// CloseFunc flushes and closes all underlying writers.
 type CloseFunc func() error
 
 type structuredLogger struct {
@@ -54,6 +65,9 @@ type structuredLogger struct {
 	mu     *sync.Mutex
 }
 
+// New creates a logger that writes to terminal, file, or both depending on
+// Config settings. It returns a CloseFunc that should be called during shutdown
+// to flush and close file writers.
 func New(cfg Config) (Logger, CloseFunc, error) {
 	level := parseLevel(cfg.Level)
 	writers := make([]io.Writer, 0, 2)
@@ -104,10 +118,13 @@ func New(cfg Config) (Logger, CloseFunc, error) {
 	return logger, closeFn, nil
 }
 
+// WithContext stores the logger in the context under ctxkeys.Logger.
 func WithContext(ctx context.Context, log Logger) context.Context {
 	return context.WithValue(ctx, ctxkeys.Logger, log)
 }
 
+// FromContext retrieves the logger from context, returning a noop logger
+// when none is found.
 func FromContext(ctx context.Context) Logger {
 	if ctx == nil {
 		return noopLogger{}
@@ -118,18 +135,22 @@ func FromContext(ctx context.Context) Logger {
 	return noopLogger{}
 }
 
+// NewNoop returns a logger that discards all output.
 func NewNoop() Logger {
 	return noopLogger{}
 }
 
+// String creates a string field.
 func String(key, value string) Field {
 	return Field{Key: key, Value: value}
 }
 
+// Int creates an integer field.
 func Int(key string, value int) Field {
 	return Field{Key: key, Value: value}
 }
 
+// Any creates an arbitrary field.
 func Any(key string, value any) Field {
 	return Field{Key: key, Value: value}
 }
@@ -195,6 +216,8 @@ func parseLevel(level string) slog.Level {
 	}
 }
 
+// redact replaces sensitive field values with "[REDACTED]" to prevent leaking
+// passwords, tokens, secrets, and authorization headers in log output.
 func redact(key string, value any) any {
 	normalized := strings.ToLower(key)
 	sensitive := []string{"password", "token", "secret", "authorization", "refresh"}

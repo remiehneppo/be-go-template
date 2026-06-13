@@ -12,6 +12,7 @@ import (
 
 const errorEventsCollection = "error_events"
 
+// ErrorEventRepository implements domainmonitoring.ErrorEventRepository using MongoDB.
 type ErrorEventRepository struct {
 	db database.Database
 }

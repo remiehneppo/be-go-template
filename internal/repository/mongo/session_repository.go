@@ -11,6 +11,7 @@ import (
 
 const sessionsCollection = "sessions"
 
+// SessionRepository implements domainauth.SessionRepository using MongoDB.
 type SessionRepository struct {
 	db database.Database
 }

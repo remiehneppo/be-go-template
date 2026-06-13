@@ -11,10 +11,12 @@ import (
 	"github.com/remihneppo/be-go-template/internal/platform/cache"
 )
 
+// DependencyChecker reports the health status of an external dependency.
 type DependencyChecker interface {
 	Check(ctx context.Context) (domainmonitoring.DependencyStatus, bool)
 }
 
+// Dependencies contains the configuration and dependencies for the monitoring service.
 type Dependencies struct {
 	ServiceName       string
 	Version           string
@@ -29,6 +31,7 @@ type Dependencies struct {
 	Now               func() time.Time
 }
 
+// Service exposes system status, dependency health, and recent audit/error events.
 type Service struct {
 	serviceName       string
 	version           string
@@ -43,6 +46,8 @@ type Service struct {
 	now               func() time.Time
 }
 
+// NewService creates a monitoring Service from the provided dependencies.
+// Defaults: now uses time.Now().UTC() if nil.
 func NewService(deps Dependencies) *Service {
 	now := deps.Now
 	if now == nil {

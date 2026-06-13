@@ -16,6 +16,7 @@ const (
 	RateLimitFallbackBlock = "block"
 )
 
+// RateLimitPolicy configures rate limiting per endpoint.
 type RateLimitPolicy struct {
 	Enabled  bool
 	Limit    int64

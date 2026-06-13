@@ -12,6 +12,7 @@ import (
 
 const loginHistoryCollection = "login_history"
 
+// LoginHistoryRepository implements domainauth.LoginHistoryRepository using MongoDB.
 type LoginHistoryRepository struct {
 	db database.Database
 }

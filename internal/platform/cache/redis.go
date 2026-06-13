@@ -18,21 +18,32 @@ import (
 
 const defaultLockPrefix = "lock:"
 
+// RedisConfig holds configuration for connecting to a Redis server.
 type RedisConfig struct {
-	Addr          string
-	Password      string
-	DB            int
-	LockPrefix    string
-	TLSEnabled    bool
-	TLSCACert     string
+	// Addr is the host:port of the Redis server.
+	Addr string
+	// Password for the Redis server. Leave empty for no authentication.
+	Password string
+	// DB is the Redis database number. Defaults to 0.
+	DB int
+	// LockPrefix is the prefix used for distributed lock keys.
+	LockPrefix string
+	// TLSEnabled toggles TLS connectivity to Redis.
+	TLSEnabled bool
+	// TLSCACert points to a PEM CA bundle file when TLS is enabled.
+	TLSCACert string
+	// TLSServerName overrides the TLS server name for certificate validation.
 	TLSServerName string
 }
 
+// RedisCache implements the Cache interface using the go-redis client.
 type RedisCache struct {
 	client     *redis.Client
 	lockPrefix string
 }
 
+// NewRedis creates a RedisCache from configuration. It dials the Redis server
+// and returns an error if the connection cannot be established.
 func NewRedis(cfg RedisConfig) (*RedisCache, error) {
 	lockPrefix := cfg.LockPrefix
 	if lockPrefix == "" {
@@ -72,6 +83,7 @@ func NewRedis(cfg RedisConfig) (*RedisCache, error) {
 	return NewRedisWithClient(client, lockPrefix), nil
 }
 
+// NewRedisWithClient creates a RedisCache from an existing *redis.Client.
 func NewRedisWithClient(client *redis.Client, lockPrefix string) *RedisCache {
 	if lockPrefix == "" {
 		lockPrefix = defaultLockPrefix
@@ -82,6 +94,7 @@ func NewRedisWithClient(client *redis.Client, lockPrefix string) *RedisCache {
 	}
 }
 
+// Get retrieves the value stored at key and decodes it into dest.
 func (c *RedisCache) Get(ctx context.Context, key string, dest any) error {
 	value, err := c.client.Get(ctx, key).Bytes()
 	if errors.Is(err, redis.Nil) {
@@ -96,6 +109,7 @@ func (c *RedisCache) Get(ctx context.Context, key string, dest any) error {
 	return nil
 }
 
+// Set stores value at key with the given TTL. Value is marshalled as JSON.
 func (c *RedisCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	payload, err := json.Marshal(value)
 	if err != nil {
@@ -104,6 +118,7 @@ func (c *RedisCache) Set(ctx context.Context, key string, value any, ttl time.Du
 	return c.client.Set(ctx, key, payload, ttl).Err()
 }
 
+// Delete removes one or more keys from the cache.
 func (c *RedisCache) Delete(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		return nil
@@ -111,6 +126,7 @@ func (c *RedisCache) Delete(ctx context.Context, keys ...string) error {
 	return c.client.Del(ctx, keys...).Err()
 }
 
+// Exists reports whether key exists in the cache.
 func (c *RedisCache) Exists(ctx context.Context, key string) (bool, error) {
 	count, err := c.client.Exists(ctx, key).Result()
 	if err != nil {
@@ -119,6 +135,8 @@ func (c *RedisCache) Exists(ctx context.Context, key string) (bool, error) {
 	return count > 0, nil
 }
 
+// Increment atomically increments the integer value at key, setting TTL
+// on first creation. It returns the new counter value.
 func (c *RedisCache) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
 	if ttl <= 0 {
 		return 0, fmt.Errorf("increment ttl must be positive")
@@ -133,6 +151,8 @@ return count
 	return c.client.Eval(ctx, script, []string{key}, ttl.Milliseconds()).Int64()
 }
 
+// WithLock acquires a distributed lock for key, runs fn, then releases the
+// lock. Returns ErrLockNotAcquired when the lock is held by another owner.
 func (c *RedisCache) WithLock(ctx context.Context, key string, ttl time.Duration, fn func(ctx context.Context) error) error {
 	if ttl <= 0 {
 		return fmt.Errorf("lock ttl must be positive")
@@ -156,10 +176,12 @@ func (c *RedisCache) WithLock(ctx context.Context, key string, ttl time.Duration
 	return fn(ctx)
 }
 
+// Ping checks connectivity to the cache backend.
 func (c *RedisCache) Ping(ctx context.Context) error {
 	return c.client.Ping(ctx).Err()
 }
 
+// Close releases the underlying Redis connection pool.
 func (c *RedisCache) Close() error {
 	return c.client.Close()
 }

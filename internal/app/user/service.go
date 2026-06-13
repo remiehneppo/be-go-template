@@ -9,14 +9,17 @@ import (
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 )
 
+// Service handles user business logic including profile lookup.
 type Service struct {
 	users domainuser.Repository
 }
 
+// NewService creates a new Service from the given repository.
 func NewService(users domainuser.Repository) *Service {
 	return &Service{users: users}
 }
 
+// GetMe retrieves the user profile for the given userID.
 func (s *Service) GetMe(ctx context.Context, userID string) (*domainuser.User, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {

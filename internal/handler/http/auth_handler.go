@@ -13,11 +13,13 @@ import (
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 )
 
+// AuthHandler handles HTTP requests for authentication endpoints.
 type AuthHandler struct {
 	service    domainauth.Service
 	middleware AuthRouteMiddleware
 }
 
+// AuthRouteMiddleware holds per-route middleware chains for auth endpoints.
 type AuthRouteMiddleware struct {
 	Register  []gin.HandlerFunc
 	Login     []gin.HandlerFunc
@@ -25,8 +27,10 @@ type AuthRouteMiddleware struct {
 	Protected []gin.HandlerFunc
 }
 
+// AuthHandlerOption configures an AuthHandler.
 type AuthHandlerOption func(*AuthHandler)
 
+// NewAuthHandler creates an AuthHandler with the given service and options.
 func NewAuthHandler(service domainauth.Service, opts ...AuthHandlerOption) *AuthHandler {
 	handler := &AuthHandler{service: service}
 	for _, opt := range opts {
@@ -35,6 +39,7 @@ func NewAuthHandler(service domainauth.Service, opts ...AuthHandlerOption) *Auth
 	return handler
 }
 
+// WithAuthRouteMiddleware sets per-route middleware for auth endpoints.
 func WithAuthRouteMiddleware(routeMiddleware AuthRouteMiddleware) AuthHandlerOption {
 	return func(h *AuthHandler) {
 		h.middleware = routeMiddleware

@@ -11,6 +11,7 @@ import (
 
 const usersCollection = "users"
 
+// UserRepository implements domainuser.Repository using MongoDB.
 type UserRepository struct {
 	db database.Database
 }

@@ -1,5 +1,12 @@
 package config
 
+// Package config loads and validates all application configuration from
+// environment variables. It provides a single Config struct that the
+// bootstrap layer passes to every subsystem.
+//
+// Production deployments should pin non-default values explicitly rather than
+// relying on local convenience defaults.
+
 import (
 	"encoding/base64"
 	"fmt"

@@ -12,6 +12,8 @@ import (
 	"github.com/remihneppo/be-go-template/internal/platform/logger"
 )
 
+// ErrorEventReporter reports error events for monitoring and audit.
+// Implemented by mongo.ErrorEventRepository.
 type ErrorEventReporter interface {
 	Append(ctx context.Context, event auth.ErrorEvent) error
 }

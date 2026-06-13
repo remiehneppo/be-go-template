@@ -11,10 +11,12 @@ import (
 	"github.com/remihneppo/be-go-template/internal/domain/monitoring"
 )
 
+// MonitoringHandler handles HTTP requests for admin monitoring endpoints.
 type MonitoringHandler struct {
 	service monitoring.Service
 }
 
+// NewMonitoringHandler creates a MonitoringHandler from the given service.
 func NewMonitoringHandler(service monitoring.Service) *MonitoringHandler {
 	return &MonitoringHandler{service: service}
 }

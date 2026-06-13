@@ -11,6 +11,7 @@ import (
 
 const revokedTokensCollection = "revoked_tokens"
 
+// RevokedTokenRepository implements domainauth.RevokedTokenRepository using MongoDB.
 type RevokedTokenRepository struct {
 	db database.Database
 }

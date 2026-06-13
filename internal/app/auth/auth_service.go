@@ -20,6 +20,7 @@ import (
 	platformmetrics "github.com/remihneppo/be-go-template/internal/platform/metrics"
 )
 
+// ServiceDependencies contains all dependencies required by Service.
 type ServiceDependencies struct {
 	Users                  user.Repository
 	Sessions               domainauth.SessionRepository
@@ -36,6 +37,8 @@ type ServiceDependencies struct {
 	RefreshIPAnomalyAction string
 }
 
+// Service implements authentication business logic including register, login,
+// refresh, logout, session management, and account lockout.
 type Service struct {
 	users                  user.Repository
 	sessions               domainauth.SessionRepository
@@ -53,6 +56,9 @@ type Service struct {
 	now                    func() time.Time
 }
 
+// NewService creates a Service from the provided dependencies.
+// Zero-value defaults are applied for RefreshTTL, LockoutDuration,
+// and RefreshIPAnomalyAction when the config is empty or invalid.
 func NewService(deps ServiceDependencies) *Service {
 	passwords := deps.Passwords
 	if passwords == nil {

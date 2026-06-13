@@ -12,11 +12,15 @@ import (
 var ErrNotFound = errors.New("document not found")
 var ErrConflict = errors.New("document conflict")
 
+// MongoDatabase implements the Database interface using MongoDB.
+// It is the default concrete implementation and is wrapped by CachedDatabase
+// when cache coordination is desired.
 type MongoDatabase struct {
 	client *mongo.Client
 	db     *mongo.Database
 }
 
+// NewMongo creates a MongoDatabase from an existing *mongo.Client.
 func NewMongo(client *mongo.Client, databaseName string) *MongoDatabase {
 	return &MongoDatabase{
 		client: client,
@@ -120,6 +124,7 @@ func (d *MongoDatabase) Close(ctx context.Context) error {
 	return d.client.Disconnect(ctx)
 }
 
+// RunInTransaction executes fn inside a MongoDB session transaction.
 func (d *MongoDatabase) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
 	if fn == nil {
 		return nil
@@ -138,6 +143,7 @@ func (d *MongoDatabase) RunInTransaction(ctx context.Context, fn func(ctx contex
 	return dependencyError("MongoDatabase.RunInTransaction", err)
 }
 
+// IsDuplicateKeyError reports whether err is a MongoDB duplicate-key error.
 func IsDuplicateKeyError(err error) bool {
 	if err == nil {
 		return false

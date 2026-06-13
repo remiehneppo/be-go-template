@@ -20,12 +20,14 @@ import (
 
 const accessBlacklistPrefix = "token:blacklist:"
 
+// JWTKey holds a single JWT signing key with its identifier and expiration.
 type JWTKey struct {
 	ID       string
 	Secret   []byte
 	NotAfter time.Time
 }
 
+// TokenConfig holds the configuration for JWT token generation and validation.
 type TokenConfig struct {
 	CurrentKey       string
 	PreviousKey      string
@@ -34,6 +36,8 @@ type TokenConfig struct {
 	RefreshTTL       time.Duration
 }
 
+// TokenService generates and validates JWT access tokens, manages refresh tokens,
+// and handles token blacklisting with both Redis cache and MongoDB fallback.
 type TokenService struct {
 	current    JWTKey
 	previous   *JWTKey
@@ -44,6 +48,9 @@ type TokenService struct {
 	now        func() time.Time
 }
 
+// NewTokenService creates a TokenService from the provided configuration.
+// The current and previous JWT keys are parsed; an error is returned if
+// either key format is invalid.
 func NewTokenService(cfg TokenConfig, cacheStore cache.Cache, revoked domainauth.RevokedTokenRepository) (*TokenService, error) {
 	current, err := ParseJWTKey(cfg.CurrentKey, time.Time{})
 	if err != nil {

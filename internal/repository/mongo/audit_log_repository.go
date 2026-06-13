@@ -12,6 +12,7 @@ import (
 
 const auditLogsCollection = "audit_logs"
 
+// AuditLogRepository implements domainauth.AuditLogRepository using MongoDB.
 type AuditLogRepository struct {
 	db database.Database
 }

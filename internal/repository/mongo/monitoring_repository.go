@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
+// MonitoringStatsRepository implements domainmonitoring.AuthStatsRepository using MongoDB.
 type MonitoringStatsRepository struct {
 	db database.Database
 }

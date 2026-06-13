@@ -9,10 +9,12 @@ import (
 	apperrors "github.com/remihneppo/be-go-template/internal/platform/errors"
 )
 
+// UserHandler handles HTTP requests for user endpoints.
 type UserHandler struct {
 	service domainuser.Service
 }
 
+// NewUserHandler creates a UserHandler from the given service.
 func NewUserHandler(service domainuser.Service) *UserHandler {
 	return &UserHandler{service: service}
 }
